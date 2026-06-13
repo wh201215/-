@@ -1,52 +1,54 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
-import { featuredTracks, notes, resources } from "../data/site";
+import { directions, resources } from "../data/site";
 
-const latestResources = resources.slice(0, 6);
+const recentResources = resources.slice(0, 6);
+const totalCount = resources.length;
 ---
 
 <BaseLayout title="Home">
   <section class="hero">
     <div class="hero-copy">
-      <p class="eyebrow">Personal Knowledge Site</p>
-      <h1>Turn reading routes, paper notes, and experiment material into a site you can open anytime.</h1>
+      <p class="eyebrow">Knowledge Directions</p>
+      <h1>Three fixed tracks, one blue-white reading site, and a cleaner front page.</h1>
       <p class="lead">
-        This version is not a classic blog homepage. It is a reading hub built for continuation, quick jumps, source preservation, and mobile access.
+        The homepage is no longer a generic blog feed. It now acts as an entry panel for your three active directions and the source archive behind them.
       </p>
       <div class="hero-actions">
-        <a class="button button-primary" href="/notes">Start Reading</a>
-        <a class="button button-secondary" href="/archive">Open Archive</a>
+        <a class="button button-primary" href="/notes">View directions</a>
+        <a class="button button-secondary" href="/archive">Open archive</a>
       </div>
     </div>
 
     <aside class="hero-panel">
       <div class="hero-stat">
-        <strong>15</strong>
-        <span>Source files already ingested</span>
-      </div>
-      <div class="hero-stat">
         <strong>3</strong>
-        <span>Curated guide pages</span>
+        <span>Fixed directions</span>
       </div>
       <div class="hero-stat">
-        <strong>Auto</strong>
-        <span>Designed for Vercel auto deployment</span>
+        <strong>{totalCount}</strong>
+        <span>Archived resources</span>
+      </div>
+      <div class="hero-stat">
+        <strong>Blue</strong>
+        <span>Rethemed to match the blue-white tone of your existing HTML pages</span>
       </div>
     </aside>
   </section>
 
   <section class="section">
     <div class="section-head">
-      <p class="eyebrow">Tracks</p>
-      <h2>Three tracks worth opening first</h2>
+      <p class="eyebrow">Directions</p>
+      <h2>Only these three directions stay on the front page for now</h2>
     </div>
 
     <div class="card-grid">
-      {featuredTracks.map((track) => (
-        <a class={`feature-card feature-card-${track.accent}`} href={track.href}>
-          <p>{track.stats}</p>
-          <h3>{track.title}</h3>
-          <span>{track.summary}</span>
+      {directions.map((direction) => (
+        <a class="feature-card" href={direction.href}>
+          <p>{direction.eyebrow}</p>
+          <h3>{direction.title}</h3>
+          <span>{direction.summary}</span>
+          <small>{direction.count}</small>
         </a>
       ))}
     </div>
@@ -55,36 +57,52 @@ const latestResources = resources.slice(0, 6);
   <section class="section section-split">
     <div>
       <div class="section-head">
-        <p class="eyebrow">Notes</p>
-        <h2>Curated reading pages</h2>
+        <p class="eyebrow">Reading Logic</p>
+        <h2>The reading flow is tighter now</h2>
       </div>
 
       <div class="stack">
-        {notes.map((note) => (
-          <article class="note-card">
-            <div class="note-meta">
-              <span>{note.date}</span>
-              <span>{note.tags.join(" / ")}</span>
-            </div>
-            <h3><a href={note.href}>{note.title}</a></h3>
-            <p>{note.summary}</p>
-          </article>
-        ))}
+        <article class="note-card">
+          <div class="note-meta">
+            <span>Direction 01</span>
+            <span>Systems / tools / environment loops</span>
+          </div>
+          <h3><a href="/notes/agent">LLM Agents</a></h3>
+          <p>Everything directly related to agent structure, tool execution, and feedback loops lives here.</p>
+        </article>
+
+        <article class="note-card">
+          <div class="note-meta">
+            <span>Direction 02</span>
+            <span>Math / PPO / DPO / GRPO</span>
+          </div>
+          <h3><a href="/notes/reinforcement-learning">Reinforcement Learning</a></h3>
+          <p>Stage 1-6, RLHF, GRPO, RLVR, and post-training engineering all stay on one route.</p>
+        </article>
+
+        <article class="note-card">
+          <div class="note-meta">
+            <span>Direction 03</span>
+            <span>Recall / ranking / multi-objective</span>
+          </div>
+          <h3><a href="/notes/recommendation">Recommendation Systems</a></h3>
+          <p>This slot is intentionally reserved so your future recommendation material has a stable landing area.</p>
+        </article>
       </div>
     </div>
 
     <div>
       <div class="section-head">
         <p class="eyebrow">Workflow</p>
-        <h2>Keep writing in this loop</h2>
+        <h2>Use this update loop from now on</h2>
       </div>
 
       <div class="workflow-card">
         <ol>
-          <li>Drop new Markdown, HTML, PDF, or PPT files into the repository.</li>
-          <li>Add one guide page that explains why the material matters.</li>
-          <li>Push to GitHub and let Vercel rebuild the site automatically.</li>
-          <li>Open the site on phone or desktop and keep reading.</li>
+          <li>Decide which of the three directions a new file belongs to.</li>
+          <li>Drop the raw HTML or Markdown into the archive.</li>
+          <li>If it matters long-term, add a direction page entry for it.</li>
+          <li>Push to GitHub and let the site update automatically.</li>
         </ol>
       </div>
     </div>
@@ -92,20 +110,20 @@ const latestResources = resources.slice(0, 6);
 
   <section class="section">
     <div class="section-head">
-      <p class="eyebrow">Archive</p>
-      <h2>Recently ingested material</h2>
+      <p class="eyebrow">Recent Materials</p>
+      <h2>Current entry points</h2>
     </div>
 
     <div class="resource-grid">
-      {latestResources.map((item) => (
+      {recentResources.map((item) => (
         <article class="resource-card">
           <div class="resource-meta">
-            <span>{item.type}</span>
+            <span>{item.direction}</span>
             <span>{item.updated}</span>
           </div>
           <h3><a href={item.href} target="_blank" rel="noreferrer">{item.title}</a></h3>
           <p>{item.summary}</p>
-          <small>{item.category}</small>
+          <small>{item.type}</small>
         </article>
       ))}
     </div>

@@ -1,27 +1,25 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
-import { notes } from "../../data/site";
+import { directions } from "../../data/site";
 ---
 
-<BaseLayout title="Notes" description="Curated note pages and reading entries.">
+<BaseLayout title="Directions" description="The site is currently limited to three fixed directions.">
   <section class="page-intro">
-    <p class="eyebrow">Notes</p>
-    <h1>Guide Pages</h1>
+    <p class="eyebrow">Directions</p>
+    <h1>Three fixed tracks</h1>
     <p>
-      This area does not dump raw files. It groups material by topic. Each page should answer three things: why it matters, what to read first, and where the source files live.
+      The site is intentionally compact for now. Everything should be sorted into these three directions before you split into smaller subtopics.
     </p>
   </section>
 
-  <section class="stack">
-    {notes.map((note) => (
-      <article class="note-card note-card-large">
-        <div class="note-meta">
-          <span>{note.date}</span>
-          <span>{note.tags.join(" / ")}</span>
-        </div>
-        <h2><a href={note.href}>{note.title}</a></h2>
-        <p>{note.summary}</p>
-      </article>
+  <section class="card-grid">
+    {directions.map((direction) => (
+      <a class="feature-card" href={direction.href}>
+        <p>{direction.eyebrow}</p>
+        <h2>{direction.title}</h2>
+        <span>{direction.summary}</span>
+        <small>{direction.tags.join(" / ")}</small>
+      </a>
     ))}
   </section>
 </BaseLayout>

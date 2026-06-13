@@ -1,39 +1,46 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
-import { resources } from "../../data/site";
-
-const categories = [...new Set(resources.map((item) => item.category))];
+import { directions, resources } from "../../data/site";
 ---
 
-<BaseLayout title="Archive" description="Source archive for HTML and Markdown resources.">
+<BaseLayout title="Archive" description="Raw resources grouped by the three active directions.">
   <section class="page-intro">
     <p class="eyebrow">Archive</p>
-    <h1>Archive</h1>
+    <h1>Source Archive</h1>
     <p>
-      The first version only brings in HTML and Markdown. Later you can add PDF and PPT by extending the same archive layout instead of rebuilding the site.
+      All raw HTML and Markdown files stay here. The archive is now grouped by LLM Agents, Reinforcement Learning, and Recommendation Systems.
     </p>
   </section>
 
-  {categories.map((category) => (
-    <section class="section">
-      <div class="section-head">
-        <p class="eyebrow">{category}</p>
-        <h2>{category}</h2>
-      </div>
-      <div class="resource-grid">
-        {resources
-          .filter((item) => item.category === category)
-          .map((item) => (
-            <article class="resource-card">
-              <div class="resource-meta">
-                <span>{item.type}</span>
-                <span>{item.updated}</span>
-              </div>
-              <h3><a href={item.href} target="_blank" rel="noreferrer">{item.title}</a></h3>
-              <p>{item.summary}</p>
-            </article>
-          ))}
-      </div>
-    </section>
-  ))}
+  {directions.map((direction) => {
+    const current = resources.filter((item) => item.direction === direction.title);
+    return (
+      <section class="section">
+        <div class="section-head">
+          <p class="eyebrow">{direction.eyebrow}</p>
+          <h2>{direction.title}</h2>
+        </div>
+
+        {current.length > 0 ? (
+          <div class="resource-grid">
+            {current.map((item) => (
+              <article class="resource-card">
+                <div class="resource-meta">
+                  <span>{item.type}</span>
+                  <span>{item.updated}</span>
+                </div>
+                <h3><a href={item.href} target="_blank" rel="noreferrer">{item.title}</a></h3>
+                <p>{item.summary}</p>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <article class="content-card">
+            <h2>No files yet</h2>
+            <p>This direction already has a reserved slot. Later you can add recommendation HTML, Markdown, PDF, or PPT files here directly.</p>
+          </article>
+        )}
+      </section>
+    );
+  })}
 </BaseLayout>
