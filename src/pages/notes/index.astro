@@ -1,0 +1,27 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { notes } from "../../data/site";
+---
+
+<BaseLayout title="Notes" description="Curated note pages and reading entries.">
+  <section class="page-intro">
+    <p class="eyebrow">Notes</p>
+    <h1>Guide Pages</h1>
+    <p>
+      This area does not dump raw files. It groups material by topic. Each page should answer three things: why it matters, what to read first, and where the source files live.
+    </p>
+  </section>
+
+  <section class="stack">
+    {notes.map((note) => (
+      <article class="note-card note-card-large">
+        <div class="note-meta">
+          <span>{note.date}</span>
+          <span>{note.tags.join(" / ")}</span>
+        </div>
+        <h2><a href={note.href}>{note.title}</a></h2>
+        <p>{note.summary}</p>
+      </article>
+    ))}
+  </section>
+</BaseLayout>

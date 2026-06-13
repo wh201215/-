@@ -1,0 +1,39 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { resources } from "../../data/site";
+
+const categories = [...new Set(resources.map((item) => item.category))];
+---
+
+<BaseLayout title="Archive" description="Source archive for HTML and Markdown resources.">
+  <section class="page-intro">
+    <p class="eyebrow">Archive</p>
+    <h1>Archive</h1>
+    <p>
+      The first version only brings in HTML and Markdown. Later you can add PDF and PPT by extending the same archive layout instead of rebuilding the site.
+    </p>
+  </section>
+
+  {categories.map((category) => (
+    <section class="section">
+      <div class="section-head">
+        <p class="eyebrow">{category}</p>
+        <h2>{category}</h2>
+      </div>
+      <div class="resource-grid">
+        {resources
+          .filter((item) => item.category === category)
+          .map((item) => (
+            <article class="resource-card">
+              <div class="resource-meta">
+                <span>{item.type}</span>
+                <span>{item.updated}</span>
+              </div>
+              <h3><a href={item.href} target="_blank" rel="noreferrer">{item.title}</a></h3>
+              <p>{item.summary}</p>
+            </article>
+          ))}
+      </div>
+    </section>
+  ))}
+</BaseLayout>

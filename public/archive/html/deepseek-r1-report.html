@@ -1,0 +1,3181 @@
+```html
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>DeepSeek-R1 Technical Report 中文精读：从 R1-Zero 到 R1 的 Reasoning 后训练路线</title>
+
+<style>
+html {
+  scroll-behavior: smooth;
+}
+body {
+  font-family: "Microsoft YaHei", Arial, sans-serif;
+  line-height: 1.85;
+  max-width: 1080px;
+  margin: 40px auto;
+  padding: 0 28px 100px;
+  background: #f7f8fb;
+  color: #1f2937;
+}
+h1 {
+  font-size: 34px;
+  line-height: 1.35;
+  border-bottom: 5px solid #2563eb;
+  padding-bottom: 14px;
+}
+h2 {
+  margin-top: 48px;
+  padding: 12px 16px;
+  font-size: 27px;
+  background: #eef4ff;
+  border-left: 7px solid #2563eb;
+}
+h3 {
+  margin-top: 28px;
+  font-size: 21px;
+}
+h4 {
+  margin-top: 24px;
+  font-size: 18px;
+}
+h2, h3 {
+  scroll-margin-top: 24px;
+}
+.box {
+  background: #ffffff;
+  border: 1px solid #d9e2ef;
+  border-radius: 12px;
+  padding: 18px 22px;
+  margin: 18px 0;
+}
+.note {
+  background: #fff7d6;
+  border-left: 6px solid #d6a800;
+}
+.train {
+  background: #ecfdf3;
+  border-left: 6px solid #16a34a;
+}
+.warn {
+  background: #fff1f1;
+  border-left: 6px solid #dc2626;
+}
+.figure {
+  background: #ffffff;
+  border: 1px solid #d9e2ef;
+  border-radius: 14px;
+  padding: 16px;
+  margin: 22px 0;
+}
+.figure img {
+  width: 100%;
+  max-height: 680px;
+  object-fit: contain;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+}
+.caption {
+  color: #667085;
+  font-size: 14px;
+  margin-top: 10px;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 18px 0;
+  background: #ffffff;
+}
+th, td {
+  border: 1px solid #d9e2ef;
+  padding: 11px 13px;
+  vertical-align: top;
+}
+th {
+  background: #f1f5f9;
+}
+pre {
+  background: #111827;
+  color: #e5e7eb;
+  padding: 18px;
+  border-radius: 10px;
+  overflow-x: auto;
+  line-height: 1.55;
+}
+code {
+  font-family: Consolas, Monaco, "Courier New", monospace;
+}
+.small {
+  color: #667085;
+  font-size: 14px;
+}
+.page-toc {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+}
+.page-toc-toggle {
+  border: 0;
+  border-radius: 999px;
+  padding: 10px 16px;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.24);
+}
+.page-toc-toggle:hover {
+  background: #1d4ed8;
+}
+.page-toc-panel {
+  display: none;
+  width: 300px;
+  max-height: calc(100vh - 90px);
+  overflow: auto;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid #d9e2ef;
+  border-radius: 14px;
+  padding: 16px 18px;
+  margin-top: 10px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+  backdrop-filter: blur(8px);
+}
+.page-toc.is-open .page-toc-panel {
+  display: block;
+}
+.page-toc > .page-toc-title,
+.page-toc > .page-toc-list {
+  display: none;
+}
+.page-toc-title {
+  margin-bottom: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+}
+.page-toc-list,
+.page-toc-sublist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.page-toc-item + .page-toc-item {
+  margin-top: 10px;
+}
+.page-toc-sublist {
+  margin-top: 8px;
+  padding-left: 14px;
+  border-left: 2px solid #e5e7eb;
+}
+.page-toc-subitem + .page-toc-subitem {
+  margin-top: 6px;
+}
+.page-toc-link {
+  display: block;
+  color: #334155;
+  text-decoration: none;
+  font-size: 14px;
+  line-height: 1.55;
+}
+.page-toc-link:hover {
+  color: #2563eb;
+}
+@media (max-width: 1100px) {
+  .page-toc {
+    top: 12px;
+    right: 12px;
+  }
+  .page-toc-panel {
+    width: min(300px, calc(100vw - 24px));
+    max-height: calc(100vh - 72px);
+  }
+}
+</style>
+</head>
+
+<body>
+
+<nav class="page-toc" aria-label="文章目录">
+  <div class="page-toc-title">目录导航</div>
+  <ol class="page-toc-list" id="page-toc-list"></ol>
+</nav>
+
+<h1>DeepSeek-R1 Technical Report 中文精读笔记<br>从 R1-Zero 到 R1 的 Reasoning 后训练路线</h1>
+
+<div class="box note">
+<p><strong>原文标题：</strong>DeepSeek-R1: Incentivizing Reasoning Capability in LLMs via Reinforcement Learning</p>
+
+<p><strong>来源：</strong>DeepSeek-AI Technical Report / arXiv</p>
+
+<p><strong>原文链接：</strong>
+<a href="https://arxiv.org/abs/2501.12948" target="_blank">
+https://arxiv.org/abs/2501.12948
+</a>
+</p>
+
+<p><strong>项目页面：</strong>
+<a href="https://github.com/deepseek-ai/DeepSeek-R1" target="_blank">
+https://github.com/deepseek-ai/DeepSeek-R1
+</a>
+</p>
+
+<p><strong>模型页面：</strong>
+<a href="https://huggingface.co/deepseek-ai/DeepSeek-R1" target="_blank">
+https://huggingface.co/deepseek-ai/DeepSeek-R1
+</a>
+</p>
+
+<p><strong>学习定位：</strong>
+这篇报告适合作为“后训练路线”的第三篇。第一篇 PyTorch Primer 建立了后训练总路线；
+第二篇 Fireworks AI RLVR 讲清楚了可验证奖励和 GRPO；
+第三篇 DeepSeek-R1 则是把这些概念放进一个真实 reasoning model 的训练流程中，重点解释：
+<strong>纯 RL 能不能激发推理、为什么 R1-Zero 有问题、DeepSeek-R1 如何通过 cold-start data 和多阶段训练变得更可用。</strong>
+</p>
+</div>
+
+<h2>0. 这篇报告应该怎么读？</h2>
+
+<p>
+DeepSeek-R1 Technical Report 不能只当成“一个模型发布报告”来读。
+它真正有价值的地方，是给出了 reasoning 后训练的一条非常清楚的技术路线：
+</p>
+
+<pre>
+DeepSeek-V3-Base
+  ↓
+DeepSeek-R1-Zero：不经过 SFT，直接大规模 RL
+  ↓
+Reasoning ability emergence：推理能力涌现
+  ↓
+问题暴露：可读性差、语言混杂、格式不稳定
+  ↓
+DeepSeek-R1：加入 cold-start data
+  ↓
+多阶段训练：RL + SFT + Rejection Sampling + RL
+  ↓
+蒸馏：把 R1 的推理能力迁移到 Qwen / Llama 小模型
+</pre>
+
+<div class="box note">
+<strong>一句话理解：</strong>
+R1-Zero 证明“纯 RL 可以激发推理能力”；DeepSeek-R1 证明“要做成可用模型，还需要 cold-start、多阶段训练和蒸馏”。
+</div>
+
+<h3>0.1 这篇和前两篇的关系</h3>
+
+<table>
+<tr>
+<th>篇目</th>
+<th>解决的问题</th>
+<th>在学习路线中的位置</th>
+</tr>
+<tr>
+<td>PyTorch《A Primer on LLM Post-Training》</td>
+<td>后训练有哪些阶段：SFT、DPO、PPO、GRPO、Reward Pipeline。</td>
+<td>第一篇：建立地图。</td>
+</tr>
+<tr>
+<td>Fireworks AI《Reinforcement Learning With Verifiable Reward》</td>
+<td>什么是 RLVR，为什么可验证奖励可以训练 reasoning / Agent。</td>
+<td>第二篇：理解奖励。</td>
+</tr>
+<tr>
+<td>DeepSeek-R1 Technical Report</td>
+<td>可验证奖励、GRPO、多阶段训练如何训练出 reasoning model。</td>
+<td>第三篇：理解真实 recipe。</td>
+</tr>
+</table>
+
+<h3>0.2 读这篇不要只看 benchmark</h3>
+
+<p>
+很多人读 DeepSeek-R1 报告，只盯模型在 AIME、MATH、Codeforces、MMLU 等 benchmark 上的成绩。
+但如果你是为了学习后训练，最重要的不是分数，而是训练路线。
+</p>
+
+<table>
+<tr>
+<th>不要只看</th>
+<th>更应该看</th>
+</tr>
+<tr>
+<td>模型最终成绩。</td>
+<td>R1-Zero 为什么直接做 RL。</td>
+</tr>
+<tr>
+<td>和 OpenAI-o1 的对比。</td>
+<td>rule-based reward 怎么起作用。</td>
+</tr>
+<tr>
+<td>蒸馏小模型的分数。</td>
+<td>为什么需要 cold-start data。</td>
+</tr>
+<tr>
+<td>开源模型列表。</td>
+<td>多阶段训练如何修复 R1-Zero 的缺陷。</td>
+</tr>
+</table>
+
+<div class="box train">
+<strong>本篇学习目标：</strong>
+读完这一篇，你应该能讲清楚：
+<ol>
+<li>R1-Zero 为什么敢不做 SFT，直接做 RL；</li>
+<li>rule-based reward 在 reasoning 任务中怎么工作；</li>
+<li>GRPO 为什么适合这种训练；</li>
+<li>为什么纯 RL 会带来可读性和语言混杂问题；</li>
+<li>DeepSeek-R1 为什么要加入 cold-start data 和多阶段训练；</li>
+<li>蒸馏模型为什么是 R1 路线的重要组成部分。</li>
+</ol>
+</div>
+
+<h2>1. DeepSeek-R1 解决的核心问题是什么？</h2>
+
+<p>
+DeepSeek-R1 报告的核心问题不是“怎么做一个聊天模型”，而是：
+<strong>如何通过强化学习激发大模型的推理能力。</strong>
+</p>
+
+<p>
+这里的 reasoning 不是普通聊天中的“解释一下”，而是更接近：
+</p>
+
+<ul>
+<li>数学竞赛题的多步推理；</li>
+<li>代码题的逻辑拆解；</li>
+<li>复杂问题的自我检查；</li>
+<li>多路径尝试和策略调整；</li>
+<li>最终答案可验证的任务求解。</li>
+</ul>
+
+<h3>1.1 为什么 reasoning 后训练不能只靠 SFT？</h3>
+
+<p>
+SFT 可以让模型学习人类写好的推理过程。
+但是它有一个问题：推理路径太多，人工标注成本太高。
+</p>
+
+<table>
+<tr>
+<th>任务</th>
+<th>为什么 SFT 成本高</th>
+<th>为什么适合 RL</th>
+</tr>
+<tr>
+<td>数学题</td>
+<td>每道题都要写完整解法。</td>
+<td>最终答案可以自动验证。</td>
+</tr>
+<tr>
+<td>代码题</td>
+<td>实现方式很多，人工示范不唯一。</td>
+<td>代码能否通过测试可以验证。</td>
+</tr>
+<tr>
+<td>逻辑推理</td>
+<td>中间思路多样。</td>
+<td>最终选项或答案可以验证。</td>
+</tr>
+<tr>
+<td>工具调用</td>
+<td>轨迹多样，标注每一步很贵。</td>
+<td>工具是否调用成功可以验证。</td>
+</tr>
+</table>
+
+<div class="box note">
+<strong>关键句：</strong>
+SFT 需要人类告诉模型“正确推理过程长什么样”；RL 只需要有办法判断“最后有没有做对”。
+</div>
+
+<h3>1.2 DeepSeek-R1 的大方向</h3>
+
+<p>
+DeepSeek-R1 的技术路线可以看成三层：
+</p>
+
+<table>
+<tr>
+<th>层次</th>
+<th>内容</th>
+<th>作用</th>
+</tr>
+<tr>
+<td>第一层：纯 RL 探索</td>
+<td>DeepSeek-R1-Zero 直接在 base model 上做 RL。</td>
+<td>验证 reasoning 能否通过 RL 被激发。</td>
+</tr>
+<tr>
+<td>第二层：可用性修复</td>
+<td>DeepSeek-R1 加入 cold-start data 和多阶段训练。</td>
+<td>解决可读性差、语言混杂、格式不稳定等问题。</td>
+</tr>
+<tr>
+<td>第三层：能力迁移</td>
+<td>把 DeepSeek-R1 的 reasoning 能力蒸馏到小模型。</td>
+<td>降低部署成本，让小模型也能获得推理能力。</td>
+</tr>
+</table>
+
+<p>
+这三层正好对应后训练学习中的三个问题：
+</p>
+
+<pre>
+能力从哪里来？
+  → 通过 RL 和可验证奖励激发。
+
+可用性怎么保证？
+  → 通过 cold-start、多阶段训练和格式约束修复。
+
+能力怎么扩散？
+  → 通过蒸馏迁移到小模型。
+</pre>
+
+<h2>2. DeepSeek-R1-Zero：不经过 SFT 的纯 RL 尝试</h2>
+
+<p>
+DeepSeek-R1-Zero 是整篇报告最有冲击力的部分。
+它的核心特点是：
+<strong>不先进行监督微调，而是直接对 base model 做大规模强化学习。</strong>
+</p>
+
+<p>
+传统后训练路线通常是：
+</p>
+
+<pre>
+Base Model
+  ↓
+SFT：先让模型学会像助手一样回答
+  ↓
+DPO / RLHF：再做偏好优化
+  ↓
+Online RL：最后继续强化能力
+</pre>
+
+<p>
+R1-Zero 的路线更激进：
+</p>
+
+<pre>
+Base Model
+  ↓
+Rule-based Reward
+  ↓
+GRPO / RL
+  ↓
+Reasoning Ability Emergence
+</pre>
+
+<div class="box note">
+<strong>一句话理解：</strong>
+R1-Zero 想验证的是：如果任务答案可以被验证，模型能不能不先模仿人类推理链，而是直接通过强化学习学会推理。
+</div>
+
+<h3>2.1 为什么 R1-Zero 可以跳过 SFT？</h3>
+
+<p>
+因为它不是在训练普通聊天偏好，而是在训练可验证 reasoning 任务。
+对于这类任务，训练信号不一定来自人工示范，而可以来自规则奖励。
+</p>
+
+<table>
+<tr>
+<th>普通聊天任务</th>
+<th>Reasoning 可验证任务</th>
+</tr>
+<tr>
+<td>回答是否好，很大程度依赖人类偏好。</td>
+<td>最终答案是否正确，可以自动验证。</td>
+</tr>
+<tr>
+<td>需要教模型如何礼貌、自然、有帮助。</td>
+<td>更关心模型能不能做对题。</td>
+</tr>
+<tr>
+<td>Reward 往往需要 Reward Model。</td>
+<td>Reward 可以来自规则函数。</td>
+</tr>
+<tr>
+<td>SFT 很重要。</td>
+<td>可以尝试直接 RL。</td>
+</tr>
+</table>
+
+<p>
+所以 R1-Zero 的核心不是“所有任务都不需要 SFT”，而是：
+<strong>在可验证 reasoning 任务上，纯 RL 有可能成为激发能力的有效方式。</strong>
+</p>
+
+<h3>2.2 R1-Zero 训练中模型可能发生了什么？</h3>
+
+<p>
+从训练逻辑看，模型会经历这样一个过程：
+</p>
+
+<pre>
+一开始：
+模型生成一些不稳定的答案。
+
+经过 reward 筛选：
+正确答案获得更高奖励，错误答案获得低奖励。
+
+经过多轮更新：
+模型更倾向于生成能拿高 reward 的推理和答案。
+
+逐渐出现：
+更长推理、自我检查、反思、重新计算、策略调整等行为。
+</pre>
+
+<table>
+<tr>
+<th>出现的行为</th>
+<th>中文解释</th>
+<th>为什么会出现</th>
+</tr>
+<tr>
+<td>Long CoT</td>
+<td>更长的思考链。</td>
+<td>模型发现复杂题需要更多中间步骤。</td>
+</tr>
+<tr>
+<td>Self-reflection</td>
+<td>自我反思。</td>
+<td>模型尝试检查前面推理是否出错。</td>
+</tr>
+<tr>
+<td>Verification</td>
+<td>验证。</td>
+<td>模型重新计算或验证答案。</td>
+</tr>
+<tr>
+<td>Strategy Adaptation</td>
+<td>策略调整。</td>
+<td>一种方法不行时换另一种方法。</td>
+</tr>
+</table>
+
+<div class="box train">
+<strong>后训练启发：</strong>
+Reasoning 能力不一定只来自人工标注的 CoT。
+如果 reward 设计得好，模型可能通过试错逐渐形成更有效的推理行为。
+</div>
+
+<h2>3. Rule-based Reward：R1-Zero 的奖励信号从哪里来？</h2>
+
+<p>
+R1-Zero 的关键不是单纯“做了 RL”，而是它使用了适合 reasoning 任务的规则奖励。
+这种奖励不依赖一个神经网络 Reward Model，而是由规则函数判断。
+</p>
+
+<p>
+报告中最核心的是两类 reward：
+</p>
+
+<table>
+<tr>
+<th>Reward 类型</th>
+<th>中文解释</th>
+<th>作用</th>
+</tr>
+<tr>
+<td>Accuracy Reward</td>
+<td>准确性奖励</td>
+<td>判断最终答案是否正确。</td>
+</tr>
+<tr>
+<td>Format Reward</td>
+<td>格式奖励</td>
+<td>判断模型是否按照规定格式输出。</td>
+</tr>
+</table>
+
+<div class="box note">
+<strong>一句话理解：</strong>
+Accuracy Reward 让模型追求做对；Format Reward 让模型学会把答案放在可解析的位置。
+</div>
+
+<h3>3.1 Accuracy Reward：准确性奖励</h3>
+
+<p>
+准确性奖励是 reasoning RL 中最核心的 reward。
+它关心最终答案是否正确。
+</p>
+
+<p>
+例如数学题：
+</p>
+
+<pre>
+问题：
+1497 × 63 = ?
+
+标准答案：
+94311
+
+模型输出：
+Final Answer: 94311
+
+reward = 1
+</pre>
+
+<p>
+如果模型输出：
+</p>
+
+<pre>
+Final Answer: 94211
+
+reward = 0
+</pre>
+
+<p>
+这就是最朴素的 outcome reward。
+它不一定检查模型中间推理是否漂亮，只检查最终结果是否对。
+</p>
+
+<table>
+<tr>
+<th>优点</th>
+<th>缺点</th>
+</tr>
+<tr>
+<td>简单、客观、容易规模化。</td>
+<td>不直接监督中间推理过程。</td>
+</tr>
+<tr>
+<td>不需要人工偏好标注。</td>
+<td>模型可能碰巧猜对答案。</td>
+</tr>
+<tr>
+<td>适合数学、代码、逻辑题。</td>
+<td>对不可验证任务不适用。</td>
+</tr>
+</table>
+
+<h3>3.2 Format Reward：格式奖励</h3>
+
+<p>
+Format Reward 的作用是让模型按照指定格式输出。
+这非常重要，因为如果模型答案无法被抽取，accuracy reward 就无法稳定计算。
+</p>
+
+<p>
+例如要求模型使用：
+</p>
+
+<pre>
+&lt;think&gt;
+这里是推理过程
+&lt;/think&gt;
+
+&lt;answer&gt;
+最终答案
+&lt;/answer&gt;
+</pre>
+
+<p>
+那么 format reward 可以检查：
+</p>
+
+<ul>
+<li>是否有 <code>&lt;think&gt;</code> 标签；</li>
+<li>是否有 <code>&lt;/think&gt;</code> 标签；</li>
+<li>是否有 <code>&lt;answer&gt;</code> 标签；</li>
+<li>最终答案是否放在正确位置；</li>
+<li>格式是否能被解析器稳定抽取。</li>
+</ul>
+
+<pre>
+def format_reward(output):
+    if "&lt;think&gt;" in output and "&lt;/think&gt;" in output and "&lt;answer&gt;" in output:
+        return 0.2
+    else:
+        return 0.0
+</pre>
+
+<div class="box warn">
+<strong>注意：</strong>
+Format Reward 只能保证模型按格式输出，不保证答案正确。
+所以它必须和 Accuracy Reward 配合使用。
+</div>
+
+<h3>3.3 为什么不用 Reward Model？</h3>
+
+<p>
+在 RLHF 中，reward 通常来自 Reward Model。
+但在数学、代码、逻辑推理这类任务中，最终结果可以直接验证。
+所以没必要总是训练一个模型来判断。
+</p>
+
+<table>
+<tr>
+<th>Reward Model</th>
+<th>Rule-based Reward</th>
+</tr>
+<tr>
+<td>适合主观偏好。</td>
+<td>适合客观可验证任务。</td>
+</tr>
+<tr>
+<td>需要偏好数据训练。</td>
+<td>通常只需要规则或测试器。</td>
+</tr>
+<tr>
+<td>可能有模型偏差。</td>
+<td>规则明确，但覆盖范围有限。</td>
+</tr>
+<tr>
+<td>适合帮助性、安全性、表达质量。</td>
+<td>适合数学答案、代码测试、格式校验。</td>
+</tr>
+</table>
+
+<div class="box train">
+<strong>实践建议：</strong>
+做自己的 reasoning 小实验时，先不要训练 Reward Model。
+先写两个 rule reward：
+<ol>
+<li>答案是否正确；</li>
+<li>格式是否可解析。</li>
+</ol>
+这就是最小 R1-Zero-like 实验的起点。
+</div>
+
+<h2>4. GRPO：为什么 R1-Zero 适合用组相对策略优化？</h2>
+
+<p>
+GRPO 的全称是 <strong>Group Relative Policy Optimization</strong>，
+中文可以译为<strong>组相对策略优化</strong>。
+</p>
+
+<p>
+它之所以适合 R1-Zero 这类 reasoning RL，是因为 reasoning 任务天然适合“同题多采样”：
+同一道题，模型可以生成多个不同解法。
+有的答案正确，有的答案错误。
+然后 reward function 可以分别打分。
+</p>
+
+<pre>
+同一道题 q
+  ↓
+生成 response 1
+生成 response 2
+生成 response 3
+生成 response 4
+  ↓
+分别计算 reward
+  ↓
+组内比较谁更好
+  ↓
+更新模型
+</pre>
+
+<h3>4.1 为什么不用 PPO 的 Value Model？</h3>
+
+<p>
+PPO 通常需要 Value Model 来估计 baseline，再计算 advantage。
+但是在大模型训练中，Value Model 会带来很大成本：
+</p>
+
+<ul>
+<li>额外占用显存；</li>
+<li>需要训练和同步；</li>
+<li>可能和 policy model 一样大；</li>
+<li>训练细节复杂；</li>
+<li>容易引入不稳定因素。</li>
+</ul>
+
+<p>
+GRPO 的做法是：不用单独 Value Model，而是用同组回答的平均 reward 作为 baseline。
+</p>
+
+<pre>
+rewards = [1, 0, 0, 1]
+
+mean_reward = 0.5
+
+advantages = [
+  1 - 0.5,
+  0 - 0.5,
+  0 - 0.5,
+  1 - 0.5
+]
+
+advantages = [0.5, -0.5, -0.5, 0.5]
+</pre>
+
+<div class="box note">
+<strong>一句话理解：</strong>
+GRPO 不问“这个回答绝对值是多少”，而问“这个回答在同一组里是不是比其他回答更好”。
+</div>
+
+<h3>4.2 GRPO 在 reasoning 任务中的优势</h3>
+
+<table>
+<tr>
+<th>优势</th>
+<th>解释</th>
+</tr>
+<tr>
+<td>不需要 Value Model</td>
+<td>减少显存和工程复杂度。</td>
+</tr>
+<tr>
+<td>适合同题多解</td>
+<td>同一道题可以生成多个推理路径。</td>
+</tr>
+<tr>
+<td>适合 outcome reward</td>
+<td>每个回答都可以根据最终答案打分。</td>
+</tr>
+<tr>
+<td>和可验证奖励天然结合</td>
+<td>答案正确与否可以自动计算 reward。</td>
+</tr>
+</table>
+
+<h3>4.3 GRPO 不是魔法</h3>
+
+<p>
+GRPO 只是更轻量的策略优化方法，并不自动保证成功。
+它仍然依赖：
+</p>
+
+<ul>
+<li>任务是否适合可验证 reward；</li>
+<li>reward function 是否准确；</li>
+<li>同组采样是否有足够差异；</li>
+<li>训练数据难度是否适中；</li>
+<li>KL、长度、格式等约束是否合理。</li>
+</ul>
+
+<div class="box warn">
+<strong>关键警告：</strong>
+GRPO 解决的是 PPO 中 Value Model 较重的问题。
+但它不解决 reward 设计错误、任务不可验证、样本全对或全错这些问题。
+</div>
+
+<h2>5. R1-Zero 的能力涌现：模型到底学到了什么？</h2>
+
+<p>
+R1-Zero 最吸引人的地方，是它在大规模 RL 过程中出现了一些 reasoning 行为。
+这些行为不是人工逐条标注出来的，而是在奖励驱动下逐渐形成的。
+</p>
+
+<h3>5.1 长推理：Long Chain-of-Thought</h3>
+
+<p>
+模型发现：对于复杂题，直接给答案容易错；展开更多中间步骤，有时更容易得到正确答案。
+于是模型逐渐倾向于生成更长的推理过程。
+</p>
+
+<table>
+<tr>
+<th>训练早期</th>
+<th>训练后期</th>
+</tr>
+<tr>
+<td>回答短，容易直接猜答案。</td>
+<td>回答更长，包含更多中间计算和检查。</td>
+</tr>
+<tr>
+<td>推理链不稳定。</td>
+<td>推理结构逐渐清楚。</td>
+</tr>
+<tr>
+<td>最终答案容易错。</td>
+<td>复杂题正确率提高。</td>
+</tr>
+</table>
+
+<h3>5.2 自我反思：Self-reflection</h3>
+
+<p>
+有些输出会出现类似“等一下，我需要重新检查”这样的行为。
+这说明模型开始尝试检测自己的中间错误。
+</p>
+
+<pre>
+初始思路：
+我先用方法 A 计算。
+
+发现问题：
+Wait, this may be wrong.
+
+重新检查：
+Let me verify the previous step.
+
+修正：
+Actually, the correct calculation should be ...
+</pre>
+
+<div class="box note">
+<strong>为什么这重要：</strong>
+自我反思不是简单变长，而是模型开始把“检查自己”当成提高正确率的策略。
+</div>
+
+<h3>5.3 策略调整：Dynamic Strategy Adaptation</h3>
+
+<p>
+复杂题往往有多种解法。
+模型在 RL 过程中可能会学到：
+当一种方法走不通时，尝试另一种方法。
+</p>
+
+<table>
+<tr>
+<th>行为</th>
+<th>例子</th>
+</tr>
+<tr>
+<td>换公式</td>
+<td>代数方法不方便，改用几何或数值方法。</td>
+</tr>
+<tr>
+<td>重算</td>
+<td>发现计算结果不合理，重新计算。</td>
+</tr>
+<td>验证答案</td>
+<td>把结果代回原题检查。</td>
+</tr>
+<td>拆分问题</td>
+<td>把复杂问题拆成多个子问题。</td>
+</tr>
+</table>
+
+<div class="box train">
+<strong>后训练启发：</strong>
+这类行为说明，RL 不只是提高最终答案概率，也可能改变模型的中间解题策略。
+这正是 reasoning RL 最有价值的地方。
+</div>
+
+<h2>6. R1-Zero 的问题：为什么纯 RL 不够？</h2>
+
+<p>
+虽然 R1-Zero 展示了很强的推理潜力，但它也暴露了明显问题。
+报告中提到的主要问题包括：可读性差、语言混杂、重复、格式不稳定等。
+</p>
+
+<h3>6.1 可读性差</h3>
+
+<p>
+纯 RL 主要追求 reward。
+如果 reward 主要奖励最终答案正确，那么模型不一定会主动保持表达清楚。
+它可能输出很长、很乱、难以阅读的推理过程。
+</p>
+
+<table>
+<tr>
+<th>原因</th>
+<th>表现</th>
+</tr>
+<tr>
+<td>reward 更关心正确率。</td>
+<td>中间过程可能不够清楚。</td>
+</tr>
+<tr>
+<td>没有足够 SFT 格式约束。</td>
+<td>回答结构不稳定。</td>
+</tr>
+<tr>
+<td>长推理可能提高正确率。</td>
+<td>模型越来越啰嗦。</td>
+</tr>
+</table>
+
+<h3>6.2 语言混杂</h3>
+
+<p>
+R1-Zero 还可能出现 language mixing，也就是同一个推理过程中混用多种语言。
+这通常是因为 reward 没有明确惩罚语言混杂。
+</p>
+
+<pre>
+例子：
+We need to solve this equation.
+首先，我们计算左边。
+Then we check the answer.
+所以 final answer is ...
+</pre>
+
+<div class="box warn">
+<strong>关键理解：</strong>
+模型不会自动优化 reward 之外的目标。
+如果 reward 没有要求语言统一，它就不一定会保持语言统一。
+</div>
+
+<h3>6.3 重复和过度思考</h3>
+
+<p>
+纯 RL 还可能让模型出现 endless repetition 或 overthinking。
+因为模型发现长推理有时能提高得分，就可能过度延长推理过程。
+</p>
+
+<table>
+<tr>
+<th>问题</th>
+<th>后果</th>
+</tr>
+<tr>
+<td>重复检查</td>
+<td>同一个步骤反复验证。</td>
+</tr>
+<tr>
+<td>推理过长</td>
+<td>token 成本升高。</td>
+</tr>
+<tr>
+<td>答案延迟</td>
+<td>用户要等很久才看到结果。</td>
+</tr>
+<tr>
+<td>格式漂移</td>
+<td>长输出中更容易破坏格式。</td>
+</tr>
+</table>
+
+<div class="box note">
+<strong>一句话理解：</strong>
+R1-Zero 证明纯 RL 有能力，但也证明纯 RL 不够可控。
+真正可用的 reasoning model 还需要冷启动数据、格式约束和多阶段训练。
+</div>
+
+<h2>7. DeepSeek-R1：为什么要加入 Cold-start Data？</h2>
+
+<p>
+为了修复 R1-Zero 的问题，DeepSeek-R1 引入了 cold-start data。
+Cold-start data 可以理解为“在正式 RL 之前，先给模型一小批高质量推理样本”。
+</p>
+
+<p>
+它的作用不是替代 RL，而是给 RL 一个更好的起点。
+</p>
+
+<pre>
+没有 cold-start：
+模型从混乱状态直接做 RL。
+
+加入 cold-start：
+模型先学会基本推理格式、语言风格和最终答案格式，
+再进入 RL。
+</pre>
+
+<h3>7.1 Cold-start Data 解决什么问题？</h3>
+
+<table>
+<tr>
+<th>R1-Zero 的问题</th>
+<th>Cold-start Data 的作用</th>
+</tr>
+<tr>
+<td>可读性差</td>
+<td>提供清楚、结构化的推理样本。</td>
+</tr>
+<tr>
+<td>语言混杂</td>
+<td>提供统一语言风格的样本。</td>
+</tr>
+<tr>
+<td>格式不稳定</td>
+<td>提供稳定的 answer format。</td>
+</tr>
+<tr>
+<td>推理表达混乱</td>
+<td>让模型先模仿较好的推理组织方式。</td>
+</tr>
+</table>
+
+<h3>7.2 Cold-start 和 SFT 的关系</h3>
+
+<p>
+Cold-start 本质上仍然是一种 SFT。
+但它不是普通聊天 SFT，而是专门面向 reasoning RL 的启动数据。
+</p>
+
+<table>
+<tr>
+<th>普通 SFT</th>
+<th>Cold-start Reasoning SFT</th>
+</tr>
+<tr>
+<td>让模型学会基本对话和指令遵循。</td>
+<td>让模型学会稳定的推理格式。</td>
+</tr>
+<tr>
+<td>覆盖广泛任务。</td>
+<td>更聚焦数学、代码、逻辑推理。</td>
+</tr>
+<tr>
+<td>重点是助手行为。</td>
+<td>重点是 reasoning trace 和 final answer。</td>
+</tr>
+<tr>
+<td>用于普通后训练第一步。</td>
+<td>用于 reasoning RL 前的稳定起点。</td>
+</tr>
+</table>
+
+<div class="box train">
+<strong>实践建议：</strong>
+如果你做自己的小模型 reasoning RL，不建议直接纯 RL。
+更稳妥的方式是：先准备少量格式统一、答案正确、推理清楚的 cold-start 样本，再做 GRPO。
+</div>
+
+<h2>8. DeepSeek-R1 的多阶段训练路线</h2>
+
+<p>
+DeepSeek-R1 不是简单地“加了 cold-start，然后做一次 RL”。
+它更像一个多阶段 recipe。
+这个 recipe 的核心思想是：
+<strong>用不同阶段分别解决不同问题。</strong>
+</p>
+
+<pre>
+阶段 1：Cold-start SFT
+  ↓
+阶段 2：Reasoning-oriented RL
+  ↓
+阶段 3：Rejection Sampling 生成高质量 reasoning 数据
+  ↓
+阶段 4：加入通用 SFT 数据，恢复通用能力
+  ↓
+阶段 5：Final RL，对齐 helpfulness / harmlessness / reasoning
+</pre>
+
+<div class="box note">
+<strong>一句话理解：</strong>
+R1-Zero 是能力探索；DeepSeek-R1 是工程化 recipe。
+它不是单靠一个算法，而是把 SFT、RL、拒绝采样、通用数据、最终对齐组合起来。
+</div>
+
+<h3>8.1 阶段一：Cold-start SFT</h3>
+
+<p>
+第一阶段先用少量高质量 cold-start 数据训练模型。
+这一步的目标不是把模型训练到最强，而是让模型获得一个更干净的推理起点。
+</p>
+
+<table>
+<tr>
+<th>目标</th>
+<th>说明</th>
+</tr>
+<tr>
+<td>统一格式</td>
+<td>让模型学会稳定输出推理和最终答案。</td>
+</tr>
+<tr>
+<td>提高可读性</td>
+<td>减少混乱推理和语言混杂。</td>
+</tr>
+<tr>
+<td>降低 RL 难度</td>
+<td>让 RL 从更好的初始策略开始。</td>
+</tr>
+</table>
+
+<h3>8.2 阶段二：Reasoning-oriented RL</h3>
+
+<p>
+第二阶段开始做面向 reasoning 的 RL。
+这一步主要使用 rule-based reward，鼓励模型在数学、代码、逻辑推理任务上提高正确率。
+</p>
+
+<pre>
+Prompt
+  ↓
+模型生成多个 reasoning responses
+  ↓
+Accuracy Reward 检查答案
+  ↓
+Format Reward 检查格式
+  ↓
+GRPO 更新模型
+</pre>
+
+<h3>8.3 阶段三：Rejection Sampling</h3>
+
+<p>
+经过 RL 后，模型可以生成很多 reasoning 样本。
+但不是所有样本都适合继续训练。
+所以需要 Rejection Sampling，筛选高质量样本。
+</p>
+
+<table>
+<tr>
+<th>筛选标准</th>
+<th>解释</th>
+</tr>
+<tr>
+<td>答案正确</td>
+<td>最终答案必须通过验证。</td>
+</tr>
+<tr>
+<td>格式稳定</td>
+<td>最终答案能被抽取。</td>
+</tr>
+<tr>
+<td>推理清楚</td>
+<td>过程不能过乱。</td>
+</tr>
+<tr>
+<td>语言一致</td>
+<td>减少语言混杂。</td>
+</tr>
+<tr>
+<td>长度合理</td>
+<td>避免过度冗长。</td>
+</tr>
+</table>
+
+<h3>8.4 阶段四：加入通用 SFT 数据</h3>
+
+<p>
+如果模型只在 reasoning 数据上训练，可能会损失普通对话、写作、问答等通用能力。
+所以 DeepSeek-R1 的路线中还需要加入 general data。
+</p>
+
+<div class="box warn">
+<strong>重要理解：</strong>
+一个好的 reasoning model 不能只会做数学题。
+它还要能正常对话、遵守指令、保持安全、回答普通问题。
+</div>
+
+<h3>8.5 阶段五：Final RL</h3>
+
+<p>
+最后阶段继续做 RL，但目标不只是 reasoning 正确率。
+还要兼顾 helpfulness、harmlessness、可读性、格式稳定性等实际助手能力。
+</p>
+
+<table>
+<tr>
+<th>优化目标</th>
+<th>说明</th>
+</tr>
+<tr>
+<td>Reasoning</td>
+<td>数学、代码、逻辑推理正确率。</td>
+</tr>
+<tr>
+<td>Helpfulness</td>
+<td>回答是否真正帮助用户。</td>
+</tr>
+<tr>
+<td>Harmlessness</td>
+<td>是否遵守安全边界。</td>
+</tr>
+<tr>
+<td>Readability</td>
+<td>推理和回答是否清楚。</td>
+</tr>
+<tr>
+<td>Format Stability</td>
+<td>是否稳定遵循指定输出格式。</td>
+</tr>
+</table>
+
+
+
+```html
+<!-- ===================================================== -->
+<!-- 第 9 部分：Rejection Sampling 在 DeepSeek-R1 中的作用 -->
+<!-- 插入位置：接在第 8 部分后面，放在 script 前 -->
+<!-- ===================================================== -->
+
+<h2 id="route9">9. Rejection Sampling：为什么 RL 之后还要筛数据？</h2>
+
+<p>
+前面讲到，DeepSeek-R1 的路线不是简单地“做一次 RL 就结束”。
+在 reasoning-oriented RL 之后，模型已经能够生成大量带推理过程的回答。
+但是这些回答不一定都适合继续训练。
+</p>
+
+<p>
+这时候就需要 <strong>Rejection Sampling</strong>，中文可以译为<strong>拒绝采样</strong>。
+它的核心逻辑是：
+</p>
+
+<pre>
+模型生成多个候选回答
+  ↓
+用规则、答案校验、格式校验、人类或模型筛选
+  ↓
+保留高质量样本
+  ↓
+丢弃或标记低质量样本
+  ↓
+把高质量样本加入下一阶段训练数据
+</pre>
+
+<div class="box note">
+<strong>一句话理解：</strong>
+RL 让模型探索出更多候选；Rejection Sampling 负责从这些候选里筛出真正值得继续学习的样本。
+</div>
+
+<h3>9.1 为什么不能把 RL 生成的所有样本都留下？</h3>
+
+<p>
+因为 RL 过程中模型会生成大量不同质量的回答。
+有些回答答案正确、推理清楚、格式稳定；
+有些回答虽然最终答案正确，但中间推理混乱；
+有些回答格式正确但答案错误；
+还有些回答可能语言混杂、过度冗长，甚至无法抽取最终答案。
+</p>
+
+<table>
+<tr>
+<th>样本类型</th>
+<th>是否适合继续训练</th>
+<th>原因</th>
+</tr>
+<tr>
+<td>答案正确、推理清楚、格式稳定</td>
+<td>适合</td>
+<td>可以作为高质量 reasoning SFT 数据。</td>
+</tr>
+<tr>
+<td>答案正确，但推理混乱</td>
+<td>谨慎使用</td>
+<td>可能让模型学到不好的中间过程。</td>
+</tr>
+<tr>
+<td>答案错误，但格式正确</td>
+<td>不适合 SFT</td>
+<td>会把错误答案教给模型。</td>
+</tr>
+<tr>
+<td>格式错误，无法抽取答案</td>
+<td>不适合</td>
+<td>会破坏输出稳定性。</td>
+</tr>
+<tr>
+<td>语言混杂、过度冗长</td>
+<td>通常不适合</td>
+<td>会影响可读性和用户体验。</td>
+</tr>
+</table>
+
+<div class="box warn">
+<strong>关键警告：</strong>
+RL 生成数据不等于高质量数据。
+如果不筛选，错误推理、坏格式、语言混杂都会被模型继续学进去。
+</div>
+
+<h3>9.2 Rejection Sampling 筛什么？</h3>
+
+<p>
+对 reasoning model 来说，拒绝采样至少要筛以下几个维度：
+</p>
+
+<table>
+<tr>
+<th>筛选维度</th>
+<th>具体判断</th>
+<th>为什么重要</th>
+</tr>
+<tr>
+<td>答案正确性</td>
+<td>最终答案是否通过验证。</td>
+<td>避免模型学习错误答案。</td>
+</tr>
+<tr>
+<td>格式稳定性</td>
+<td>是否有明确 final answer，是否能被抽取。</td>
+<td>保证后续 reward 能计算。</td>
+</tr>
+<tr>
+<td>推理可读性</td>
+<td>中间步骤是否清楚，是否有明显混乱。</td>
+<td>提升最终模型可用性。</td>
+</tr>
+<tr>
+<td>语言一致性</td>
+<td>是否出现中英文或多语言混杂。</td>
+<td>解决 R1-Zero 暴露出的 language mixing 问题。</td>
+</tr>
+<tr>
+<td>长度合理性</td>
+<td>是否过度冗长或重复。</td>
+<td>避免模型学会无意义长推理。</td>
+</tr>
+</table>
+
+<h3>9.3 一个简单的筛选器示意</h3>
+
+<pre>
+def accept_reasoning_sample(output, reference_answer):
+    pred = extract_final_answer(output)
+
+    if pred != reference_answer:
+        return False
+
+    if not format_valid(output):
+        return False
+
+    if language_mixing(output):
+        return False
+
+    if too_long_or_repetitive(output):
+        return False
+
+    if reasoning_is_too_messy(output):
+        return False
+
+    return True
+</pre>
+
+<p>
+这个筛选器不是训练 reward，而是数据构造阶段的过滤器。
+它的作用是保证进入下一阶段 SFT 或 continued training 的数据质量。
+</p>
+
+<div class="box train">
+<strong>实践启发：</strong>
+如果你做自己的 R1-like 小实验，可以把 rejection sampling 设计成一个数据清洗脚本。
+不要只看答案对不对，还要看格式、语言、长度和可读性。
+</div>
+
+<h3>9.4 Rejection Sampling 和 SFT / DPO / RL 的关系</h3>
+
+<table>
+<tr>
+<th>方法</th>
+<th>如何使用样本</th>
+<th>和 Rejection Sampling 的关系</th>
+</tr>
+<tr>
+<td>SFT</td>
+<td>直接学习高质量样本。</td>
+<td>拒绝采样可以为 SFT 筛选好样本。</td>
+</tr>
+<tr>
+<td>DPO</td>
+<td>学习 chosen / rejected 差异。</td>
+<td>被拒绝样本可以转成 rejected。</td>
+</tr>
+<tr>
+<td>RL</td>
+<td>根据 reward 更新模型。</td>
+<td>RL 生成候选，拒绝采样再筛选数据。</td>
+</tr>
+<tr>
+<td>Distillation</td>
+<td>小模型模仿大模型输出。</td>
+<td>蒸馏前必须筛掉大模型错误输出。</td>
+</tr>
+</table>
+
+<div class="box note">
+<strong>一句话理解：</strong>
+Rejection Sampling 是后训练里的“数据质量闸门”。
+它不一定是一个新算法，但对最终模型质量非常关键。
+</div>
+
+<hr>
+
+<!-- ===================================================== -->
+<!-- 第 10 部分：Reasoning Data 与 General Data 为什么要混合 -->
+<!-- ===================================================== -->
+
+<h2 id="route10">10. Reasoning Data 与 General Data：为什么不能只训练推理？</h2>
+
+<p>
+DeepSeek-R1 的多阶段训练中，一个非常重要的点是：不仅要有 reasoning data，
+还要混入 general data。
+</p>
+
+<p>
+Reasoning data 主要提升模型的数学、代码、逻辑推理能力；
+General data 则帮助模型保持普通对话、写作、问答、安全、指令遵循等通用能力。
+</p>
+
+<div class="box note">
+<strong>一句话理解：</strong>
+Reasoning data 让模型更会“想”；General data 让模型仍然会“正常当助手”。
+</div>
+
+<h3>10.1 如果只训练 Reasoning Data 会发生什么？</h3>
+
+<p>
+如果模型长期只在数学、代码、逻辑题上训练，它可能变成一个“只会做题”的模型。
+它在复杂推理题上变强，但普通任务可能退化。
+</p>
+
+<table>
+<tr>
+<th>只训练 reasoning data 的风险</th>
+<th>具体表现</th>
+</tr>
+<tr>
+<td>普通对话能力下降</td>
+<td>用户问日常问题，模型也进入很长推理模式。</td>
+</tr>
+<tr>
+<td>写作风格变僵硬</td>
+<td>所有回答都像解题过程。</td>
+</tr>
+<tr>
+<td>帮助性下降</td>
+<td>模型只关注推理正确，不关注用户是否容易理解。</td>
+</tr>
+<tr>
+<td>安全性覆盖不足</td>
+<td>数学 reward 不会自动训练安全边界。</td>
+</tr>
+<tr>
+<td>指令遵循退化</td>
+<td>用户要求简短回答，模型仍然长篇推理。</td>
+</tr>
+</table>
+
+<div class="box warn">
+<strong>重要理解：</strong>
+Reasoning model 不是所有问题都要长思考。
+真正好的模型应该知道什么时候深度推理，什么时候直接回答。
+</div>
+
+<h3>10.2 General Data 解决什么问题？</h3>
+
+<p>
+General data 可以理解为通用能力数据。
+它帮助模型保持基础助手能力。
+</p>
+
+<table>
+<tr>
+<th>General Data 类型</th>
+<th>作用</th>
+</tr>
+<tr>
+<td>普通问答</td>
+<td>保持基础知识问答能力。</td>
+</tr>
+<tr>
+<td>写作与润色</td>
+<td>保持表达和组织能力。</td>
+</tr>
+<tr>
+<td>角色扮演</td>
+<td>保持对不同场景指令的适应能力。</td>
+</tr>
+<tr>
+<td>多轮对话</td>
+<td>保持上下文跟踪能力。</td>
+</tr>
+<tr>
+<td>安全数据</td>
+<td>保持拒答、边界和风险识别能力。</td>
+</tr>
+<tr>
+<td>格式遵循</td>
+<td>保持 JSON、表格、列表、摘要等输出能力。</td>
+</tr>
+</table>
+
+<h3>10.3 Reasoning Data 和 General Data 的分工</h3>
+
+<table>
+<tr>
+<th>数据类型</th>
+<th>主要训练什么</th>
+<th>如果缺失会怎样</th>
+</tr>
+<tr>
+<td>Reasoning Data</td>
+<td>数学、代码、逻辑、多步推理。</td>
+<td>模型推理能力不足。</td>
+</tr>
+<tr>
+<td>General Data</td>
+<td>普通对话、写作、帮助性、安全性。</td>
+<td>模型只会做题，不像助手。</td>
+</tr>
+<td>Format Data</td>
+<td>稳定输出结构。</td>
+<td>答案抽取和工具调用不稳定。</td>
+</tr>
+<td>Preference Data</td>
+<td>回答风格和用户偏好。</td>
+<td>模型可能正确但不好用。</td>
+</tr>
+</table>
+
+<div class="box train">
+<strong>实践建议：</strong>
+如果你训练自己的小 reasoning model，不要只准备数学题。
+至少要混入一部分普通指令数据，比如解释、总结、短回答、格式遵循。
+否则模型容易变成“只会长推理”的偏科模型。
+</div>
+
+<h3>10.4 对 Agent 后训练的启发</h3>
+
+<p>
+Agent 训练也有同样问题。
+如果只训练工具调用轨迹，模型可能过度调用工具。
+如果只训练最终回答，模型又不会正确使用工具。
+所以 Agent 数据也要混合：
+</p>
+
+<table>
+<tr>
+<th>Agent 数据类型</th>
+<th>作用</th>
+</tr>
+<tr>
+<td>Tool-use Data</td>
+<td>学习什么时候调用工具、调用哪个工具。</td>
+</tr>
+<tr>
+<td>No-tool Data</td>
+<td>学习什么时候不需要工具，直接回答。</td>
+</tr>
+<tr>
+<td>Error Recovery Data</td>
+<td>学习工具失败后如何修正。</td>
+</tr>
+<tr>
+<td>Final Answer Data</td>
+<td>学习如何基于工具结果给用户最终回答。</td>
+</tr>
+<tr>
+<td>Safety Data</td>
+<td>学习危险工具或敏感任务的边界。</td>
+</tr>
+</table>
+
+<div class="box note">
+<strong>一句话迁移：</strong>
+Reasoning model 不能只会推理；Agent model 也不能只会调用工具。
+数据混合决定了模型最终是不是“可用助手”。
+</div>
+
+<hr>
+
+<!-- ===================================================== -->
+<!-- 第 11 部分：蒸馏：把 R1 推理能力迁移到小模型 -->
+<!-- ===================================================== -->
+
+<h2 id="route11">11. Distillation：为什么 DeepSeek-R1 还要做蒸馏？</h2>
+
+<p>
+DeepSeek-R1 报告中另一个重要部分是 <strong>Distillation</strong>，中文是<strong>蒸馏</strong>。
+DeepSeek 官方开源了基于 Qwen 和 Llama 的多个 dense distilled models，
+包括 1.5B、7B、8B、14B、32B、70B 等规模。
+</p>
+
+<p>
+这说明 DeepSeek-R1 路线不只是训练一个大模型，还要把大模型的 reasoning 能力迁移到更小、更容易部署的模型上。
+</p>
+
+<div class="box note">
+<strong>一句话理解：</strong>
+RL 训练大 reasoning model 很贵；蒸馏可以让小模型通过模仿大模型的高质量推理样本，获得一部分 reasoning 能力。
+</div>
+
+<h3>11.1 蒸馏的基本流程</h3>
+
+<pre>
+Teacher Model：DeepSeek-R1
+  ↓
+生成高质量 reasoning traces
+  ↓
+筛选答案正确、格式稳定、推理清楚的数据
+  ↓
+Student Model：Qwen / Llama 等小模型
+  ↓
+用这些数据做 SFT
+  ↓
+小模型学到 teacher 的推理风格和解题过程
+</pre>
+
+<p>
+蒸馏本质上不是 RL，而是 SFT。
+它用 teacher model 生成的数据作为训练样本，让 student model 去模仿。
+</p>
+
+<table>
+<tr>
+<th>角色</th>
+<th>对应对象</th>
+<th>作用</th>
+</tr>
+<tr>
+<td>Teacher Model</td>
+<td>DeepSeek-R1</td>
+<td>生成高质量推理过程和答案。</td>
+</tr>
+<tr>
+<td>Student Model</td>
+<td>Qwen / Llama 小模型</td>
+<td>学习 teacher 的推理模式。</td>
+</tr>
+<tr>
+<td>Distillation Data</td>
+<td>筛选后的 reasoning traces</td>
+<td>作为小模型 SFT 数据。</td>
+</tr>
+</table>
+
+<h3>11.2 为什么不用小模型直接做 RL？</h3>
+
+<p>
+小模型当然也可以做 RL，但直接做 RL 成本和稳定性都更难控制。
+蒸馏的好处是更简单、更稳定。
+</p>
+
+<table>
+<tr>
+<th>路线</th>
+<th>优点</th>
+<th>缺点</th>
+</tr>
+<tr>
+<td>小模型直接 RL</td>
+<td>有机会探索自己的策略。</td>
+<td>训练不稳定，reward 稀疏，能力上限受模型容量限制。</td>
+</tr>
+<tr>
+<td>大模型 RL 后蒸馏给小模型</td>
+<td>训练更稳定，数据质量更高，适合部署。</td>
+<td>小模型主要模仿 teacher，上限受 teacher 数据和自身容量限制。</td>
+</tr>
+</table>
+
+<div class="box train">
+<strong>实践建议：</strong>
+如果你算力有限，不要一开始就做小模型 RL。
+更现实的路线是：用强模型生成 reasoning 数据，先做 SFT 蒸馏，再考虑 DPO 或 GRPO 微调。
+</div>
+
+<h3>11.3 蒸馏数据为什么也要筛选？</h3>
+
+<p>
+Teacher model 生成的内容不一定全对。
+如果不筛选，student model 会学习错误推理。
+</p>
+
+<table>
+<tr>
+<th>筛选项</th>
+<th>原因</th>
+</tr>
+<tr>
+<td>答案正确</td>
+<td>避免错误知识和错误解题过程进入小模型。</td>
+</tr>
+<tr>
+<td>格式稳定</td>
+<td>让小模型学会可解析输出。</td>
+</tr>
+<tr>
+<td>推理清楚</td>
+<td>避免学习混乱推理。</td>
+</tr>
+<tr>
+<td>长度适中</td>
+<td>避免小模型学会过度冗长。</td>
+</tr>
+<tr>
+<td>语言一致</td>
+<td>避免中英文混杂。</td>
+</tr>
+</table>
+
+<h3>11.4 蒸馏和 Rejection Sampling 的关系</h3>
+
+<p>
+蒸馏通常离不开 Rejection Sampling。
+因为 teacher model 可以为同一道题生成多个候选推理，
+然后用验证器筛出正确、清楚、格式好的样本。
+</p>
+
+<pre>
+Prompt
+  ↓
+Teacher 生成多个 reasoning traces
+  ↓
+Answer verifier 检查答案
+  ↓
+Format checker 检查格式
+  ↓
+Quality filter 检查长度和语言
+  ↓
+保留高质量 trace
+  ↓
+用于 Student SFT
+</pre>
+
+<div class="box note">
+<strong>一句话理解：</strong>
+蒸馏负责“能力迁移”，拒绝采样负责“数据筛选”。
+二者结合，才能把大模型的 reasoning 能力比较干净地传给小模型。
+</div>
+
+<h3>11.5 蒸馏模型的意义</h3>
+
+<p>
+DeepSeek-R1 开源蒸馏模型的意义在于：
+更多人可以在较低成本下使用 reasoning model。
+不是所有场景都能部署巨大模型，蒸馏模型让 reasoning 能力更容易进入实际应用。
+</p>
+
+<table>
+<tr>
+<th>模型规模</th>
+<th>适合场景</th>
+</tr>
+<tr>
+<td>1.5B / 7B</td>
+<td>学习实验、端侧尝试、轻量服务。</td>
+</tr>
+<tr>
+<td>8B / 14B</td>
+<td>个人 GPU 或小规模部署。</td>
+</tr>
+<tr>
+<td>32B</td>
+<td>较强 reasoning 需求，服务器部署。</td>
+</tr>
+<tr>
+<td>70B</td>
+<td>更强性能，但部署成本更高。</td>
+</tr>
+</table>
+
+<div class="box warn">
+<strong>注意：</strong>
+蒸馏模型不是完整复制 DeepSeek-R1。
+它们学到的是 teacher 的一部分行为模式，最终能力仍然受到模型规模、数据质量和训练方式限制。
+</div>
+
+<hr>
+
+<!-- ===================================================== -->
+<!-- 第 12 部分：DeepSeek-R1 和 Fireworks RLVR 的关系 -->
+<!-- ===================================================== -->
+
+<h2 id="route12">12. DeepSeek-R1 和 Fireworks RLVR 的关系</h2>
+
+<p>
+前一篇 Fireworks AI 文章讲的是 RLVR 的概念和小实验；
+这一篇 DeepSeek-R1 报告讲的是真实大模型 reasoning 后训练。
+二者其实是同一条路线的两个层次。
+</p>
+
+<table>
+<tr>
+<th>Fireworks AI RLVR</th>
+<th>DeepSeek-R1</th>
+</tr>
+<tr>
+<td>讲 Reinforcement Learning with Verifiable Reward 的思想。</td>
+<td>展示 rule-based reward 如何用于 reasoning model 训练。</td>
+</tr>
+<tr>
+<td>用四位数乘两位数和 Function Picking 说明概念。</td>
+<td>用大规模数学、代码、推理任务训练模型。</td>
+</tr>
+<tr>
+<td>强调 reward 可以是硬编码函数。</td>
+<td>实际使用 accuracy reward 和 format reward。</td>
+</tr>
+<tr>
+<td>解释 GRPO 如何去掉 Value Model。</td>
+<td>使用类似组相对优化路线进行 reasoning RL。</td>
+</tr>
+<tr>
+<td>偏入门解释。</td>
+<td>偏完整训练 recipe。</td>
+</tr>
+</table>
+
+<h3>12.1 Fireworks AI 解决“为什么可行”</h3>
+
+<p>
+Fireworks AI 那篇的重点是让你理解：
+强化学习不一定要依赖神经网络 Reward Model。
+如果任务本身可以自动验证，就可以用规则函数给 reward。
+</p>
+
+<p>
+例如：
+</p>
+
+<pre>
+数学答案正确 → reward = 1
+函数选择正确 → reward = 1
+格式错误 → reward = 0
+</pre>
+
+<p>
+它通过小实验说明：
+即使是很简单的 reward，也可以让模型在特定任务上明显提升。
+</p>
+
+<h3>12.2 DeepSeek-R1 解决“如何做成模型”</h3>
+
+<p>
+DeepSeek-R1 则进一步说明：
+如果要把 RLVR 做成真正的大 reasoning model，不能只靠一个简单 reward。
+还需要完整 recipe：
+</p>
+
+<pre>
+Cold-start Data
+  ↓
+Rule-based Reward
+  ↓
+GRPO / RL
+  ↓
+Rejection Sampling
+  ↓
+General Data Mixing
+  ↓
+Final RL
+  ↓
+Distillation
+</pre>
+
+<div class="box note">
+<strong>一句话理解：</strong>
+Fireworks AI 是“概念证明 + 小实验”；DeepSeek-R1 是“大规模 recipe + 开源模型”。
+</div>
+
+<h3>12.3 对学习路线的意义</h3>
+
+<p>
+这两篇连起来读，你会形成完整理解：
+</p>
+
+<table>
+<tr>
+<th>学习问题</th>
+<th>在哪篇解决</th>
+</tr>
+<tr>
+<td>什么是可验证奖励？</td>
+<td>Fireworks AI RLVR。</td>
+</tr>
+<tr>
+<td>为什么 GRPO 适合可验证任务？</td>
+<td>Fireworks AI + DeepSeek-R1。</td>
+</tr>
+<tr>
+<td>纯 RL 能不能激发推理？</td>
+<td>DeepSeek-R1-Zero。</td>
+</tr>
+<tr>
+<td>纯 RL 有哪些问题？</td>
+<td>DeepSeek-R1-Zero 的可读性和语言混杂问题。</td>
+</tr>
+<tr>
+<td>怎么把模型做得可用？</td>
+<td>DeepSeek-R1 的 cold-start 和多阶段训练。</td>
+</tr>
+<tr>
+<td>怎么把能力迁移到小模型？</td>
+<td>DeepSeek-R1 的蒸馏路线。</td>
+</tr>
+</table>
+
+<div class="box train">
+<strong>学习建议：</strong>
+不要把 DeepSeek-R1 只当作一个模型名字。
+它更重要的价值是：提供了一套 reasoning 后训练 recipe。
+这套 recipe 可以迁移到数学、代码、工具调用、SQL、RAG 和 Agent 任务中。
+</div>
+
+<hr>
+
+<!-- ===================================================== -->
+<!-- 第 13 部分：DeepSeek-R1 对 Agent 后训练的启发 -->
+<!-- ===================================================== -->
+
+<h2 id="route13">13. DeepSeek-R1 对 Agent 后训练的启发</h2>
+
+<p>
+DeepSeek-R1 主要讲 reasoning model，但它对 Agent 后训练也很有启发。
+因为 Agent 的很多任务也可以被验证。
+</p>
+
+<p>
+把 R1 的思路迁移到 Agent，可以得到这样一条路线：
+</p>
+
+<pre>
+Agent Base Model
+  ↓
+Cold-start Tool-use SFT
+  ↓
+Rule-based Reward / Environment Reward
+  ↓
+GRPO / RL
+  ↓
+Rejection Sampling 筛选高质量轨迹
+  ↓
+General Instruction Data 混合
+  ↓
+Final Alignment
+  ↓
+Tool-use / Code / SQL / Web Agent
+</pre>
+
+<div class="box note">
+<strong>一句话理解：</strong>
+R1 把“最终答案是否正确”变成 reward；
+Agent 可以把“工具调用是否成功、任务是否完成”变成 reward。
+</div>
+
+<h3>13.1 Agent 的 Accuracy Reward 是什么？</h3>
+
+<p>
+在数学 reasoning 中，accuracy reward 是最终答案是否正确。
+在 Agent 中，它可以对应任务是否完成。
+</p>
+
+<table>
+<tr>
+<th>Reasoning Model</th>
+<th>Agent Model</th>
+</tr>
+<tr>
+<td>数学答案是否正确。</td>
+<td>任务是否完成。</td>
+</tr>
+<tr>
+<td>代码是否通过测试。</td>
+<td>工具是否执行成功。</td>
+</tr>
+<tr>
+<td>最终答案是否可抽取。</td>
+<td>最终状态是否达成。</td>
+</tr>
+<tr>
+<td>推理格式是否正确。</td>
+<td>工具调用格式是否正确。</td>
+</tr>
+</table>
+
+<h3>13.2 Agent 的 Format Reward 是什么？</h3>
+
+<p>
+Agent 的 format reward 更重要，因为工具调用必须机器可解析。
+如果模型输出格式错了，工具根本无法执行。
+</p>
+
+<pre>
+正确工具调用格式示例：
+
+{
+  "tool": "get_weather",
+  "arguments": {
+    "location": "Berlin",
+    "date": "tomorrow"
+  }
+}
+</pre>
+
+<p>
+Format Reward 可以检查：
+</p>
+
+<ul>
+<li>是否是合法 JSON；</li>
+<li>是否包含 tool 字段；</li>
+<li>是否包含 arguments 字段；</li>
+<li>字段名是否符合 schema；</li>
+<li>参数类型是否正确；</li>
+<li>是否多输出了无法解析的内容。</li>
+</ul>
+
+<h3>13.3 Agent 的 Cold-start Data 应该长什么样？</h3>
+
+<p>
+Agent cold-start data 不应该只是普通问答，而应该是高质量工具调用轨迹。
+</p>
+
+<pre>
+User:
+请查一下明天柏林的天气。
+
+Assistant:
+Thought: 用户需要实时天气信息，需要调用天气工具。
+Action:
+{
+  "tool": "get_weather",
+  "arguments": {
+    "location": "Berlin",
+    "date": "tomorrow"
+  }
+}
+
+Observation:
+{"weather": "cloudy", "high": "18°C", "low": "11°C"}
+
+Assistant:
+Final Answer:
+明天柏林多云，最高气温约 18°C，最低气温约 11°C。
+</pre>
+
+<table>
+<tr>
+<th>Agent cold-start 数据要素</th>
+<th>说明</th>
+</tr>
+<tr>
+<td>任务意图清楚</td>
+<td>用户请求必须明确。</td>
+</tr>
+<tr>
+<td>工具选择正确</td>
+<td>不能乱调用工具。</td>
+</tr>
+<tr>
+<td>参数完整合法</td>
+<td>JSON 字段必须符合 schema。</td>
+</tr>
+<tr>
+<td>利用 Observation</td>
+<td>最终回答必须基于工具返回。</td>
+</tr>
+<tr>
+<td>知道何时停止</td>
+<td>不能无限调用工具。</td>
+</tr>
+</table>
+
+<div class="box train">
+<strong>实践建议：</strong>
+如果你要做 Agent R1-like 训练，先不要直接 RL。
+先准备几百条高质量 tool-use cold-start 轨迹，让模型学会基本格式和动作结构。
+</div>
+
+<h3>13.4 Agent 的 Rejection Sampling 怎么做？</h3>
+
+<p>
+Agent 轨迹也可以做拒绝采样。
+同一个任务可以让模型生成多条轨迹，然后根据工具执行结果筛选。
+</p>
+
+<table>
+<tr>
+<th>轨迹类型</th>
+<th>是否保留</th>
+<th>原因</th>
+</tr>
+<tr>
+<td>工具正确、参数正确、任务完成</td>
+<td>保留</td>
+<td>可作为高质量 SFT 或蒸馏数据。</td>
+</tr>
+<tr>
+<td>工具正确但参数缺失</td>
+<td>拒绝或作为负样本</td>
+<td>说明模型还不会填参数。</td>
+</tr>
+<tr>
+<td>工具错误</td>
+<td>拒绝</td>
+<td>会误导模型。</td>
+</tr>
+<tr>
+<td>工具执行失败后能自我修复</td>
+<td>保留</td>
+<td>错误恢复能力很有价值。</td>
+</tr>
+<tr>
+<td>无意义反复调用工具</td>
+<td>拒绝</td>
+<td>会导致 Agent 成本高、行为混乱。</td>
+</tr>
+</table>
+
+<h3>13.5 Agent 的 Reward Function 示例</h3>
+
+<pre>
+def agent_reward(trajectory, ground_truth):
+    reward = 0.0
+
+    # 1. 工具调用格式
+    if valid_tool_call_schema(trajectory):
+        reward += 0.2
+    else:
+        reward -= 0.5
+
+    # 2. 工具名称
+    if selected_tool(trajectory) == ground_truth.tool:
+        reward += 0.5
+    else:
+        reward -= 0.5
+
+    # 3. 参数完整性
+    if arguments_complete(trajectory):
+        reward += 0.3
+    else:
+        reward -= 0.3
+
+    # 4. 参数正确性
+    if arguments_match(trajectory, ground_truth.arguments):
+        reward += 0.5
+
+    # 5. 工具执行结果
+    if tool_execution_success(trajectory):
+        reward += 1.0
+
+    # 6. 最终回答是否基于 observation
+    if final_answer_uses_observation(trajectory):
+        reward += 0.5
+
+    # 7. 轨迹成本
+    if too_many_tool_calls(trajectory):
+        reward -= 0.4
+
+    return reward
+</pre>
+
+<div class="box warn">
+<strong>重要提醒：</strong>
+Agent reward 不能只奖励“最终成功”。
+如果只看最终成功，模型可能疯狂试错、反复调用工具，成本很高。
+必须同时约束工具数量、参数正确性、格式和安全。
+</div>
+
+<h3>13.6 从 R1 到 Agent 的迁移总结</h3>
+
+<table>
+<tr>
+<th>DeepSeek-R1 组件</th>
+<th>Agent 后训练对应物</th>
+</tr>
+<tr>
+<td>Cold-start reasoning data</td>
+<td>Cold-start tool-use trajectories。</td>
+</tr>
+<tr>
+<td>Accuracy reward</td>
+<td>Task success reward / execution reward。</td>
+</tr>
+<tr>
+<td>Format reward</td>
+<td>Tool call schema reward。</td>
+</tr>
+<tr>
+<td>GRPO</td>
+<td>同一任务多条轨迹的组内相对优化。</td>
+</tr>
+<tr>
+<td>Rejection Sampling</td>
+<td>筛选成功、高效、安全的 Agent 轨迹。</td>
+</tr>
+<tr>
+<td>General Data</td>
+<td>普通问答、拒答、安全、无工具回答数据。</td>
+</tr>
+<tr>
+<td>Distillation</td>
+<td>用强 Agent 生成轨迹，蒸馏给小 Agent。</td>
+</tr>
+</table>
+
+<div class="box note">
+<strong>一句话总结：</strong>
+DeepSeek-R1 训练的是“会推理的模型”；
+把它迁移到 Agent，就是训练“会行动、会调用工具、会根据环境反馈修正自己的模型”。
+</div>
+```
+
+```html
+<!-- ===================================================== -->
+<!-- 第 14 部分：最小 R1-Zero-like 小实验设计 -->
+<!-- 插入位置：接在第 13 部分后面，放在 script 前 -->
+<!-- ===================================================== -->
+
+<h2 id="route14">14. 最小 R1-Zero-like 小实验：如何复现核心机制？</h2>
+
+<p>
+真正复现 DeepSeek-R1 几乎不现实，因为它需要巨大的模型、数据、算力和训练系统。
+但我们可以做一个 <strong>R1-Zero-like toy experiment</strong>，也就是“玩具版 R1-Zero 实验”。
+</p>
+
+<p>
+这个小实验的目标不是复现性能，而是复现机制：
+</p>
+
+<pre>
+Base Model
+  ↓
+同一个 prompt 生成多个回答
+  ↓
+Rule-based Reward 打分
+  ↓
+Group Relative Advantage 组内相对优势
+  ↓
+更新模型
+  ↓
+观察 reasoning 行为是否变化
+</pre>
+
+<div class="box note">
+<strong>一句话理解：</strong>
+玩具版 R1-Zero 不追求做出强模型，只追求把“生成 → 验证 → 奖励 → 组内比较 → 更新”这个链路跑通。
+</div>
+
+<h3>14.1 实验目标</h3>
+
+<p>
+这个实验可以设置成一个很小的目标：
+</p>
+
+<pre>
+验证 rule-based reward + group relative advantage
+是否能提升模型在简单数学任务上的最终答案正确率和格式稳定性。
+</pre>
+
+<table>
+<tr>
+<th>实验对象</th>
+<th>建议选择</th>
+</tr>
+<tr>
+<td>任务类型</td>
+<td>四位数乘两位数、两步算术、简单方程。</td>
+</tr>
+<tr>
+<td>模型</td>
+<td>小型开源模型，或者先用模拟 response 做流程验证。</td>
+</tr>
+<tr>
+<td>奖励</td>
+<td>Accuracy Reward + Format Reward + Length Penalty。</td>
+</tr>
+<tr>
+<td>优化方式</td>
+<td>先模拟 GRPO 逻辑，再考虑用 TRL / verl / OpenRLHF 实现。</td>
+</tr>
+<tr>
+<td>评价指标</td>
+<td>答案正确率、格式通过率、平均长度、错误类型。</td>
+</tr>
+</table>
+
+<h3>14.2 数据格式</h3>
+
+<p>
+最简单的数据可以这样设计：
+</p>
+
+<pre>
+[
+  {
+    "prompt": "请计算 1497 * 63，并按照格式输出最终答案。",
+    "answer": "94311"
+  },
+  {
+    "prompt": "请计算 2356 * 42，并按照格式输出最终答案。",
+    "answer": "98952"
+  },
+  {
+    "prompt": "请计算 8765 * 18，并按照格式输出最终答案。",
+    "answer": "157770"
+  }
+]
+</pre>
+
+<p>
+要求模型输出：
+</p>
+
+<pre>
+&lt;think&gt;
+这里可以写推理过程。
+&lt;/think&gt;
+
+&lt;answer&gt;
+94311
+&lt;/answer&gt;
+</pre>
+
+<div class="box train">
+<strong>为什么要规定格式？</strong>
+因为 reward function 需要稳定抽取最终答案。
+如果模型一会儿写“答案是”，一会儿写“Final”，一会儿直接写数字，验证器会很难写。
+</div>
+
+<h3>14.3 Reward Function 设计</h3>
+
+<p>
+最小 reward 可以包含三个部分：
+</p>
+
+<table>
+<tr>
+<th>Reward 项</th>
+<th>作用</th>
+<th>示例</th>
+</tr>
+<tr>
+<td>Accuracy Reward</td>
+<td>奖励最终答案正确。</td>
+<td>答案正确 +1，错误 +0。</td>
+</tr>
+<tr>
+<td>Format Reward</td>
+<td>奖励输出格式可解析。</td>
+<td>有 answer 标签 +0.2。</td>
+</tr>
+<tr>
+<td>Length Penalty</td>
+<td>防止模型过度冗长。</td>
+<td>超过长度阈值 -0.1。</td>
+</tr>
+</table>
+
+<pre>
+import re
+
+def extract_answer(output):
+    pattern = r"&lt;answer&gt;\s*(-?\d+)\s*&lt;/answer&gt;"
+    match = re.search(pattern, output)
+
+    if match is None:
+        return None
+
+    return match.group(1)
+
+def reward_fn(output, reference_answer):
+    reward = 0.0
+
+    # Format Reward
+    if "&lt;answer&gt;" in output and "&lt;/answer&gt;" in output:
+        reward += 0.2
+    else:
+        reward -= 0.2
+
+    # Accuracy Reward
+    pred = extract_answer(output)
+    if pred == reference_answer:
+        reward += 1.0
+
+    # Length Penalty
+    if len(output) > 1200:
+        reward -= 0.1
+
+    return reward
+</pre>
+
+<h3>14.4 同一个 prompt 多采样</h3>
+
+<p>
+GRPO 的关键是 group。
+所以不能一个 prompt 只生成一个回答。
+你需要让模型对同一个 prompt 生成多个 response。
+</p>
+
+<pre>
+prompt = "请计算 1497 * 63，并按照格式输出最终答案。"
+
+responses = [
+  response_1,
+  response_2,
+  response_3,
+  response_4,
+  response_5,
+  response_6,
+  response_7,
+  response_8
+]
+</pre>
+
+<p>
+每个 response 都会得到一个 reward：
+</p>
+
+<pre>
+rewards = [
+  reward_fn(response, reference_answer)
+  for response in responses
+]
+</pre>
+
+<h3>14.5 组内 advantage 计算</h3>
+
+<pre>
+def group_advantages(rewards):
+    mean_reward = sum(rewards) / len(rewards)
+
+    advantages = [
+        r - mean_reward
+        for r in rewards
+    ]
+
+    return advantages
+</pre>
+
+<p>
+如果得到：
+</p>
+
+<pre>
+rewards = [1.2, 0.2, 0.0, 1.2, -0.2, 0.2, 1.2, 0.0]
+</pre>
+
+<p>
+那么组内平均值大约是：
+</p>
+
+<pre>
+mean_reward = 0.475
+</pre>
+
+<p>
+高于 0.475 的回答会得到正 advantage，低于 0.475 的回答会得到负 advantage。
+这就是 GRPO 的直观核心。
+</p>
+
+<div class="box note">
+<strong>一句话理解：</strong>
+GRPO 不是只看“这个回答几分”，而是看“这个回答在同一组回答里是不是相对更好”。
+</div>
+
+<h3>14.6 观察指标</h3>
+
+<p>
+玩具实验不要只看 reward 曲线，还要观察模型输出行为。
+</p>
+
+<table>
+<tr>
+<th>指标</th>
+<th>为什么要看</th>
+</tr>
+<tr>
+<td>Accuracy</td>
+<td>最终答案正确率是否提升。</td>
+</tr>
+<tr>
+<td>Format Pass Rate</td>
+<td>是否越来越稳定使用指定格式。</td>
+</tr>
+<tr>
+<td>Average Response Length</td>
+<td>是否越来越冗长。</td>
+</tr>
+<tr>
+<td>Reward Mean</td>
+<td>平均 reward 是否上升。</td>
+</tr>
+<tr>
+<td>Reward Variance</td>
+<td>同组回答之间是否仍然有区分度。</td>
+</tr>
+<tr>
+<td>Error Type</td>
+<td>错误主要来自算错、格式错，还是抽取失败。</td>
+</tr>
+</table>
+
+<h3>14.7 实验记录模板</h3>
+
+<pre>
+实验名称：
+最小 R1-Zero-like 数学推理 RL 实验
+
+实验目的：
+验证 rule-based reward + group relative advantage 是否能提高简单数学任务正确率。
+
+任务：
+四位数乘两位数。
+
+数据：
+训练集 N 条，验证集 M 条。
+
+Reward：
+Accuracy Reward + Format Reward + Length Penalty。
+
+采样：
+每个 prompt 生成 8 个 response。
+
+评价指标：
+Accuracy、Format Pass Rate、Average Length、Reward Mean、Error Type。
+
+观察问题：
+1. 模型是否更稳定输出 answer 标签？
+2. 模型是否正确率提升？
+3. 模型是否变得过度冗长？
+4. 模型是否出现重复、语言混杂或 reward hacking？
+</pre>
+
+<div class="box train">
+<strong>实践建议：</strong>
+第一次实验不要追求大规模。
+先用很小的数据、很简单的 reward，把整个链路跑通。
+真正重要的是理解训练闭环，而不是一开始就追求 benchmark。
+</div>
+
+<hr>
+
+<!-- ===================================================== -->
+<!-- 第 15 部分：常见误解 -->
+<!-- ===================================================== -->
+
+<h2 id="route15">15. 常见误解：不要把 DeepSeek-R1 简化成几个口号</h2>
+
+<p>
+DeepSeek-R1 很火，所以也很容易被误读。
+下面这些误解尤其常见。
+</p>
+
+<h3>15.1 误解一：R1 证明 SFT 没用了</h3>
+
+<p>
+这是错误的。
+R1-Zero 展示了纯 RL 的潜力，但 DeepSeek-R1 本身又加入了 cold-start data 和多阶段训练。
+这说明 SFT 不是没用，而是位置发生了变化。
+</p>
+
+<table>
+<tr>
+<th>错误理解</th>
+<th>更准确理解</th>
+</tr>
+<tr>
+<td>SFT 没用了。</td>
+<td>纯 RL 可以激发推理，但可用模型仍然需要 cold-start 和 SFT 类数据。</td>
+</tr>
+<tr>
+<td>只要 RL 就够了。</td>
+<td>RL 提升能力，但格式、可读性、通用能力仍需要数据和对齐。</td>
+</tr>
+<tr>
+<td>所有任务都可以跳过 SFT。</td>
+<td>只有可验证 reasoning 任务更适合尝试直接 RL。</td>
+</tr>
+</table>
+
+<div class="box warn">
+<strong>关键句：</strong>
+R1-Zero 是探索；DeepSeek-R1 是可用 recipe。
+不要把探索阶段的结论简单套到所有模型训练上。
+</div>
+
+<h3>15.2 误解二：GRPO 是 R1 成功的全部原因</h3>
+
+<p>
+GRPO 很重要，但不是全部。
+DeepSeek-R1 的效果来自一整套组合：
+</p>
+
+<ul>
+<li>base model 能力；</li>
+<li>rule-based reward；</li>
+<li>GRPO / RL；</li>
+<li>cold-start data；</li>
+<li>rejection sampling；</li>
+<li>general data mixing；</li>
+<li>final RL；</li>
+<li>distillation。</li>
+</ul>
+
+<table>
+<tr>
+<th>只看 GRPO 的问题</th>
+<th>为什么不够</th>
+</tr>
+<tr>
+<td>忽略数据质量</td>
+<td>reward 和训练数据决定了模型学什么。</td>
+</tr>
+<tr>
+<td>忽略 cold-start</td>
+<td>没有好起点，RL 容易混乱。</td>
+</tr>
+<tr>
+<td>忽略多阶段训练</td>
+<td>单一 RL 阶段难以同时兼顾能力和可用性。</td>
+</tr>
+<tr>
+<td>忽略蒸馏</td>
+<td>R1 影响力很大一部分来自能力迁移到小模型。</td>
+</tr>
+</table>
+
+<div class="box note">
+<strong>一句话理解：</strong>
+GRPO 是重要算法组件，但 DeepSeek-R1 的核心是完整后训练 recipe。
+</div>
+
+<h3>15.3 误解三：只要答案正确，推理过程无所谓</h3>
+
+<p>
+如果只是训练一个判题模型，最终答案可能足够。
+但如果要做用户可用的 reasoning assistant，推理过程很重要。
+</p>
+
+<table>
+<tr>
+<th>为什么推理过程重要</th>
+<th>说明</th>
+</tr>
+<tr>
+<td>用户需要理解</td>
+<td>只给答案不利于学习和信任。</td>
+</tr>
+<tr>
+<td>便于检查错误</td>
+<td>中间步骤清楚，错误更容易定位。</td>
+</tr>
+<tr>
+<td>提升可控性</td>
+<td>可读推理更容易约束和改进。</td>
+</tr>
+<tr>
+<td>适合教学场景</td>
+<td>数学、代码、学术任务都需要过程解释。</td>
+</tr>
+</table>
+
+<div class="box warn">
+<strong>注意：</strong>
+Outcome Reward 很有用，但不能替代所有过程质量控制。
+实际模型还需要可读性、格式、长度和安全约束。
+</div>
+
+<h3>15.4 误解四：RLVR 可以解决所有任务</h3>
+
+<p>
+RLVR 只适合可验证任务。
+如果任务是主观写作、文学评价、情感安慰、审美判断，就很难写一个可靠验证器。
+</p>
+
+<table>
+<tr>
+<th>适合 RLVR</th>
+<th>不太适合纯 RLVR</th>
+</tr>
+<tr>
+<td>数学答案。</td>
+<td>文学风格好不好。</td>
+</tr>
+<tr>
+<td>代码测试。</td>
+<td>情绪安慰是否到位。</td>
+</tr>
+<tr>
+<td>SQL 结果。</td>
+<td>观点是否有启发。</td>
+</tr>
+<tr>
+<td>工具调用。</td>
+<td>表达是否优美。</td>
+</tr>
+<tr>
+<td>格式校验。</td>
+<td>复杂价值判断。</td>
+</tr>
+</table>
+
+<h3>15.5 误解五：蒸馏小模型等于复制大模型</h3>
+
+<p>
+蒸馏不是完整复制。
+小模型只是学习 teacher model 生成的数据分布。
+最终效果仍然受小模型容量、蒸馏数据质量、训练方式限制。
+</p>
+
+<div class="box note">
+<strong>准确理解：</strong>
+蒸馏是能力迁移，不是能力克隆。
+它能让小模型学到一部分 reasoning 行为，但不能保证完全达到 teacher model 水平。
+</div>
+
+<hr>
+
+<!-- ===================================================== -->
+<!-- 第 16 部分：术语表 -->
+<!-- ===================================================== -->
+
+<h2 id="route16">16. 术语表</h2>
+
+<table>
+<tr>
+<th>英文术语</th>
+<th>中文翻译</th>
+<th>解释</th>
+</tr>
+<tr>
+<td>DeepSeek-R1-Zero</td>
+<td>DeepSeek-R1-Zero 模型</td>
+<td>不以 SFT 作为初始步骤，直接通过大规模 RL 训练的 reasoning model 探索版本。</td>
+</tr>
+<tr>
+<td>DeepSeek-R1</td>
+<td>DeepSeek-R1 模型</td>
+<td>加入 cold-start data 和多阶段训练后的 reasoning model，更注重可读性和可用性。</td>
+</tr>
+<tr>
+<td>Reasoning Model</td>
+<td>推理模型</td>
+<td>强调数学、代码、逻辑、多步问题求解能力的大模型。</td>
+</tr>
+<tr>
+<td>Cold-start Data</td>
+<td>冷启动数据</td>
+<td>在 RL 之前给模型的少量高质量推理样本，用于稳定格式、语言和推理风格。</td>
+</tr>
+<tr>
+<td>Rule-based Reward</td>
+<td>规则奖励</td>
+<td>通过规则、程序或验证器计算的奖励，不依赖神经网络 Reward Model。</td>
+</tr>
+<tr>
+<td>Accuracy Reward</td>
+<td>准确性奖励</td>
+<td>检查最终答案是否正确的 reward。</td>
+</tr>
+<tr>
+<td>Format Reward</td>
+<td>格式奖励</td>
+<td>检查模型输出是否符合指定格式、是否可解析的 reward。</td>
+</tr>
+<tr>
+<td>GRPO</td>
+<td>组相对策略优化</td>
+<td>同一 prompt 生成多个回答，用组内相对 reward 估计 advantage 的策略优化方法。</td>
+</tr>
+<tr>
+<td>Advantage</td>
+<td>优势值</td>
+<td>表示某个回答相对于 baseline 好多少，用于指导策略更新。</td>
+</tr>
+<tr>
+<td>Rejection Sampling</td>
+<td>拒绝采样</td>
+<td>从模型生成的多个候选中筛选高质量样本，拒绝低质量样本。</td>
+</tr>
+<tr>
+<td>Reasoning Data</td>
+<td>推理数据</td>
+<td>数学、代码、逻辑等需要多步推理的数据。</td>
+</tr>
+<tr>
+<td>General Data</td>
+<td>通用数据</td>
+<td>普通问答、写作、摘要、安全、指令遵循等通用能力数据。</td>
+</tr>
+<tr>
+<td>Distillation</td>
+<td>蒸馏</td>
+<td>用强模型生成数据，再训练小模型模仿强模型行为。</td>
+</tr>
+<tr>
+<td>Teacher Model</td>
+<td>教师模型</td>
+<td>蒸馏中负责生成高质量样本的大模型。</td>
+</tr>
+<tr>
+<td>Student Model</td>
+<td>学生模型</td>
+<td>蒸馏中学习教师模型输出的小模型。</td>
+</tr>
+<tr>
+<td>Language Mixing</td>
+<td>语言混杂</td>
+<td>模型在同一回答中混用多种语言的现象。</td>
+</tr>
+<tr>
+<td>Poor Readability</td>
+<td>可读性差</td>
+<td>推理过程混乱、过长、重复或不易理解。</td>
+</tr>
+<tr>
+<td>Endless Repetition</td>
+<td>无尽重复</td>
+<td>模型反复生成相似推理或检查步骤，难以收束。</td>
+</tr>
+<tr>
+<td>RLVR</td>
+<td>基于可验证奖励的强化学习</td>
+<td>用可验证任务结果作为 reward 的强化学习路线。</td>
+</tr>
+<tr>
+<td>R1-like Agent</td>
+<td>R1 风格 Agent</td>
+<td>把 R1 的 rule reward、cold-start、GRPO、rejection sampling 思路迁移到工具调用或环境交互 Agent。</td>
+</tr>
+</table>
+
+<hr>
+
+<!-- ===================================================== -->
+<!-- 第 17 部分：最终总结 -->
+<!-- ===================================================== -->
+
+<h2 id="route17">17. 最终总结：DeepSeek-R1 给后训练学习的真正启发</h2>
+
+<p>
+DeepSeek-R1 Technical Report 的价值，不只是发布了一个强 reasoning model。
+它更重要的意义是：提供了一条从纯 RL 探索到实际可用模型的后训练路线。
+</p>
+
+<h3>17.1 本篇主线回顾</h3>
+
+<pre>
+第一步：
+DeepSeek-R1-Zero 直接在 base model 上做大规模 RL，
+验证纯 RL 能否激发 reasoning。
+
+第二步：
+R1-Zero 出现 reasoning emergence，
+包括长推理、自我反思、验证、策略调整。
+
+第三步：
+R1-Zero 也暴露问题：
+可读性差、语言混杂、重复、格式不稳定。
+
+第四步：
+DeepSeek-R1 引入 cold-start data，
+让模型先获得更好的推理格式和语言风格。
+
+第五步：
+DeepSeek-R1 采用多阶段训练：
+cold-start SFT → reasoning RL → rejection sampling → general data → final RL。
+
+第六步：
+DeepSeek-R1 通过 distillation，
+把大模型推理能力迁移到 Qwen / Llama 小模型。
+</pre>
+
+<h3>17.2 你应该记住的 6 个核心理解</h3>
+
+<table>
+<tr>
+<th>核心理解</th>
+<th>解释</th>
+</tr>
+<tr>
+<td>第一，纯 RL 可以激发推理。</td>
+<td>R1-Zero 说明，在可验证任务上，模型可以通过 reward 学出复杂推理行为。</td>
+</tr>
+<tr>
+<td>第二，纯 RL 不等于可用模型。</td>
+<td>R1-Zero 有可读性差、语言混杂等问题。</td>
+</tr>
+<tr>
+<td>第三，Cold-start Data 很重要。</td>
+<td>它让模型在 RL 前先学会稳定格式、语言和推理组织。</td>
+</tr>
+<tr>
+<td>第四，DeepSeek-R1 是多阶段 recipe。</td>
+<td>它不是一个单独算法，而是 SFT、RL、拒绝采样、通用数据和蒸馏的组合。</td>
+</tr>
+<tr>
+<td>第五，蒸馏让 reasoning 能力扩散。</td>
+<td>强模型通过生成高质量推理数据，把能力迁移给小模型。</td>
+</tr>
+<tr>
+<td>第六，R1 思路可以迁移到 Agent。</td>
+<td>工具调用、代码执行、SQL 查询、网页状态都可以转化为可验证 reward。</td>
+</tr>
+</table>
+
+<h3>17.3 DeepSeek-R1 和后训练路线的关系</h3>
+
+<table>
+<tr>
+<th>后训练概念</th>
+<th>DeepSeek-R1 中的体现</th>
+</tr>
+<tr>
+<td>SFT</td>
+<td>Cold-start data 和通用 SFT 数据。</td>
+</tr>
+<tr>
+<td>RLVR</td>
+<td>Accuracy reward、format reward、rule-based reward。</td>
+</tr>
+<tr>
+<td>GRPO</td>
+<td>组内相对奖励优化 reasoning responses。</td>
+</tr>
+<tr>
+<td>Rejection Sampling</td>
+<td>从生成样本中筛选高质量 reasoning data。</td>
+</tr>
+<tr>
+<td>General Data Mixing</td>
+<td>保持模型通用助手能力。</td>
+</tr>
+<tr>
+<td>Distillation</td>
+<td>把 R1 的 reasoning traces 迁移给小模型。</td>
+</tr>
+<tr>
+<td>Agent 后训练</td>
+<td>可迁移为工具调用轨迹奖励和任务完成奖励。</td>
+</tr>
+</table>
+
+<h3>17.4 对你后续学习的建议</h3>
+
+<div class="box train">
+<strong>下一步建议：</strong>
+这三篇 HTML 已经形成一条后训练学习路线：
+<ol>
+<li>PyTorch Primer：建立 SFT、DPO、PPO、GRPO 的总地图；</li>
+<li>Fireworks AI RLVR：理解可验证奖励和 GRPO 为什么重要；</li>
+<li>DeepSeek-R1：理解 reasoning model 的真实训练 recipe。</li>
+</ol>
+下一步可以转向工程实践：
+<ol>
+<li>TRL：先跑小规模 SFT / DPO / GRPO；</li>
+<li>OpenRLHF：理解 RLHF / GRPO 工程流程；</li>
+<li>verl：理解大规模 rollout、reward、trainer、分布式调度；</li>
+<li>Mini Tool-use Agent：把 R1 思路迁移到工具调用任务。</li>
+</ol>
+</div>
+
+<h3>17.5 本篇最终收束</h3>
+
+<div class="box note">
+<strong>最终一句话：</strong>
+DeepSeek-R1 的真正启发是：推理能力不一定只能靠人类标注的推理链获得；
+在可验证任务上，模型可以通过规则奖励和强化学习自我改进。
+但要把这种能力变成真正可用的模型，还必须结合 cold-start data、多阶段训练、拒绝采样、通用数据混合和蒸馏。
+</div>
+
+<p class="small">
+说明：本文为 DeepSeek-R1 Technical Report 的中文学习笔记与后训练路线整理。
+重点服务于“后训练 / RLVR / GRPO / Reasoning / Agent”学习，不是对原文逐字翻译。
+</p>
+
+<p class="small">
+参考来源：
+<br>
+1. DeepSeek-R1: Incentivizing Reasoning Capability in LLMs via Reinforcement Learning
+<br>
+https://arxiv.org/abs/2501.12948
+<br>
+2. DeepSeek-R1 GitHub Repository
+<br>
+https://github.com/deepseek-ai/DeepSeek-R1
+<br>
+3. DeepSeek-R1 Hugging Face Model Page
+<br>
+https://huggingface.co/deepseek-ai/DeepSeek-R1
+</p>
+```
+
+<div class="box train">
+<strong>阶段总结：</strong>
+DeepSeek-R1 的核心不是某一个神奇算法，而是一套多阶段后训练组合：
+先用 cold-start 稳定格式，再用 RL 提升推理，再用 rejection sampling 造数据，
+再混入通用 SFT 修复能力分布，最后继续 RL 对齐实际助手行为。
+</div>
+
+<!-- 后续可继续接：
+9. Rejection Sampling 在 DeepSeek-R1 中的作用
+10. Reasoning Data 与 General Data 为什么要混合
+11. 蒸馏：把 R1 推理能力迁移到 Qwen / Llama 小模型
+12. DeepSeek-R1 和 Fireworks RLVR 的关系
+13. DeepSeek-R1 对 Agent 后训练的启发
+14. 最小 R1-Zero-like 小实验设计
+15. 常见误解
+16. 术语表
+17. 最终总结
+-->
+
+<script>
+(function () {
+  const toc = document.querySelector(".page-toc");
+  const tocList = document.getElementById("page-toc-list");
+
+  if (!toc || !tocList) {
+    return;
+  }
+
+  const toggle = document.createElement("button");
+  toggle.className = "page-toc-toggle";
+  toggle.type = "button";
+  toggle.textContent = "☰ 目录";
+
+  const panel = document.createElement("div");
+  panel.className = "page-toc-panel";
+
+  const title = toc.querySelector(".page-toc-title");
+  const list = toc.querySelector(".page-toc-list");
+
+  panel.appendChild(title);
+  panel.appendChild(list);
+
+  toc.innerHTML = "";
+  toc.appendChild(toggle);
+  toc.appendChild(panel);
+
+  const headings = Array.from(document.querySelectorAll("h2, h3"));
+  let currentSubList = null;
+
+  headings.forEach((heading, index) => {
+    if (!heading.id) {
+      heading.id = "section-" + index;
+    }
+
+    const link = document.createElement("a");
+    link.className = "page-toc-link";
+    link.href = "#" + heading.id;
+    link.textContent = heading.textContent;
+
+    if (heading.tagName.toLowerCase() === "h2") {
+      const item = document.createElement("li");
+      item.className = "page-toc-item";
+      item.appendChild(link);
+
+      const subList = document.createElement("ol");
+      subList.className = "page-toc-sublist";
+      item.appendChild(subList);
+
+      tocList.appendChild(item);
+      currentSubList = subList;
+    } else if (heading.tagName.toLowerCase() === "h3") {
+      const subItem = document.createElement("li");
+      subItem.className = "page-toc-subitem";
+      subItem.appendChild(link);
+
+      if (currentSubList) {
+        currentSubList.appendChild(subItem);
+      } else {
+        tocList.appendChild(subItem);
+      }
+    }
+
+    link.addEventListener("click", function () {
+      toc.classList.remove("is-open");
+    });
+  });
+
+  toggle.addEventListener("click", function () {
+    toc.classList.toggle("is-open");
+  });
+
+  document.addEventListener("click", function (event) {
+    if (!toc.contains(event.target)) {
+      toc.classList.remove("is-open");
+    }
+  });
+
+  document.addEventListener("keydown", function (event) {
+    if (event.key === "Escape") {
+      toc.classList.remove("is-open");
+    }
+  });
+})();
+</script>
+
+</body>
+</html>
+```

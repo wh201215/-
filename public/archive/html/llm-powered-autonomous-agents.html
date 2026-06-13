@@ -1,0 +1,1152 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>LLM Powered Autonomous Agents 中文精读笔记</title>
+<style>
+body {
+  font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+  line-height: 1.85;
+  max-width: 1080px;
+  margin: 40px auto;
+  padding: 0 28px 100px;
+  background: #f7f8fb;
+  color: #1f2937;
+}
+
+h1 {
+  font-size: 34px;
+  line-height: 1.3;
+  border-bottom: 5px solid #2563eb;
+  padding-bottom: 14px;
+  margin-bottom: 24px;
+}
+
+h2 {
+  font-size: 27px;
+  margin-top: 48px;
+  padding: 12px 16px;
+  border-left: 7px solid #2563eb;
+  background: #eef4ff;
+}
+
+h3 {
+  font-size: 21px;
+  margin-top: 28px;
+  color: #111827;
+}
+
+h4 {
+  font-size: 18px;
+  margin-top: 20px;
+  color: #1f2937;
+}
+
+p {
+  margin: 12px 0;
+}
+
+a {
+  color: #2563eb;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+.box {
+  background: #ffffff;
+  border: 1px solid #d9e2ef;
+  border-radius: 12px;
+  padding: 18px 22px;
+  margin: 18px 0;
+}
+
+.note {
+  background: #fff7d6;
+  border-left: 6px solid #d6a800;
+}
+
+.train {
+  background: #ecfdf3;
+  border-left: 6px solid #16a34a;
+}
+
+.warn {
+  background: #fff1f1;
+  border-left: 6px solid #dc2626;
+}
+
+.term {
+  background: #f5f0ff;
+  border-left: 6px solid #7c3aed;
+}
+
+.figure {
+  background: #ffffff;
+  border: 1px solid #d9e2ef;
+  border-radius: 14px;
+  padding: 16px;
+  margin: 22px 0;
+}
+
+.figure img {
+  width: 100%;
+  max-height: 620px;
+  object-fit: contain;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+}
+
+.caption {
+  font-size: 14px;
+  color: #667085;
+  margin-top: 10px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 18px 0;
+  background: #ffffff;
+}
+
+th, td {
+  border: 1px solid #d9e2ef;
+  padding: 11px 13px;
+  vertical-align: top;
+}
+
+th {
+  background: #f1f5f9;
+}
+
+code {
+  background: #eef2f7;
+  padding: 2px 5px;
+  border-radius: 5px;
+  font-family: Consolas, Monaco, monospace;
+}
+
+pre {
+  background: #111827;
+  color: #e5e7eb;
+  padding: 18px;
+  border-radius: 10px;
+  overflow-x: auto;
+  line-height: 1.55;
+  font-family: Consolas, Monaco, monospace;
+}
+
+ul, ol {
+  padding-left: 26px;
+}
+
+li {
+  margin: 7px 0;
+}
+
+.small {
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.toc a {
+  display: block;
+  padding: 9px 12px;
+  margin: 6px 0;
+  background: #ffffff;
+  border: 1px solid #d9e2ef;
+  border-radius: 9px;
+}
+</style>
+</head>
+
+<body>
+
+<h1>《LLM Powered Autonomous Agents》中文精读笔记<br>后训练 Agent 学习版</h1>
+
+<div class="box note">
+<p><strong>原文标题：</strong>LLM Powered Autonomous Agents</p>
+<p><strong>作者：</strong>Lilian Weng</p>
+<p><strong>发布时间：</strong>2023 年 6 月 23 日</p>
+<p><strong>原文链接：</strong><a href="https://lilianweng.github.io/posts/2023-06-23-agent/" target="_blank">点击打开原博客</a></p>
+<p><strong>本文定位：</strong>这是一篇非常适合学习 Agent 基础结构的博客。它把 LLM Agent 拆成三个核心组件：Planning 规划、Memory 记忆、Tool Use 工具使用，并进一步讨论了 ReAct、Reflexion、HuggingGPT、API-Bank、Generative Agents 等代表性工作。</p>
+</div>
+
+<div class="box train">
+<strong>总判断：</strong>
+这篇文章适合当作“后训练 Agent”的第一篇系统精读材料。它虽然不是专门讲 SFT、DPO、GRPO 或 RLVR 的训练论文，但它把 Agent 的能力拆成了可以训练的模块：任务分解、动作选择、工具调用、记忆检索、反馈修正和长期规划。真正做 Agent 后训练时，训练目标并不是“让模型回答得更好”，而是让模型在多步轨迹中更稳定地选择正确动作。
+</div>
+
+<h2>目录</h2>
+
+<div class="toc">
+<a href="#overview">一、Agent System Overview：Agent 系统总览</a>
+<a href="#planning">二、Planning：规划能力</a>
+<a href="#react">三、ReAct：推理与行动结合</a>
+<a href="#reflexion">四、Reflexion：自我反思与动态记忆</a>
+<a href="#memory">五、Memory：记忆机制</a>
+<a href="#mips">六、MIPS：向量检索与长期记忆</a>
+<a href="#tool">七、Tool Use：工具使用</a>
+<a href="#hugginggpt">八、HuggingGPT：LLM 作为任务控制器</a>
+<a href="#apibank">九、API-Bank：工具调用评测</a>
+<a href="#genagents">十、Generative Agents：生成式智能体仿真</a>
+<a href="#challenges">十一、Challenges：Agent 的主要挑战</a>
+<a href="#posttraining">十二、后训练 Agent 的学习路线</a>
+<a href="#terms">十三、术语中英对照</a>
+</div>
+
+<h2 id="overview">一、Agent System Overview：Agent 系统总览</h2>
+
+<p>
+原文开头的核心判断是：当 LLM 作为 autonomous agent 的核心控制器时，它不只是一个文本生成器，而可以被理解为一个 general problem solver，即通用问题求解器。这个求解器要真正变成 Agent，不能只有语言生成能力，还需要规划、记忆和工具使用能力。
+</p>
+
+<div class="figure">
+<img src="https://lilianweng.github.io/posts/2023-06-23-agent/agent-overview.png" alt="Overview of a LLM-powered autonomous agent system">
+<div class="caption">
+图 1：LLM-powered autonomous agent system 总览图。原图来源：Lilian Weng 博客。
+<a href="https://lilianweng.github.io/posts/2023-06-23-agent/agent-overview.png" target="_blank">打开原图</a>
+</div>
+</div>
+
+<h3>图片逐项解读</h3>
+
+<table>
+<tr>
+<th>图中元素</th>
+<th>中文解释</th>
+<th>作用</th>
+<th>后训练视角</th>
+</tr>
+<tr>
+<td>Agent</td>
+<td>智能体</td>
+<td>中心控制单元，负责根据目标、记忆、工具和环境反馈决定下一步。</td>
+<td>训练核心是让模型从当前状态中选择合适动作，而不是只生成最终答案。</td>
+</tr>
+<tr>
+<td>Planning</td>
+<td>规划</td>
+<td>把复杂任务拆解为子目标，并决定执行顺序。</td>
+<td>可以训练 task decomposition，即任务分解轨迹。</td>
+</tr>
+<tr>
+<td>Memory</td>
+<td>记忆</td>
+<td>保存短期上下文与长期信息，使 Agent 能够利用历史经验。</td>
+<td>训练模型何时写入、检索、压缩和使用记忆。</td>
+</tr>
+<tr>
+<td>Tools</td>
+<td>工具</td>
+<td>连接日历、计算器、代码解释器、搜索等外部能力。</td>
+<td>训练工具选择、参数生成、工具返回结果理解。</td>
+</tr>
+<tr>
+<td>Action</td>
+<td>动作</td>
+<td>Agent 对环境采取的具体操作。</td>
+<td>强化学习中的 action，可以用任务完成率或工具反馈评估。</td>
+</tr>
+<tr>
+<td>Reflection / Self-critics / Chain of thoughts</td>
+<td>反思 / 自我批评 / 思维链</td>
+<td>帮助 Agent 检查过去行为、调整计划、改进下一步。</td>
+<td>可作为 DPO 或 RLVR 中的中间监督信号。</td>
+</tr>
+</table>
+
+<h3>中文总结</h3>
+
+<p>
+这张图是整篇文章最重要的入口。它说明：LLM Agent 不是“一个模型 + 一个 prompt”，而是一个由多个模块共同组成的系统。LLM 是 brain，即大脑；Planning 负责把目标拆成可操作步骤；Memory 负责存储和召回信息；Tools 负责让模型能够行动；Action 是模型对环境的具体操作。
+</p>
+
+<p>
+如果从后训练角度看，这张图直接提示了训练对象：不要只训练“最终回答”，而要训练 Agent 在每一步如何规划、如何查找记忆、如何选择工具、如何根据反馈更新行动。
+</p>
+
+<div class="box train">
+<strong>后训练启发：</strong>
+这张图可以拆成五类训练任务：
+<ol>
+<li><strong>规划训练：</strong>给定目标，输出子目标和执行顺序。</li>
+<li><strong>工具调用训练：</strong>给定上下文，选择合适工具并生成参数。</li>
+<li><strong>记忆检索训练：</strong>给定当前任务，从长期记忆中检索相关内容。</li>
+<li><strong>反思训练：</strong>给定失败轨迹，生成改进建议。</li>
+<li><strong>动作选择训练：</strong>给定 observation，预测下一步 action。</li>
+</ol>
+</div>
+
+<h2 id="planning">二、Planning：规划能力</h2>
+
+<p>
+原文认为，一个复杂任务通常包含许多步骤，Agent 必须知道这些步骤是什么，并提前规划。Planning 主要包含两个方向：Task Decomposition 任务分解，以及 Self-Reflection 自我反思。
+</p>
+
+<h3>1. Task Decomposition：任务分解</h3>
+
+<p>
+Task Decomposition 指的是把大任务拆成多个更小、更容易处理的子任务。原文提到 Chain of Thought，简称 CoT，即“思维链”，通过提示模型 step by step thinking，让模型把复杂问题分解成多个中间步骤。
+</p>
+
+<p>
+Tree of Thoughts，简称 ToT，即“思维树”，则比 CoT 更进一步。CoT 通常是一条推理链，而 ToT 会在每一步生成多个可能的 thought，再通过 BFS 或 DFS 搜索不同路径。它的核心思想是：复杂任务不一定只有一条推理路径，模型应该探索多个候选路径。
+</p>
+
+<table>
+<tr>
+<th>方法</th>
+<th>中文</th>
+<th>核心思想</th>
+<th>对 Agent 的意义</th>
+</tr>
+<tr>
+<td>CoT, Chain of Thought</td>
+<td>思维链</td>
+<td>让模型一步一步推理。</td>
+<td>适合线性分解问题。</td>
+</tr>
+<tr>
+<td>ToT, Tree of Thoughts</td>
+<td>思维树</td>
+<td>每一步探索多个候选想法，形成树状搜索。</td>
+<td>适合有多个可能路径的复杂任务。</td>
+</tr>
+<tr>
+<td>LLM+P</td>
+<td>LLM 加规划器</td>
+<td>让 LLM 把问题转成 PDDL，再交给传统规划器。</td>
+<td>适合机器人、规划问题等有明确规划语言的任务。</td>
+</tr>
+</table>
+
+<h3>2. 中文总结</h3>
+
+<p>
+规划能力的关键，不是模型能不能“说出计划”，而是它能不能把计划转成可以执行、可以检查、可以修正的步骤。很多 Agent Demo 失败，并不是因为模型语言能力不够，而是因为它把任务拆错了，或者无法根据失败反馈修改计划。
+</p>
+
+<div class="box train">
+<strong>后训练启发：</strong>
+Planning 可以被训练成一种轨迹任务。数据格式可以是：
+<pre>
+用户目标 → 子任务列表 → 每个子任务需要的工具 → 执行顺序 → 完成标准
+</pre>
+后训练时，可以用好计划和坏计划构造 preference data：合理拆解为 chosen，不合理拆解为 rejected。
+</div>
+
+<h2 id="react">三、ReAct：推理与行动结合</h2>
+
+<p>
+ReAct 是 Reasoning and Acting 的缩写，即“推理与行动结合”。原文指出，ReAct 把语言空间中的 reasoning traces 和任务空间中的 discrete actions 结合起来，使模型能够一边思考，一边和环境互动。
+</p>
+
+<div class="figure">
+<img src="https://lilianweng.github.io/posts/2023-06-23-agent/react.png" alt="ReAct reasoning trajectories">
+<div class="caption">
+图 2：ReAct 在知识密集型任务和决策任务中的推理轨迹示例。原图来源：Lilian Weng 博客引用 Yao et al. 2023。
+<a href="https://lilianweng.github.io/posts/2023-06-23-agent/react.png" target="_blank">打开原图</a>
+</div>
+</div>
+
+<h3>图片解读</h3>
+
+<p>
+这张图展示了 ReAct 的基本工作方式：模型不是一次性回答问题，而是反复执行 Thought、Action、Observation 三个步骤。
+</p>
+
+<pre>
+Thought: 当前我应该思考什么？
+Action: 我应该调用什么动作或工具？
+Observation: 环境或工具返回了什么？
+Thought: 根据新观察，我下一步应该做什么？
+Action: ...
+Observation: ...
+</pre>
+
+<table>
+<tr>
+<th>ReAct 元素</th>
+<th>中文解释</th>
+<th>功能</th>
+</tr>
+<tr>
+<td>Thought</td>
+<td>思考</td>
+<td>模型对当前状态的分析、假设和下一步策略。</td>
+</tr>
+<tr>
+<td>Action</td>
+<td>动作</td>
+<td>模型对环境采取的操作，例如搜索、点击、调用 API。</td>
+</tr>
+<tr>
+<td>Observation</td>
+<td>观察</td>
+<td>环境或工具返回的信息。</td>
+</tr>
+</table>
+
+<h3>中文总结</h3>
+
+<p>
+ReAct 的重要性在于，它把 Agent 的推理过程从“封闭的文本生成”变成“开放的环境交互”。普通 CoT 只是在模型内部推理，而 ReAct 允许模型用外部反馈修正推理。对于 Agent 来说，这比单纯写长思维链更接近真实任务。
+</p>
+
+<div class="box train">
+<strong>后训练启发：</strong>
+ReAct 是 Agent 后训练最基础的数据格式之一。你可以把训练样本组织成：
+<pre>
+User Query
+Thought
+Action
+Observation
+Thought
+Action
+Observation
+Final Answer
+</pre>
+其中 Action 是否正确、Observation 是否被正确利用、Final Answer 是否完成任务，都可以作为评测点。
+</div>
+
+<h2 id="reflexion">四、Reflexion：自我反思与动态记忆</h2>
+
+<p>
+原文把 Self-Reflection 称为自主 Agent 迭代改进的重要能力。Reflexion 是一个代表性框架，它为 Agent 加入动态记忆和自我反思机制，使 Agent 能从失败轨迹中总结经验，并改进下一轮行动。
+</p>
+
+<div class="figure">
+<img src="https://lilianweng.github.io/posts/2023-06-23-agent/reflexion.png" alt="Reflexion framework">
+<div class="caption">
+图 3：Reflexion 框架。原图来源：Lilian Weng 博客引用 Shinn & Labash 2023。
+<a href="https://lilianweng.github.io/posts/2023-06-23-agent/reflexion.png" target="_blank">打开原图</a>
+</div>
+</div>
+
+<h3>图片逐项解释</h3>
+
+<table>
+<tr>
+<th>图中元素</th>
+<th>中文解释</th>
+<th>作用</th>
+</tr>
+<tr>
+<td>Query</td>
+<td>任务输入</td>
+<td>用户或环境给定的问题。</td>
+</tr>
+<tr>
+<td>LLM</td>
+<td>大语言模型</td>
+<td>根据任务和记忆生成动作。</td>
+</tr>
+<tr>
+<td>Action</td>
+<td>动作</td>
+<td>Agent 执行的具体操作。</td>
+</tr>
+<tr>
+<td>Environment</td>
+<td>环境</td>
+<td>Agent 所处任务环境，例如问答环境、游戏环境、网页环境。</td>
+</tr>
+<tr>
+<td>Reward</td>
+<td>奖励</td>
+<td>任务成功或失败的反馈。</td>
+</tr>
+<tr>
+<td>Heuristic</td>
+<td>启发式判断</td>
+<td>判断轨迹是否低效、是否幻觉、是否应该停止。</td>
+</tr>
+<tr>
+<td>Reflection</td>
+<td>反思</td>
+<td>LLM 根据失败轨迹生成改进建议，并写入记忆。</td>
+</tr>
+</table>
+
+<h3>核心理解</h3>
+
+<p>
+Reflexion 的关键不是“模型自言自语”，而是把失败经验转成可复用记忆。也就是说，Agent 在一次任务失败后，不只是丢掉失败轨迹，而是把失败原因总结成一段 reflection，在后续尝试时作为上下文使用。
+</p>
+
+<div class="figure">
+<img src="https://lilianweng.github.io/posts/2023-06-23-agent/reflexion-exp.png" alt="Reflexion experiment results">
+<div class="caption">
+图 4：Reflexion 在 AlfWorld 和 HotpotQA 上的实验结果。原图来源：Lilian Weng 博客引用 Shinn & Labash 2023。
+<a href="https://lilianweng.github.io/posts/2023-06-23-agent/reflexion-exp.png" target="_blank">打开原图</a>
+</div>
+</div>
+
+<h3>实验图解读</h3>
+
+<p>
+图中可以看到，加入 Reflection 后，Agent 的成功率随 trial 增加而提高。左图 AlfWorld 中，带有反思机制的成功率明显上升；右图 HotpotQA 中，without reflection 的成功率基本停滞，而 with reflection 持续改善。这说明反思机制的价值在于让 Agent 利用过去失败经验，避免重复错误。
+</p>
+
+<div class="box train">
+<strong>后训练启发：</strong>
+Reflexion 可以转化为三类训练数据：
+<ol>
+<li><strong>失败轨迹 → 反思：</strong>训练模型总结失败原因。</li>
+<li><strong>反思 + 新尝试 → 更好动作：</strong>训练模型利用 reflection 改进动作。</li>
+<li><strong>好反思 vs 坏反思：</strong>构造 DPO 数据，让模型偏向更有效的反思。</li>
+</ol>
+</div>
+
+<h2 id="memory">五、Memory：记忆机制</h2>
+
+<p>
+原文把 Memory 作为 Agent 的第二个核心组件。记忆不仅是聊天历史，也包括短期上下文、长期知识、经验轨迹和外部向量数据库。
+</p>
+
+<div class="figure">
+<img src="https://lilianweng.github.io/posts/2023-06-23-agent/memory.png" alt="Types of memory">
+<div class="caption">
+图 5：人类记忆分类图。原图来源：Lilian Weng 博客。
+<a href="https://lilianweng.github.io/posts/2023-06-23-agent/memory.png" target="_blank">打开原图</a>
+</div>
+</div>
+
+<h3>图片逐项解释</h3>
+
+<table>
+<tr>
+<th>记忆类型</th>
+<th>中文翻译</th>
+<th>在人类认知中的含义</th>
+<th>映射到 LLM Agent</th>
+</tr>
+<tr>
+<td>Sensory Memory</td>
+<td>感觉记忆</td>
+<td>短暂保存视觉、听觉、触觉等感官印象。</td>
+<td>可类比为模型对原始输入的 embedding 表征。</td>
+</tr>
+<tr>
+<td>Short-term Memory / Working Memory</td>
+<td>短期记忆 / 工作记忆</td>
+<td>保存当前正在处理的信息。</td>
+<td>对应上下文窗口中的信息，即 in-context learning。</td>
+</tr>
+<tr>
+<td>Long-term Memory</td>
+<td>长期记忆</td>
+<td>长期保存事实、经验、技能。</td>
+<td>对应外部向量数据库、知识库、文件系统等。</td>
+</tr>
+<tr>
+<td>Explicit / Declarative Memory</td>
+<td>显性记忆 / 陈述性记忆</td>
+<td>可以被有意识回忆的事实和事件。</td>
+<td>用户偏好、历史对话、任务记录、事实知识。</td>
+</tr>
+<tr>
+<td>Implicit / Procedural Memory</td>
+<td>隐性记忆 / 程序性记忆</td>
+<td>技能和习惯，比如骑车、打字。</td>
+<td>模型参数中习得的模式，或者工具使用习惯。</td>
+</tr>
+</table>
+
+<h3>中文总结</h3>
+
+<p>
+Agent 的记忆系统不能简单理解为“把所有历史都塞进 prompt”。上下文窗口有限，信息越多，噪声越多。因此记忆系统的关键是：什么信息值得保存，什么信息应该检索，什么信息需要压缩，什么信息应该遗忘。
+</p>
+
+<div class="box train">
+<strong>后训练启发：</strong>
+Memory 相关训练至少有四类：
+<ol>
+<li><strong>写入判断：</strong>当前信息是否值得存入长期记忆？</li>
+<li><strong>检索判断：</strong>当前任务需要检索哪些历史信息？</li>
+<li><strong>记忆压缩：</strong>把长历史压缩成短摘要。</li>
+<li><strong>抗干扰训练：</strong>避免错误记忆、过期信息和无关信息影响决策。</li>
+</ol>
+</div>
+
+<h2 id="mips">六、MIPS：向量检索与长期记忆</h2>
+
+<p>
+原文指出，外部记忆可以缓解 Transformer 上下文长度有限的问题。常见做法是把信息编码成 embedding，然后存入 vector store，查询时通过 Maximum Inner Product Search，简称 MIPS，即最大内积搜索，找出最相关的记忆。
+</p>
+
+<div class="figure">
+<img src="https://lilianweng.github.io/posts/2023-06-23-agent/mips.png" alt="MIPS algorithms comparison">
+<div class="caption">
+图 6：MIPS 算法速度与召回率对比。原图来源：Lilian Weng 博客引用 Google Blog 2020。
+<a href="https://lilianweng.github.io/posts/2023-06-23-agent/mips.png" target="_blank">打开原图</a>
+</div>
+</div>
+
+<h3>图片解读</h3>
+
+<p>
+这张图的横轴是 Accuracy，也就是召回准确率；纵轴是 Speed，即每秒查询次数。图中不同曲线代表不同近似最近邻搜索算法。核心信息是：检索系统通常需要在速度和准确率之间做权衡。
+</p>
+
+<table>
+<tr>
+<th>算法</th>
+<th>中文说明</th>
+<th>作用</th>
+</tr>
+<tr>
+<td>LSH</td>
+<td>局部敏感哈希</td>
+<td>把相似向量映射到同一桶中，加快搜索。</td>
+</tr>
+<tr>
+<td>ANNOY</td>
+<td>近似最近邻搜索库</td>
+<td>使用随机投影树进行快速近似搜索。</td>
+</tr>
+<tr>
+<td>HNSW</td>
+<td>分层可导航小世界图</td>
+<td>通过多层图结构快速找到近邻。</td>
+</tr>
+<tr>
+<td>FAISS</td>
+<td>Facebook AI Similarity Search</td>
+<td>常用高性能向量检索库。</td>
+</tr>
+<tr>
+<td>ScaNN</td>
+<td>Scalable Nearest Neighbors</td>
+<td>Google 提出的高效向量检索方法。</td>
+</tr>
+</table>
+
+<h3>中文总结</h3>
+
+<p>
+长期记忆不是“无限上下文”，而是“外部存储 + 高效检索”。Agent 要想利用长期记忆，就必须解决三个问题：存什么、怎么检索、怎么使用检索结果。很多 Agent 出错不是因为没有记忆，而是因为检索到了错误或无关记忆。
+</p>
+
+<div class="box train">
+<strong>后训练启发：</strong>
+可以训练模型生成更好的检索 query，也可以训练模型判断检索结果是否可用。比如：
+<pre>
+任务 → 生成检索关键词 → 返回候选记忆 → 判断相关性 → 整合进下一步行动
+</pre>
+这类数据非常适合做 RAG-Agent 的 SFT 或偏好优化。
+</div>
+
+<h2 id="tool">七、Tool Use：工具使用</h2>
+
+<p>
+原文把 Tool Use 作为 Agent 的第三个核心组件。工具使用让 LLM 能够突破模型参数本身的限制，例如获取最新信息、运行代码、访问私有数据、调用计算器、调用专业模型等。
+</p>
+
+<h3>为什么工具重要？</h3>
+
+<p>
+大模型的知识主要来自训练数据，训练后模型参数很难频繁更新。因此，当前信息、实时数据、精确计算、数据库查询、代码执行等任务，不能只靠模型内部知识完成。工具调用让模型从“会说”变成“会做”。
+</p>
+
+<table>
+<tr>
+<th>工具类型</th>
+<th>中文</th>
+<th>例子</th>
+<th>训练难点</th>
+</tr>
+<tr>
+<td>Search API</td>
+<td>搜索工具</td>
+<td>网页搜索、文档搜索</td>
+<td>什么时候搜索、搜索什么关键词。</td>
+</tr>
+<tr>
+<td>Calculator</td>
+<td>计算器</td>
+<td>数学计算、单位换算</td>
+<td>参数提取必须准确。</td>
+</tr>
+<tr>
+<td>Code Interpreter</td>
+<td>代码解释器</td>
+<td>运行 Python、分析数据</td>
+<td>要能读懂报错并修正。</td>
+</tr>
+<tr>
+<td>Database API</td>
+<td>数据库接口</td>
+<td>查订单、查用户、查论文</td>
+<td>字段、权限、查询条件要准确。</td>
+</tr>
+<tr>
+<td>Specialist Model</td>
+<td>专家模型</td>
+<td>图像识别、语音识别、翻译模型</td>
+<td>需要选择合适模型并解释结果。</td>
+</tr>
+</table>
+
+<h3>MRKL、TALM、Toolformer 的区别</h3>
+
+<table>
+<tr>
+<th>方法</th>
+<th>中文解释</th>
+<th>核心思想</th>
+</tr>
+<tr>
+<td>MRKL</td>
+<td>模块化推理、知识与语言系统</td>
+<td>LLM 作为路由器，把任务分配给神经模块或符号模块。</td>
+</tr>
+<tr>
+<td>TALM</td>
+<td>工具增强语言模型</td>
+<td>微调语言模型，让它学会调用外部工具 API。</td>
+</tr>
+<tr>
+<td>Toolformer</td>
+<td>工具自学习模型</td>
+<td>模型通过判断 API 调用是否能提升输出质量，自动扩展工具调用数据。</td>
+</tr>
+</table>
+
+<div class="box train">
+<strong>后训练启发：</strong>
+工具调用训练最关键的不是让模型知道“有工具”，而是让模型学会：
+<ol>
+<li>判断是否需要工具；</li>
+<li>选择哪个工具；</li>
+<li>生成合法参数；</li>
+<li>理解工具返回结果；</li>
+<li>根据结果决定是否再次调用工具。</li>
+</ol>
+</div>
+
+<h2 id="hugginggpt">八、HuggingGPT：LLM 作为任务控制器</h2>
+
+<p>
+HuggingGPT 是原文介绍的典型工具使用案例。它让 ChatGPT 作为 task planner，即任务规划器，从 HuggingFace 平台选择合适模型完成任务。
+</p>
+
+<div class="figure">
+<img src="https://lilianweng.github.io/posts/2023-06-23-agent/hugging-gpt.png" alt="HuggingGPT workflow">
+<div class="caption">
+图 7：HuggingGPT 工作流程。原图来源：Lilian Weng 博客引用 Shen et al. 2023。
+<a href="https://lilianweng.github.io/posts/2023-06-23-agent/hugging-gpt.png" target="_blank">打开原图</a>
+</div>
+</div>
+
+<h3>图片逐项解释</h3>
+
+<table>
+<tr>
+<th>阶段</th>
+<th>英文</th>
+<th>中文解释</th>
+<th>作用</th>
+</tr>
+<tr>
+<td>I</td>
+<td>Task Planning</td>
+<td>任务规划</td>
+<td>LLM 把用户请求拆成多个子任务。</td>
+</tr>
+<tr>
+<td>II</td>
+<td>Model Selection</td>
+<td>模型选择</td>
+<td>LLM 从候选模型中选择适合每个子任务的模型。</td>
+</tr>
+<tr>
+<td>III</td>
+<td>Task Execution</td>
+<td>任务执行</td>
+<td>被选中的专家模型执行具体任务。</td>
+</tr>
+<tr>
+<td>IV</td>
+<td>Response Generation</td>
+<td>回答生成</td>
+<td>LLM 汇总各模型结果，给用户最终回答。</td>
+</tr>
+</table>
+
+<h3>中文总结</h3>
+
+<p>
+HuggingGPT 说明了 Agent 的一种典型模式：LLM 不一定亲自完成所有任务，而是作为 controller，即控制器，负责理解任务、拆解任务、选择工具、整合结果。这个模式和现在的多工具 Agent 很接近。
+</p>
+
+<div class="box train">
+<strong>后训练启发：</strong>
+HuggingGPT 可以拆成四个训练任务：
+<ol>
+<li><strong>任务解析：</strong>用户请求 → 子任务 JSON。</li>
+<li><strong>依赖判断：</strong>判断子任务之间的先后关系。</li>
+<li><strong>模型选择：</strong>子任务 → 最合适工具或模型。</li>
+<li><strong>结果汇总：</strong>工具结果 → 面向用户的最终回答。</li>
+</ol>
+</div>
+
+<h2 id="apibank">九、API-Bank：工具调用评测</h2>
+
+<p>
+API-Bank 是用于评测 tool-augmented LLM 的 benchmark。它关注模型是否能判断需要 API、找到合适 API、阅读文档、生成 API 调用，并根据 API 返回结果回答用户。
+</p>
+
+<div class="figure">
+<img src="https://lilianweng.github.io/posts/2023-06-23-agent/api-bank-process.png" alt="API-Bank call process">
+<div class="caption">
+图 8：API-Bank 中 LLM 调用 API 的伪代码流程。原图来源：Lilian Weng 博客引用 Li et al. 2023。
+<a href="https://lilianweng.github.io/posts/2023-06-23-agent/api-bank-process.png" target="_blank">打开原图</a>
+</div>
+</div>
+
+<h3>图片解读</h3>
+
+<p>
+这张图描述了模型调用 API 的完整流程。首先判断是否需要 API；如果需要，就搜索 API；找到 API 后读取文档；然后生成 API call；执行后检查返回结果；如果不满意，继续修改调用；最后基于 API 返回生成用户回答。
+</p>
+
+<h3>API-Bank 的三层能力</h3>
+
+<table>
+<tr>
+<th>层级</th>
+<th>英文</th>
+<th>中文解释</th>
+<th>能力要求</th>
+</tr>
+<tr>
+<td>Level 1</td>
+<td>Call API</td>
+<td>调用 API</td>
+<td>给定 API 描述，模型判断是否调用、如何调用、如何回应。</td>
+</tr>
+<tr>
+<td>Level 2</td>
+<td>Retrieve API</td>
+<td>检索 API</td>
+<td>模型需要搜索可能可用的 API，并阅读文档学习使用。</td>
+</tr>
+<tr>
+<td>Level 3</td>
+<td>Plan API Calls</td>
+<td>规划 API 调用</td>
+<td>面对模糊任务，模型需要多步调用多个 API。</td>
+</tr>
+</table>
+
+<h3>中文总结</h3>
+
+<p>
+API-Bank 的价值在于，它把工具调用能力拆成了可评测的步骤。Agent 不是只要最后回答正确就行，还要看中间决策是否正确：是否该调用 API？调用哪个 API？参数是否正确？返回结果是否被正确使用？
+</p>
+
+<div class="box train">
+<strong>后训练启发：</strong>
+API-Bank 的流程可以直接转成 reward 设计：
+<ol>
+<li>是否需要 API：二分类奖励；</li>
+<li>API 选择是否正确：工具选择奖励；</li>
+<li>参数是否正确：schema 奖励；</li>
+<li>是否根据结果再次调用：多轮策略奖励；</li>
+<li>最终回答是否满足用户需求：任务完成奖励。</li>
+</ol>
+</div>
+
+<h2 id="genagents">十、Generative Agents：生成式智能体仿真</h2>
+
+<p>
+Generative Agents 是一个非常有代表性的 Agent 案例。它让 25 个由 LLM 控制的虚拟角色生活在沙盒环境中，并通过记忆、规划和反思机制产生类似人类的社会行为。
+</p>
+
+<div class="figure">
+<img src="https://lilianweng.github.io/posts/2023-06-23-agent/generative-agents.png" alt="Generative Agent architecture">
+<div class="caption">
+图 9：Generative Agents 架构。原图来源：Lilian Weng 博客引用 Park et al. 2023。
+<a href="https://lilianweng.github.io/posts/2023-06-23-agent/generative-agents.png" target="_blank">打开原图</a>
+</div>
+</div>
+
+<h3>图片逐项解释</h3>
+
+<table>
+<tr>
+<th>图中元素</th>
+<th>中文解释</th>
+<th>作用</th>
+</tr>
+<tr>
+<td>Perceive</td>
+<td>感知</td>
+<td>Agent 接收环境中的新事件和观察。</td>
+</tr>
+<tr>
+<td>Memory Stream</td>
+<td>记忆流</td>
+<td>长期保存 Agent 的观察、事件和经验。</td>
+</tr>
+<tr>
+<td>Retrieve</td>
+<td>检索</td>
+<td>从记忆流中取回与当前情境相关的记忆。</td>
+</tr>
+<tr>
+<td>Retrieved Memories</td>
+<td>被检索出的记忆</td>
+<td>作为当前行动的上下文。</td>
+</tr>
+<tr>
+<td>Reflect</td>
+<td>反思</td>
+<td>把低层事件总结成高层理解。</td>
+</tr>
+<tr>
+<td>Plan</td>
+<td>规划</td>
+<td>根据记忆和当前情境制定行动计划。</td>
+</tr>
+<tr>
+<td>Act</td>
+<td>行动</td>
+<td>Agent 在环境中执行具体行为。</td>
+</tr>
+</table>
+
+<h3>中文总结</h3>
+
+<p>
+Generative Agents 的重点是：记忆不是简单记录，而是要参与行为生成。Agent 会感知环境，把观察写入记忆流；再根据相关性、时间近近度和重要性检索记忆；然后反思形成更高层理解；最后根据这些信息规划和行动。
+</p>
+
+<div class="box train">
+<strong>后训练启发：</strong>
+这类系统适合训练“长期任务中的行为一致性”。比如：
+<ol>
+<li>给定角色历史记忆，预测下一步行动；</li>
+<li>给定一批观察，生成高层 reflection；</li>
+<li>给定当前情境，检索相关记忆；</li>
+<li>根据长期记忆保持角色行为一致。</li>
+</ol>
+</div>
+
+<h2 id="challenges">十一、Challenges：Agent 的主要挑战</h2>
+
+<p>
+原文最后总结了 LLM-centered agents 的几个常见限制。这部分对后训练 Agent 特别重要，因为它指出了 Agent 失败的根源。
+</p>
+
+<table>
+<tr>
+<th>挑战</th>
+<th>中文解释</th>
+<th>表现</th>
+<th>后训练方向</th>
+</tr>
+<tr>
+<td>Finite context length</td>
+<td>有限上下文长度</td>
+<td>历史信息、工具返回、API 文档、长任务状态无法全部放进 prompt。</td>
+<td>训练压缩、检索、记忆选择。</td>
+</tr>
+<tr>
+<td>Long-term planning</td>
+<td>长期规划困难</td>
+<td>任务变长后，模型难以持续维护计划，也难以处理意外错误。</td>
+<td>训练多步轨迹、失败恢复、计划修正。</td>
+</tr>
+<tr>
+<td>Reliability of natural language interface</td>
+<td>自然语言接口可靠性不足</td>
+<td>模型输出格式错误、工具参数错误、无法稳定解析。</td>
+<td>训练结构化输出、schema 遵循、工具调用格式。</td>
+</tr>
+</table>
+
+<div class="box warn">
+<strong>关键判断：</strong>
+很多 Agent 系统的难点不是“模型不会说”，而是“模型输出不能稳定变成可执行动作”。因此，后训练 Agent 时要特别关注结构化输出、工具参数、错误恢复和停止条件。
+</div>
+
+<h2 id="posttraining">十二、后训练 Agent 的学习路线</h2>
+
+<p>
+根据这篇文章，可以把后训练 Agent 的路线拆成六个阶段。
+</p>
+
+<table>
+<tr>
+<th>阶段</th>
+<th>训练目标</th>
+<th>数据形式</th>
+<th>适合方法</th>
+</tr>
+<tr>
+<td>1. 工具调用格式</td>
+<td>让模型输出合法工具调用。</td>
+<td>任务 → 工具名 + 参数 JSON</td>
+<td>SFT</td>
+</tr>
+<tr>
+<td>2. 工具选择</td>
+<td>让模型判断何时用哪个工具。</td>
+<td>上下文 → 正确工具 / 错误工具</td>
+<td>SFT / DPO</td>
+</tr>
+<tr>
+<td>3. 任务分解</td>
+<td>让模型把复杂目标拆成子任务。</td>
+<td>用户目标 → 子目标列表</td>
+<td>SFT / DPO</td>
+</tr>
+<tr>
+<td>4. 多步 ReAct 轨迹</td>
+<td>训练模型根据 Observation 继续行动。</td>
+<td>Thought / Action / Observation 序列</td>
+<td>SFT / GRPO / PPO</td>
+</tr>
+<tr>
+<td>5. 自我反思</td>
+<td>训练模型从失败轨迹中生成改进建议。</td>
+<td>失败轨迹 → Reflection</td>
+<td>SFT / DPO</td>
+</tr>
+<tr>
+<td>6. 可验证奖励优化</td>
+<td>用任务完成结果优化模型。</td>
+<td>轨迹 → reward</td>
+<td>RLVR / GRPO</td>
+</tr>
+</table>
+
+<h3>一个可复现的小项目设计</h3>
+
+<div class="box train">
+<p><strong>项目名称：</strong>Mini Tool-use Agent 后训练</p>
+<ol>
+<li>准备三个工具：calculator、search_doc、run_python。</li>
+<li>构造 200 条 SFT 数据，让模型学习什么时候调用哪个工具。</li>
+<li>构造 chosen / rejected 数据，例如正确参数 vs 错误参数。</li>
+<li>用 DPO 优化工具调用偏好。</li>
+<li>加入简单可验证 reward，例如计算结果正确给 1，JSON 格式错误给 0。</li>
+<li>最后训练多步 ReAct 轨迹，让模型根据工具返回继续行动。</li>
+</ol>
+</div>
+
+<h2 id="terms">十三、术语中英对照</h2>
+
+<table>
+<tr>
+<th>英文术语</th>
+<th>中文译法</th>
+<th>解释</th>
+</tr>
+<tr>
+<td>Autonomous Agent</td>
+<td>自主智能体</td>
+<td>能够根据目标、环境反馈和内部状态自主行动的系统。</td>
+</tr>
+<tr>
+<td>Agent Brain</td>
+<td>智能体大脑</td>
+<td>在 LLM Agent 中，LLM 通常作为核心控制器或决策器。</td>
+</tr>
+<tr>
+<td>Planning</td>
+<td>规划</td>
+<td>把复杂任务拆成多个子目标，并确定执行顺序。</td>
+</tr>
+<tr>
+<td>Task Decomposition</td>
+<td>任务分解</td>
+<td>把大任务拆成更小、更容易处理的子任务。</td>
+</tr>
+<tr>
+<td>Self-Reflection</td>
+<td>自我反思</td>
+<td>根据过去行动和错误生成改进建议。</td>
+</tr>
+<tr>
+<td>Memory</td>
+<td>记忆</td>
+<td>保存短期上下文、长期经验和外部知识。</td>
+</tr>
+<tr>
+<td>Short-term Memory</td>
+<td>短期记忆</td>
+<td>当前上下文窗口中的信息。</td>
+</tr>
+<tr>
+<td>Long-term Memory</td>
+<td>长期记忆</td>
+<td>外部向量库、文件系统、数据库等长期存储。</td>
+</tr>
+<tr>
+<td>Tool Use</td>
+<td>工具使用</td>
+<td>模型调用外部工具、API、代码执行器或专业模型。</td>
+</tr>
+<tr>
+<td>ReAct</td>
+<td>推理—行动框架</td>
+<td>通过 Thought、Action、Observation 循环结合推理与环境交互。</td>
+</tr>
+<tr>
+<td>Reflexion</td>
+<td>反思框架</td>
+<td>让 Agent 从失败轨迹中生成反思，并写入动态记忆。</td>
+</tr>
+<tr>
+<td>MIPS</td>
+<td>最大内积搜索</td>
+<td>在向量库中快速找到与查询最相关的记忆。</td>
+</tr>
+<tr>
+<td>Vector Store</td>
+<td>向量数据库 / 向量存储</td>
+<td>保存 embedding 并支持相似度检索的外部记忆系统。</td>
+</tr>
+<tr>
+<td>Trajectory</td>
+<td>轨迹</td>
+<td>Agent 从任务开始到结束的观察、动作、反馈和输出序列。</td>
+</tr>
+<tr>
+<td>RLVR</td>
+<td>可验证奖励强化学习</td>
+<td>使用可自动验证的结果作为奖励信号，例如测试通过、答案正确。</td>
+</tr>
+</table>
+
+<h2>十四、最终总结</h2>
+
+<div class="box note">
+<p>
+Lilian Weng 这篇文章的核心价值在于，它把 LLM Agent 从一个模糊概念拆成了清晰结构：LLM 作为大脑，Planning 负责规划，Memory 负责经验保存与召回，Tool Use 负责外部行动，Reflection 负责从错误中学习。
+</p>
+
+<p>
+从后训练 Agent 的角度看，这篇文章的启发是：我们不应该只训练模型生成最终答案，而应该训练模型在整个任务轨迹中的行为能力。也就是训练它如何分解任务、如何选择工具、如何解释工具返回、如何反思失败、如何更新计划、如何判断停止。
+</p>
+
+<p>
+一句话概括：<strong>后训练 Agent 的核心不是让模型“更会说”，而是让模型在“观察—行动—反馈”的循环中更稳定地做出正确决策。</strong>
+</p>
+</div>
+
+<p class="small">
+说明：本文为中文学习笔记与图片解读。图片均通过原博客图片链接引用，版权归原作者或原图来源所有。原文：Lilian Weng, “LLM Powered Autonomous Agents.”
+</p>
+
+</body>
+</html>

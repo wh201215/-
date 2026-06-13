@@ -1,0 +1,1566 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agent RLVR 中文精读：从 Function Picking 到 Tool-use Agent 后训练</title>
+<style>
+html { scroll-behavior: smooth; }
+body {
+  font-family: "Microsoft YaHei", Arial, sans-serif;
+  line-height: 1.86;
+  max-width: 1080px;
+  margin: 40px auto;
+  padding: 0 28px 100px;
+  background: #f7f8fb;
+  color: #1f2937;
+}
+h1 {
+  font-size: 34px;
+  line-height: 1.35;
+  border-bottom: 5px solid #2563eb;
+  padding-bottom: 14px;
+}
+h2 {
+  margin-top: 50px;
+  padding: 12px 16px;
+  font-size: 27px;
+  background: #eef4ff;
+  border-left: 7px solid #2563eb;
+}
+h3 { margin-top: 30px; font-size: 21px; }
+h4 { margin-top: 22px; font-size: 18px; color: #0f172a; }
+h2, h3, h4 { scroll-margin-top: 24px; }
+a { color: #2563eb; }
+.box {
+  background: #ffffff;
+  border: 1px solid #d9e2ef;
+  border-radius: 12px;
+  padding: 18px 22px;
+  margin: 18px 0;
+}
+.note { background: #fff7d6; border-left: 6px solid #d6a800; }
+.train { background: #ecfdf3; border-left: 6px solid #16a34a; }
+.warn { background: #fff1f1; border-left: 6px solid #dc2626; }
+.deep { background: #eff6ff; border-left: 6px solid #2563eb; }
+.practice { background: #f0fdf4; border-left: 6px solid #22c55e; }
+.gray { background: #f8fafc; border-left: 6px solid #64748b; }
+.figure {
+  background: #ffffff;
+  border: 1px solid #d9e2ef;
+  border-radius: 14px;
+  padding: 16px;
+  margin: 22px 0;
+}
+.figure img, .figure svg {
+  width: 100%;
+  max-height: 720px;
+  object-fit: contain;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+}
+.caption {
+  color: #667085;
+  font-size: 14px;
+  margin-top: 10px;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 18px 0;
+  background: #ffffff;
+}
+th, td {
+  border: 1px solid #d9e2ef;
+  padding: 11px 13px;
+  vertical-align: top;
+}
+th { background: #f1f5f9; }
+pre {
+  background: #111827;
+  color: #e5e7eb;
+  padding: 18px;
+  border-radius: 10px;
+  overflow-x: auto;
+  line-height: 1.55;
+  font-size: 14px;
+}
+code {
+  background: #eef2ff;
+  padding: 2px 5px;
+  border-radius: 5px;
+  color: #1e3a8a;
+}
+pre code { background: transparent; color: inherit; padding: 0; }
+hr { border: none; border-top: 1px solid #d9e2ef; margin: 34px 0; }
+.kbd {
+  display: inline-block;
+  padding: 1px 8px;
+  border: 1px solid #cbd5e1;
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  background: #ffffff;
+  font-size: 13px;
+  color: #334155;
+}
+.badge {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: #dbeafe;
+  color: #1d4ed8;
+  font-weight: 700;
+  font-size: 13px;
+  margin-right: 6px;
+}
+.page-toc {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+}
+.page-toc-toggle {
+  border: 0;
+  border-radius: 999px;
+  padding: 10px 16px;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.24);
+}
+.page-toc-toggle:hover { background: #1d4ed8; }
+.page-toc-panel {
+  display: none;
+  width: 330px;
+  max-height: calc(100vh - 90px);
+  overflow: auto;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid #d9e2ef;
+  border-radius: 14px;
+  padding: 16px 18px;
+  margin-top: 10px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+  backdrop-filter: blur(8px);
+}
+.page-toc.is-open .page-toc-panel { display: block; }
+.page-toc-title {
+  margin-bottom: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+}
+.page-toc-list, .page-toc-sublist { list-style: none; margin: 0; padding: 0; }
+.page-toc-item + .page-toc-item { margin-top: 10px; }
+.page-toc-sublist { margin-top: 8px; padding-left: 14px; border-left: 2px solid #e5e7eb; }
+.page-toc-subitem + .page-toc-subitem { margin-top: 6px; }
+.page-toc-link {
+  display: block;
+  color: #334155;
+  text-decoration: none;
+  font-size: 14px;
+  line-height: 1.55;
+}
+.page-toc-link:hover { color: #2563eb; }
+.small { font-size: 14px; color: #64748b; }
+@media (max-width: 1100px) {
+  .page-toc { top: 12px; right: 12px; }
+  .page-toc-panel { width: min(330px, calc(100vw - 24px)); max-height: calc(100vh - 72px); }
+  body { margin-top: 68px; padding-left: 18px; padding-right: 18px; }
+}
+</style>
+</head>
+<body>
+
+<nav class="page-toc" aria-label="文章目录">
+  <button class="page-toc-toggle" type="button" aria-expanded="false">☰ 目录</button>
+  <div class="page-toc-panel">
+    <div class="page-toc-title">目录导航</div>
+    <ol class="page-toc-list" id="page-toc-list"></ol>
+  </div>
+</nav>
+
+<h1>Agent RLVR 中文精读<br>从 Function Picking 到 Tool-use Agent 后训练</h1>
+
+<div class="box note">
+<p><strong>本篇定位：</strong>这是后训练学习路线中的 Agent 专题。前面你已经理解了 SFT、DPO、PPO、GRPO、RLVR 和 DeepSeek-R1 式 reasoning RL；这一篇要做的事情，是把 reasoning RL 的思路迁移到 <strong>Tool-use Agent</strong>。</p>
+<p><strong>核心迁移：</strong></p>
+<pre>Reasoning RLVR：
+答案是否正确 → reward
+
+Agent RLVR：
+工具是否选对 / 参数是否正确 / 工具是否执行成功 / 是否利用 Observation / 最终任务是否完成 → reward</pre>
+<p><strong>适合读者：</strong>想继续学习 agentic RL、tool-use、Web Agent、Code Agent、RAG Agent、SQL Agent、浏览器 Agent、自动化办公 Agent 的人。</p>
+</div>
+
+<div class="box deep">
+<p><strong>主要参考来源：</strong></p>
+<ul>
+<li>ReAct: Synergizing Reasoning and Acting in Language Models：<a href="https://arxiv.org/abs/2210.03629" target="_blank">https://arxiv.org/abs/2210.03629</a></li>
+<li>Toolformer: Language Models Can Teach Themselves to Use Tools：<a href="https://arxiv.org/abs/2302.04761" target="_blank">https://arxiv.org/abs/2302.04761</a></li>
+<li>OpenAI Function Calling 文档：<a href="https://developers.openai.com/api/docs/guides/function-calling" target="_blank">https://developers.openai.com/api/docs/guides/function-calling</a></li>
+<li>OpenAI Structured Outputs 文档：<a href="https://developers.openai.com/api/docs/guides/structured-outputs" target="_blank">https://developers.openai.com/api/docs/guides/structured-outputs</a></li>
+<li>ToolRL: Reward is All Tool Learning Needs：<a href="https://arxiv.org/html/2504.13958v1" target="_blank">https://arxiv.org/html/2504.13958v1</a></li>
+<li>TRL GRPOTrainer 文档：<a href="https://huggingface.co/docs/trl/en/grpo_trainer" target="_blank">https://huggingface.co/docs/trl/en/grpo_trainer</a></li>
+<li>verl Agent Loop 文档：<a href="https://verl.readthedocs.io/en/latest/advance/agent_loop.html" target="_blank">https://verl.readthedocs.io/en/latest/advance/agent_loop.html</a></li>
+<li>verl Reward Loop 文档：<a href="https://verl.readthedocs.io/en/latest/advance/reward_loop.html" target="_blank">https://verl.readthedocs.io/en/latest/advance/reward_loop.html</a></li>
+<li>τ-bench: A Benchmark for Tool-Agent-User Interaction：<a href="https://arxiv.org/abs/2406.12045" target="_blank">https://arxiv.org/abs/2406.12045</a></li>
+<li>Agent Lightning: Train ANY AI Agents with Reinforcement Learning：<a href="https://arxiv.org/abs/2508.03680" target="_blank">https://arxiv.org/abs/2508.03680</a></li>
+</ul>
+</div>
+
+<h2 id="sec0">0. Agent 后训练和普通后训练有什么区别？</h2>
+
+<p>普通 LLM 后训练，很多时候优化的是一段回答。用户问一个问题，模型输出一段文本，训练系统判断这段文本好不好。Agent 后训练不一样，它优化的不是一个静态回答，而是一条<strong>可以和环境交互的轨迹</strong>。</p>
+
+<div class="figure">
+<svg viewBox="0 0 1050 360" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="普通后训练与Agent后训练对比图">
+  <rect x="20" y="25" width="470" height="300" rx="18" fill="#eff6ff" stroke="#bfdbfe"/>
+  <text x="255" y="65" text-anchor="middle" font-size="24" font-weight="700" fill="#1e40af">普通 LLM 后训练</text>
+  <rect x="70" y="105" width="150" height="58" rx="12" fill="#ffffff" stroke="#93c5fd"/>
+  <text x="145" y="141" text-anchor="middle" font-size="17" fill="#0f172a">Prompt</text>
+  <path d="M225 134 H285" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow)"/>
+  <rect x="290" y="105" width="150" height="58" rx="12" fill="#ffffff" stroke="#93c5fd"/>
+  <text x="365" y="141" text-anchor="middle" font-size="17" fill="#0f172a">Response</text>
+  <path d="M365 170 V220" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow)"/>
+  <rect x="255" y="225" width="220" height="62" rx="12" fill="#dbeafe" stroke="#60a5fa"/>
+  <text x="365" y="252" text-anchor="middle" font-size="16" font-weight="700" fill="#1e3a8a">Reward</text>
+  <text x="365" y="274" text-anchor="middle" font-size="13" fill="#334155">答案是否正确 / 好不好</text>
+
+  <rect x="560" y="25" width="470" height="300" rx="18" fill="#ecfdf3" stroke="#bbf7d0"/>
+  <text x="795" y="65" text-anchor="middle" font-size="24" font-weight="700" fill="#166534">Agent 后训练</text>
+  <rect x="590" y="105" width="110" height="52" rx="12" fill="#ffffff" stroke="#86efac"/>
+  <text x="645" y="137" text-anchor="middle" font-size="15" fill="#0f172a">User</text>
+  <path d="M705 131 H750" stroke="#16a34a" stroke-width="3" marker-end="url(#arrow2)"/>
+  <rect x="755" y="105" width="110" height="52" rx="12" fill="#ffffff" stroke="#86efac"/>
+  <text x="810" y="126" text-anchor="middle" font-size="15" fill="#0f172a">Action</text>
+  <text x="810" y="145" text-anchor="middle" font-size="12" fill="#334155">tool call</text>
+  <path d="M870 131 H915" stroke="#16a34a" stroke-width="3" marker-end="url(#arrow2)"/>
+  <rect x="920" y="105" width="90" height="52" rx="12" fill="#ffffff" stroke="#86efac"/>
+  <text x="965" y="126" text-anchor="middle" font-size="15" fill="#0f172a">Tool</text>
+  <text x="965" y="145" text-anchor="middle" font-size="12" fill="#334155">exec</text>
+  <path d="M965 162 V205 H810 V170" fill="none" stroke="#16a34a" stroke-width="3" marker-end="url(#arrow2)"/>
+  <rect x="700" y="215" width="220" height="70" rx="12" fill="#dcfce7" stroke="#4ade80"/>
+  <text x="810" y="242" text-anchor="middle" font-size="16" font-weight="700" fill="#166534">Reward</text>
+  <text x="810" y="264" text-anchor="middle" font-size="13" fill="#334155">工具 / 参数 / 执行 / 轨迹 / 最终结果</text>
+
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#2563eb"/></marker>
+    <marker id="arrow2" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#16a34a"/></marker>
+  </defs>
+</svg>
+<div class="caption">图 1：普通后训练与 Agent 后训练的差别。图源：本文自绘，参考 ReAct 的 Reasoning + Acting 框架、Toolformer 的 API 调用思想，以及 OpenAI Function Calling 文档。</div>
+</div>
+
+<h3>0.1 普通后训练：优化 response</h3>
+<p>普通聊天模型的训练对象通常是一段 response。例如：</p>
+<pre>User: 解释什么是 DPO。
+Assistant: DPO 是一种直接偏好优化方法……</pre>
+<p>奖励可以直接看最终回答：是否准确、是否清楚、是否遵守格式、是否安全。</p>
+
+<h3>0.2 Agent 后训练：优化 trajectory</h3>
+<p>Agent 的输出不是一段话，而是一串交互过程：</p>
+<pre>User task
+  ↓
+Assistant decides tool
+  ↓
+Tool call with arguments
+  ↓
+Tool returns observation
+  ↓
+Assistant decides next step
+  ↓
+Maybe call another tool
+  ↓
+Final answer</pre>
+<p>这条链路里，每一步都可能出错。因此 Agent RLVR 不能只看最后一句 answer，它要看整条轨迹。</p>
+
+<table>
+<tr><th>比较项</th><th>普通后训练</th><th>Agent 后训练</th></tr>
+<tr><td>训练对象</td><td>回答文本 response。</td><td>工具调用轨迹 trajectory。</td></tr>
+<tr><td>动作 action</td><td>生成 token。</td><td>生成 token + 选择工具 + 填参数 + 决定是否继续。</td></tr>
+<tr><td>环境 environment</td><td>通常是评估器或用户。</td><td>工具系统、数据库、浏览器、代码执行器、搜索引擎、文件系统。</td></tr>
+<tr><td>奖励 reward</td><td>回答好坏。</td><td>工具选择、参数合法、执行结果、Observation 利用、任务完成。</td></tr>
+<tr><td>主要风险</td><td>幻觉、啰嗦、偏好错位。</td><td>调用错工具、参数错、忽略工具结果、循环调用、危险操作。</td></tr>
+<tr><td>适合算法</td><td>SFT、DPO、PPO、GRPO。</td><td>Tool-use SFT、轨迹 DPO、Agentic GRPO、RLVR、环境反馈 RL。</td></tr>
+</table>
+
+<div class="box train">
+<strong>这一节要记住：</strong>Agent 后训练的关键不是让模型“更会说”，而是让模型“更会做”。会做的意思包括：知道什么时候不用工具、什么时候要用工具、用哪个工具、参数怎么填、工具失败后如何恢复、什么时候停止。
+</div>
+
+<h3>0.3 为什么 Agent 特别适合 RLVR？</h3>
+<p>RLVR 的全称可以理解为 <strong>Reinforcement Learning with Verifiable Rewards</strong>，即“基于可验证奖励的强化学习”。Agent 任务很多地方天然可验证：</p>
+
+<table>
+<tr><th>Agent 子能力</th><th>可验证信号</th><th>能否自动打分</th></tr>
+<tr><td>工具选择</td><td>是否调用目标工具；是否调用了无关工具。</td><td>可以。</td></tr>
+<tr><td>JSON 格式</td><td>是否能被解析；是否符合 schema。</td><td>可以。</td></tr>
+<tr><td>参数完整性</td><td>必填字段是否齐全；类型是否正确。</td><td>可以。</td></tr>
+<tr><td>执行成功</td><td>工具是否返回成功状态；测试是否通过。</td><td>可以。</td></tr>
+<tr><td>Observation 使用</td><td>最终回答是否引用/利用工具返回。</td><td>部分可以，需要规则或 judge。</td></tr>
+<tr><td>最终任务完成</td><td>数据库状态、网页状态、代码测试、答案匹配。</td><td>很多场景可以。</td></tr>
+</table>
+
+<p>这就是 Agent RLVR 的价值：它把“主观觉得 Agent 好不好”拆成许多可以自动检查的小指标。</p>
+
+<hr>
+
+<h2 id="sec1">1. Function Picking 是什么？</h2>
+
+<p><strong>Function Picking</strong> 可以翻译成“函数选择”或“工具选择”。它是 Tool-use Agent 的第一层能力：面对一个任务，模型先判断应该调用哪个工具。</p>
+
+<div class="box note">
+<strong>一句话理解：</strong>Function Picking 不是让模型直接解决问题，而是让模型先判断“这个问题应该交给哪个工具处理”。
+</div>
+
+<h3>1.1 Function Picking 的最小例子</h3>
+
+<pre>User: 计算 573 * 89。
+
+可选工具：
+1. search_web(query)
+2. calculator(expression)
+3. translate(text, target_language)
+
+正确选择：
+calculator(expression="573 * 89")</pre>
+
+<p>在这个例子中，模型不需要自己心算。它真正要学的是：这是一个精确计算任务，因此应该调用 calculator，而不是 search_web，也不是 translate。</p>
+
+<h3>1.2 Function Picking 和 Function Calling 的区别</h3>
+<table>
+<tr><th>概念</th><th>中文解释</th><th>关注点</th></tr>
+<tr><td>Function Picking</td><td>从多个工具中选择一个或多个合适工具。</td><td>选哪个工具。</td></tr>
+<tr><td>Function Calling</td><td>按照工具 schema 生成可执行调用。</td><td>怎么调用工具。</td></tr>
+<tr><td>Tool Execution</td><td>外部系统真正执行函数。</td><td>工具是否执行成功。</td></tr>
+<tr><td>Observation Integration</td><td>模型读取工具返回并继续推理。</td><td>是否利用返回结果。</td></tr>
+</table>
+
+<h3>1.3 Function Picking 的常见错误</h3>
+<table>
+<tr><th>错误类型</th><th>例子</th><th>为什么严重</th></tr>
+<tr><td>不用工具</td><td>需要查实时信息，却直接凭记忆回答。</td><td>容易产生幻觉。</td></tr>
+<tr><td>错选工具</td><td>计算任务调用 search_web。</td><td>工具链从第一步就错了。</td></tr>
+<tr><td>过度调用工具</td><td>用户问“你好”，模型调用 search。</td><td>成本高、延迟高、体验差。</td></tr>
+<tr><td>相似工具混淆</td><td>把 search_docs 和 search_web 混用。</td><td>在企业知识库/RAG 中尤其危险。</td></tr>
+<tr><td>多工具顺序错误</td><td>还没查询数据就先总结。</td><td>会导致无依据回答。</td></tr>
+</table>
+
+<h3>1.4 Function Picking 的训练目标</h3>
+<p>如果把 Function Picking 单独拿出来训练，它可以是一个分类问题：</p>
+<pre>输入：user query + tool descriptions
+输出：tool_name</pre>
+<p>也可以是一个生成问题：</p>
+<pre>{
+  "tool_name": "calculator",
+  "arguments": {
+    "expression": "573 * 89"
+  }
+}</pre>
+
+<div class="box deep">
+<strong>实践理解：</strong>Agent 后训练不要一开始就追求复杂自主规划。先让模型稳定学会 Function Picking，是非常重要的第一步。因为只要第一步选错工具，后面的参数、执行、Observation 使用都会跟着错。
+</div>
+
+<div class="figure">
+<svg viewBox="0 0 1050 300" xmlns="http://www.w3.org/2000/svg">
+  <rect x="35" y="35" width="980" height="225" rx="18" fill="#ffffff" stroke="#d9e2ef"/>
+  <text x="525" y="75" text-anchor="middle" font-size="24" font-weight="700" fill="#0f172a">Function Picking 决策链</text>
+  <rect x="80" y="120" width="150" height="60" rx="12" fill="#dbeafe" stroke="#60a5fa"/>
+  <text x="155" y="156" text-anchor="middle" font-size="16" fill="#1e3a8a">User Task</text>
+  <path d="M235 150 H300" stroke="#2563eb" stroke-width="3" marker-end="url(#arrA)"/>
+  <rect x="305" y="120" width="180" height="60" rx="12" fill="#eff6ff" stroke="#93c5fd"/>
+  <text x="395" y="144" text-anchor="middle" font-size="15" fill="#0f172a">理解任务类型</text>
+  <text x="395" y="166" text-anchor="middle" font-size="12" fill="#475569">计算 / 搜索 / 翻译 / SQL</text>
+  <path d="M490 150 H555" stroke="#2563eb" stroke-width="3" marker-end="url(#arrA)"/>
+  <rect x="560" y="120" width="180" height="60" rx="12" fill="#ecfdf3" stroke="#86efac"/>
+  <text x="650" y="144" text-anchor="middle" font-size="15" fill="#0f172a">匹配工具能力</text>
+  <text x="650" y="166" text-anchor="middle" font-size="12" fill="#475569">tool description / schema</text>
+  <path d="M745 150 H810" stroke="#2563eb" stroke-width="3" marker-end="url(#arrA)"/>
+  <rect x="815" y="120" width="150" height="60" rx="12" fill="#fef3c7" stroke="#f59e0b"/>
+  <text x="890" y="144" text-anchor="middle" font-size="15" fill="#92400e">选择工具</text>
+  <text x="890" y="166" text-anchor="middle" font-size="12" fill="#475569">tool_name</text>
+  <defs><marker id="arrA" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#2563eb"/></marker></defs>
+</svg>
+<div class="caption">图 2：Function Picking 的三步逻辑。图源：本文自绘，参考 Toolformer 对“何时调用 API、调用哪个 API、传什么参数”的任务拆分。</div>
+</div>
+
+<hr>
+
+<h2 id="sec2">2. Tool-use SFT 数据长什么样？</h2>
+
+<p>在进入 RLVR 之前，通常先做 Tool-use SFT。原因很简单：如果模型还不会基本的工具调用格式，直接做 RL 会非常不稳定。SFT 的作用是让模型先学会“像一个工具 Agent 一样行动”。</p>
+
+<h3>2.1 普通 SFT 数据</h3>
+<pre>{
+  "messages": [
+    {"role": "system", "content": "你是一个有帮助的助手。"},
+    {"role": "user", "content": "法国首都是哪里？"},
+    {"role": "assistant", "content": "法国首都是巴黎。"}
+  ]
+}</pre>
+
+<h3>2.2 Tool-use SFT 数据</h3>
+<p>Tool-use SFT 不只包含 user 和 assistant，还要包含工具定义、工具调用、工具返回结果。</p>
+<pre>{
+  "tools": [
+    {
+      "name": "calculator",
+      "description": "执行数学表达式计算。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "expression": {"type": "string"}
+        },
+        "required": ["expression"]
+      }
+    }
+  ],
+  "messages": [
+    {"role": "system", "content": "你可以在需要时调用工具。"},
+    {"role": "user", "content": "计算 573 * 89。"},
+    {
+      "role": "assistant",
+      "tool_call": {
+        "name": "calculator",
+        "arguments": {"expression": "573 * 89"}
+      }
+    },
+    {"role": "tool", "name": "calculator", "content": "50997"},
+    {"role": "assistant", "content": "573 * 89 = 50997。"}
+  ]
+}</pre>
+
+<h3>2.3 Tool-use SFT 到底训练哪些 token？</h3>
+<p>这一点非常重要。不是所有内容都应该计算 loss。</p>
+
+<table>
+<tr><th>数据部分</th><th>是否作为输入</th><th>是否计算 loss</th><th>原因</th></tr>
+<tr><td>system prompt</td><td>是</td><td>否</td><td>提供规则，不是模型要学习生成的目标。</td></tr>
+<tr><td>user message</td><td>是</td><td>否</td><td>提供任务，不是模型要生成的内容。</td></tr>
+<tr><td>tool definitions</td><td>是</td><td>否</td><td>提供工具 schema，帮助模型决定调用。</td></tr>
+<tr><td>assistant tool_call</td><td>是</td><td>是</td><td>模型需要学习选择工具和生成参数。</td></tr>
+<tr><td>tool observation</td><td>是</td><td>否</td><td>这是环境返回，不是模型生成。</td></tr>
+<tr><td>assistant final answer</td><td>是</td><td>是</td><td>模型需要学习如何基于工具结果回答。</td></tr>
+</table>
+
+<div class="box warn">
+<strong>常见坑：</strong>不要让模型对 tool observation 计算 loss。Observation 是环境返回，不是 assistant 应该生成的内容。如果把工具返回也当成模型输出训练，模型可能学会“伪造工具返回”。
+</div>
+
+<h3>2.4 三类最适合入门的 Tool-use SFT 数据</h3>
+<table>
+<tr><th>数据类型</th><th>工具</th><th>为什么适合入门</th></tr>
+<tr><td>数学计算</td><td>calculator / python</td><td>答案容易验证，参数简单。</td></tr>
+<tr><td>文档问答</td><td>search_doc</td><td>能训练“不知道就查”的习惯。</td></tr>
+<tr><td>代码执行</td><td>run_python / unit_test</td><td>能训练执行反馈、错误修复和测试驱动。</td></tr>
+</table>
+
+<h3>2.5 一条高质量 Tool-use SFT 样本应该包含什么？</h3>
+<pre>1. 明确任务：用户到底要什么
+2. 工具列表：模型可用哪些工具
+3. 工具描述：每个工具适合什么场景
+4. 参数 schema：每个字段类型、含义、是否必填
+5. 正确工具调用：tool_name + arguments
+6. 工具返回：真实 observation
+7. 最终回答：必须基于 observation
+8. 可选解释：为什么调用这个工具</pre>
+
+<div class="box train">
+<strong>实践建议：</strong>刚开始做 Agent SFT，不要准备“复杂多工具长轨迹”。先准备 300 条单工具样本：100 条 calculator、100 条 search_doc、100 条 run_python。让模型先稳定掌握工具调用格式，再逐步加入多工具、多轮、错误恢复。
+</div>
+
+<hr>
+
+<h2 id="sec3">3. Action / Observation / Final Answer 格式</h2>
+
+<p>Agent 训练的核心格式，可以用三个词概括：</p>
+<pre>Action：模型做了什么
+Observation：环境返回了什么
+Final Answer：模型什么时候结束并回答用户</pre>
+
+<h3>3.1 ReAct 风格格式</h3>
+<p>ReAct 的经典思路是把 reasoning trace 和 action 交织起来：</p>
+<pre>Thought: 我需要计算这个乘法。
+Action: calculator({"expression": "573 * 89"})
+Observation: 50997
+Thought: 工具已经返回结果，可以回答。
+Final Answer: 573 * 89 = 50997。</pre>
+
+<p>这个格式的优点是非常直观，适合教学和调试。缺点是如果直接用自然语言解析 Action，工程上容易出错。因此真实系统通常更偏向结构化 tool_call。</p>
+
+<h3>3.2 Function Calling 风格格式</h3>
+<pre>{
+  "role": "assistant",
+  "tool_calls": [
+    {
+      "type": "function",
+      "function": {
+        "name": "calculator",
+        "arguments": "{\"expression\": \"573 * 89\"}"
+      }
+    }
+  ]
+}</pre>
+
+<p>这个格式更适合工程系统，因为它可以直接被程序解析并执行。</p>
+
+<h3>3.3 为什么格式比你想象的重要？</h3>
+<table>
+<tr><th>格式问题</th><th>后果</th></tr>
+<tr><td>Action 不是合法 JSON</td><td>工具执行系统无法解析。</td></tr>
+<tr><td>字段名错误</td><td>schema 校验失败。</td></tr>
+<tr><td>参数类型错误</td><td>工具运行时报错。</td></tr>
+<tr><td>Observation 和 Final Answer 混在一起</td><td>模型可能忽略工具返回。</td></tr>
+<tr><td>没有 stop 标记</td><td>模型可能无限调用工具。</td></tr>
+</table>
+
+<h3>3.4 推荐的教学格式</h3>
+<p>如果你是为了学习 Agent RLVR，我建议先用下面这种简化格式：</p>
+<pre>&lt;tool_call&gt;
+{"name": "calculator", "arguments": {"expression": "573 * 89"}}
+&lt;/tool_call&gt;
+
+&lt;observation&gt;
+50997
+&lt;/observation&gt;
+
+&lt;final_answer&gt;
+573 * 89 = 50997。
+&lt;/final_answer&gt;</pre>
+
+<p>这个格式的好处是：既像自然语言轨迹，又容易用正则或 JSON parser 提取。</p>
+
+<div class="figure">
+<svg viewBox="0 0 1050 390" xmlns="http://www.w3.org/2000/svg">
+  <rect x="40" y="35" width="970" height="310" rx="18" fill="#ffffff" stroke="#d9e2ef"/>
+  <text x="525" y="72" text-anchor="middle" font-size="24" font-weight="700" fill="#0f172a">Agent 轨迹状态机</text>
+  <rect x="80" y="135" width="145" height="60" rx="12" fill="#dbeafe" stroke="#60a5fa"/>
+  <text x="152" y="171" text-anchor="middle" font-size="16" fill="#1e3a8a">User Task</text>
+  <path d="M230 165 H295" stroke="#2563eb" stroke-width="3" marker-end="url(#arrB)"/>
+  <rect x="300" y="135" width="145" height="60" rx="12" fill="#fef3c7" stroke="#f59e0b"/>
+  <text x="372" y="158" text-anchor="middle" font-size="16" fill="#92400e">Action</text>
+  <text x="372" y="180" text-anchor="middle" font-size="12" fill="#475569">tool_call</text>
+  <path d="M450 165 H515" stroke="#2563eb" stroke-width="3" marker-end="url(#arrB)"/>
+  <rect x="520" y="135" width="145" height="60" rx="12" fill="#ecfdf3" stroke="#86efac"/>
+  <text x="592" y="158" text-anchor="middle" font-size="16" fill="#166534">Tool Exec</text>
+  <text x="592" y="180" text-anchor="middle" font-size="12" fill="#475569">environment</text>
+  <path d="M670 165 H735" stroke="#2563eb" stroke-width="3" marker-end="url(#arrB)"/>
+  <rect x="740" y="135" width="145" height="60" rx="12" fill="#ede9fe" stroke="#a78bfa"/>
+  <text x="812" y="158" text-anchor="middle" font-size="16" fill="#5b21b6">Observation</text>
+  <text x="812" y="180" text-anchor="middle" font-size="12" fill="#475569">tool result</text>
+  <path d="M812 200 V245 H372 V203" fill="none" stroke="#64748b" stroke-width="2.5" stroke-dasharray="8 6" marker-end="url(#arrC)"/>
+  <path d="M887 165 H940 V270 H770" fill="none" stroke="#16a34a" stroke-width="3" marker-end="url(#arrD)"/>
+  <rect x="595" y="245" width="175" height="60" rx="12" fill="#dcfce7" stroke="#4ade80"/>
+  <text x="682" y="268" text-anchor="middle" font-size="16" fill="#166534">Final Answer</text>
+  <text x="682" y="290" text-anchor="middle" font-size="12" fill="#475569">stop</text>
+  <defs>
+    <marker id="arrB" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#2563eb"/></marker>
+    <marker id="arrC" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#64748b"/></marker>
+    <marker id="arrD" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#16a34a"/></marker>
+  </defs>
+</svg>
+<div class="caption">图 3：Action / Observation / Final Answer 状态机。图源：本文自绘，参考 ReAct 的交互格式和 verl Agent Loop 的多轮 rollout 思路。</div>
+</div>
+
+<hr>
+
+<h2 id="sec4">4. 工具调用 reward 怎么设计？</h2>
+
+<p>到了 Agent RLVR，最核心的问题是：如何把一条工具调用轨迹打成 reward？</p>
+
+<div class="box note">
+<strong>核心原则：</strong>不要只奖励最终答案。Agent 的错误往往发生在中间过程：工具选错、参数错、执行失败、忽略 Observation、调用太多次。只看最终答案会让训练信号太稀疏，也很难定位模型到底错在哪里。
+</div>
+
+<h3>4.1 一个完整的 Agent reward 可以拆成 7 个部分</h3>
+<pre>R_total =
+  R_tool_choice
++ R_json_schema
++ R_arg_complete
++ R_execution
++ R_observation_use
++ R_final_success
+- R_trajectory_cost
+- R_safety_violation</pre>
+
+<table>
+<tr><th>奖励项</th><th>中文</th><th>判断什么</th><th>例子</th></tr>
+<tr><td>R_tool_choice</td><td>工具选择奖励</td><td>是否选对工具。</td><td>数学题调用 calculator。</td></tr>
+<tr><td>R_json_schema</td><td>JSON 格式奖励</td><td>输出是否可解析、符合 schema。</td><td>arguments 是合法 JSON。</td></tr>
+<tr><td>R_arg_complete</td><td>参数完整性奖励</td><td>必填字段是否齐全。</td><td>search_doc 有 query 字段。</td></tr>
+<tr><td>R_execution</td><td>执行成功奖励</td><td>工具是否真正运行成功。</td><td>代码测试通过、SQL 查询成功。</td></tr>
+<tr><td>R_observation_use</td><td>Observation 使用奖励</td><td>最终回答是否利用工具返回。</td><td>答案包含搜索到的事实。</td></tr>
+<tr><td>R_final_success</td><td>最终任务奖励</td><td>用户任务是否完成。</td><td>最终状态符合目标。</td></tr>
+<tr><td>R_trajectory_cost</td><td>轨迹成本惩罚</td><td>是否调用太多工具、太多 token。</td><td>每次工具调用扣 0.05。</td></tr>
+<tr><td>R_safety_violation</td><td>安全惩罚</td><td>是否越权、执行危险操作。</td><td>试图删除文件、泄露密钥。</td></tr>
+</table>
+
+<h3>4.2 为什么 reward 要拆细？</h3>
+<p>假设一个 Agent 最终任务失败，有很多可能原因：</p>
+<pre>失败结果：用户没有得到正确答案
+
+可能原因 A：模型没有调用工具
+可能原因 B：模型调用了错工具
+可能原因 C：工具对了，但参数错了
+可能原因 D：参数对了，但工具执行失败
+可能原因 E：工具返回正确，但模型没读
+可能原因 F：模型回答对了，但过程调用 20 次工具，成本太高</pre>
+
+<p>如果只给一个 final_reward = 0，模型不知道自己错在什么地方。拆成细粒度 reward 后，模型至少能得到更明确的优化方向。</p>
+
+<div class="box warn">
+<strong>不要过度迷信最终答案奖励：</strong>在 Agent 任务里，最终答案正确不代表轨迹健康。模型可能通过错误工具碰巧得到答案，也可能用极高成本完成任务。Agent reward 必须同时关心“做成了没有”和“怎么做成的”。
+</div>
+
+<h3>4.3 推荐的入门 reward 权重</h3>
+<table>
+<tr><th>奖励项</th><th>建议分值</th><th>说明</th></tr>
+<tr><td>工具选择正确</td><td>+0.2</td><td>鼓励先选对工具。</td></tr>
+<tr><td>JSON 合法</td><td>+0.15</td><td>格式稳定非常重要。</td></tr>
+<tr><td>参数完整</td><td>+0.15</td><td>保证工具能运行。</td></tr>
+<tr><td>执行成功</td><td>+0.2</td><td>工具调用必须真实有效。</td></tr>
+<tr><td>利用 Observation</td><td>+0.15</td><td>防止调用工具后仍然胡编。</td></tr>
+<tr><td>最终答案正确</td><td>+0.3</td><td>任务完成仍然是最重要目标。</td></tr>
+<tr><td>每多调用一次工具</td><td>-0.03 到 -0.1</td><td>防止无意义循环。</td></tr>
+<tr><td>危险/越权调用</td><td>-1.0 或直接终止</td><td>安全边界必须强约束。</td></tr>
+</table>
+
+<p>注意：这些权重不是标准答案，只是入门教学用。真实任务中要根据工具成本、任务难度、错误代价调权重。</p>
+
+<hr>
+
+<h2 id="sec5">5. JSON schema reward</h2>
+
+<p>JSON schema reward 是 Agent RLVR 里最容易做、最应该先做的 reward。它判断模型输出的工具调用是否符合结构化格式。</p>
+
+<h3>5.1 为什么 JSON schema reward 很重要？</h3>
+<p>工具调用不是普通文本。普通文本写错一个标点，人还能看懂；JSON 工具调用错一个括号，程序可能直接无法执行。</p>
+
+<table>
+<tr><th>输出</th><th>人类能否理解</th><th>系统能否执行</th></tr>
+<tr><td><code>calculator({expression: 573*89})</code></td><td>能</td><td>不一定，非标准 JSON。</td></tr>
+<tr><td><code>{"name": "calculator", "arguments": {"expression": "573 * 89"}}</code></td><td>能</td><td>能。</td></tr>
+<tr><td><code>{"tool": "calculator", "expr": "573 * 89"}</code></td><td>能猜</td><td>可能失败，因为字段名不符合 schema。</td></tr>
+</table>
+
+<h3>5.2 JSON schema reward 的检查层次</h3>
+<pre>Level 1：能否提取 tool_call 块
+Level 2：是否为合法 JSON
+Level 3：是否包含 name / arguments
+Level 4：name 是否在工具列表中
+Level 5：arguments 是否符合该工具 schema
+Level 6：是否没有多余危险字段</pre>
+
+<h3>5.3 示例代码</h3>
+<pre><code>import json
+
+TOOLS = {
+    "calculator": {
+        "required": {"expression": str},
+        "allowed_keys": {"expression"},
+    }
+}
+
+def json_schema_reward(text: str) -> float:
+    try:
+        obj = json.loads(text)
+    except Exception:
+        return 0.0
+
+    if not isinstance(obj, dict):
+        return 0.0
+    if "name" not in obj or "arguments" not in obj:
+        return 0.1
+
+    name = obj["name"]
+    args = obj["arguments"]
+    if name not in TOOLS:
+        return 0.2
+    if not isinstance(args, dict):
+        return 0.3
+
+    schema = TOOLS[name]
+    for key, typ in schema["required"].items():
+        if key not in args:
+            return 0.45
+        if not isinstance(args[key], typ):
+            return 0.55
+
+    if set(args.keys()) - schema["allowed_keys"]:
+        return 0.75
+
+    return 1.0</code></pre>
+
+<div class="box train">
+<strong>实践建议：</strong>JSON schema reward 是最适合放在 Agent RLVR 第一阶段的奖励。它不会让模型立刻变聪明，但会让模型变“可执行”。Agent 一旦不可执行，后面的 reward 都没有意义。
+</div>
+
+<hr>
+
+<h2 id="sec6">6. 参数完整性 reward</h2>
+
+<p>参数完整性 reward 判断的是：模型选了正确工具以后，参数是否足够让工具运行。</p>
+
+<h3>6.1 例子：search_doc</h3>
+<pre>工具定义：
+search_doc(query: string, top_k: int = 5)
+
+用户任务：
+总结文档中 DPO 和 PPO 的区别。
+
+正确调用：
+{"name": "search_doc", "arguments": {"query": "DPO PPO 区别", "top_k": 5}}
+
+错误调用 1：
+{"name": "search_doc", "arguments": {}}
+
+错误调用 2：
+{"name": "search_doc", "arguments": {"keyword": "DPO PPO 区别"}}
+
+错误调用 3：
+{"name": "search_doc", "arguments": {"query": 123}}</pre>
+
+<h3>6.2 参数完整性不等于 JSON 合法</h3>
+<p>下面这个输出是合法 JSON，但参数不完整：</p>
+<pre>{"name": "search_doc", "arguments": {}}</pre>
+<p>因此 JSON schema reward 和参数完整性 reward 要分开设计。</p>
+
+<table>
+<tr><th>检查项</th><th>例子</th><th>reward</th></tr>
+<tr><td>必填字段存在</td><td>query 存在。</td><td>+0.3</td></tr>
+<tr><td>字段类型正确</td><td>query 是 string。</td><td>+0.3</td></tr>
+<tr><td>字段语义相关</td><td>query 和用户问题相关。</td><td>+0.3</td></tr>
+<tr><td>可选参数合理</td><td>top_k 不过大。</td><td>+0.1</td></tr>
+</table>
+
+<h3>6.3 参数语义相关性怎么判断？</h3>
+<p>字段是否存在、类型是否正确很容易判断；语义相关性更难。可以用三种方式：</p>
+
+<table>
+<tr><th>方式</th><th>做法</th><th>适合场景</th></tr>
+<tr><td>关键词规则</td><td>query 中必须包含任务关键词。</td><td>文档问答、小数据集。</td></tr>
+<tr><td>embedding 相似度</td><td>计算用户任务与 query 的相似度。</td><td>RAG、搜索任务。</td></tr>
+<tr><td>LLM judge</td><td>让评审模型判断参数是否相关。</td><td>复杂工具、多字段参数。</td></tr>
+</table>
+
+<div class="box warn">
+<strong>注意：</strong>不要只奖励“参数非空”。模型可能学会填一堆无意义参数。参数 reward 必须同时看完整性、类型、语义相关性和成本。
+</div>
+
+<hr>
+
+<h2 id="sec7">7. 执行成功 reward</h2>
+
+<p>执行成功 reward 判断的是：工具调用是否真的跑通。</p>
+
+<h3>7.1 执行成功比格式正确更进一步</h3>
+<table>
+<tr><th>阶段</th><th>判断问题</th><th>例子</th></tr>
+<tr><td>格式正确</td><td>JSON 是否能解析。</td><td>有 name 和 arguments。</td></tr>
+<tr><td>参数正确</td><td>arguments 是否符合 schema。</td><td>expression 是字符串。</td></tr>
+<tr><td>执行成功</td><td>工具是否返回成功。</td><td>calculator 返回数字；Python 没报错；SQL 有结果。</td></tr>
+</table>
+
+<h3>7.2 不同工具的执行成功信号</h3>
+<table>
+<tr><th>工具</th><th>执行成功信号</th><th>失败例子</th></tr>
+<tr><td>calculator</td><td>返回可解析数值。</td><td>表达式非法、除零。</td></tr>
+<tr><td>search_doc</td><td>返回非空检索结果。</td><td>query 太泛、无结果。</td></tr>
+<tr><td>run_python</td><td>代码运行无异常。</td><td>SyntaxError、Timeout。</td></tr>
+<tr><td>unit_test</td><td>测试通过率。</td><td>测试失败。</td></tr>
+<tr><td>sql_query</td><td>SQL 执行成功且结果合理。</td><td>表名错、字段错、权限错。</td></tr>
+<tr><td>web_browser</td><td>页面状态达到目标。</td><td>点击错按钮、登录失败。</td></tr>
+</table>
+
+<h3>7.3 示例：Python 执行 reward</h3>
+<pre><code>import subprocess
+import tempfile
+from pathlib import Path
+
+
+def python_execution_reward(code: str, timeout: int = 3) -> float:
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / "main.py"
+        path.write_text(code, encoding="utf-8")
+        try:
+            result = subprocess.run(
+                ["python", str(path)],
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+            )
+        except subprocess.TimeoutExpired:
+            return -0.2
+
+        if result.returncode != 0:
+            return 0.0
+        return 1.0</code></pre>
+
+<div class="box train">
+<strong>实践启发：</strong>代码 Agent、SQL Agent、网页 Agent 都特别适合执行成功 reward。因为它们不一定有唯一标准答案，但可以通过测试、数据库状态或页面状态判断是否成功。
+</div>
+
+<hr>
+
+<h2 id="sec8">8. Observation 使用 reward</h2>
+
+<p>很多 Agent 会出现一个很典型的问题：工具调用了，Observation 也返回了，但最终回答没有使用 Observation，而是继续凭空编。</p>
+
+<h3>8.1 例子：调用工具但忽略结果</h3>
+<pre>User: 查找文档中 DPO 的定义。
+
+Assistant tool_call:
+{"name": "search_doc", "arguments": {"query": "DPO definition"}}
+
+Observation:
+DPO，全称 Direct Preference Optimization，是一种直接利用偏好数据优化模型的方法。
+
+Bad Final Answer:
+DPO 是一种强化学习算法，主要依靠环境交互进行探索。
+
+Good Final Answer:
+DPO 是 Direct Preference Optimization，中文可译为直接偏好优化。它直接利用 chosen / rejected 偏好对优化模型，而不需要显式训练 reward model。</pre>
+
+<h3>8.2 Observation 使用 reward 怎么设计？</h3>
+<table>
+<tr><th>方法</th><th>判断方式</th><th>优点</th><th>缺点</th></tr>
+<tr><td>关键词重叠</td><td>Final Answer 是否包含 Observation 关键词。</td><td>简单。</td><td>容易被表面匹配骗过。</td></tr>
+<tr><td>引用检查</td><td>要求回答带来源编号或片段引用。</td><td>适合 RAG。</td><td>需要结构化检索结果。</td></tr>
+<tr><td>事实一致性 judge</td><td>判断答案是否被 Observation 支持。</td><td>更准确。</td><td>成本高，也可能有 judge 偏差。</td></tr>
+<tr><td>答案提取匹配</td><td>从 Observation 和答案中提取关键字段比较。</td><td>适合表格、数据库、票务任务。</td><td>需要任务定制。</td></tr>
+</table>
+
+<h3>8.3 RAG Agent 的 Observation 使用规则</h3>
+<pre>如果任务是文档问答：
+1. 必须调用 search_doc 或 retrieve
+2. Final Answer 必须基于检索片段
+3. 不能出现 Observation 中没有的信息
+4. 最好带 chunk id / page id / source title
+5. 如果检索为空，应该说明没有找到，而不是编造</pre>
+
+<div class="box warn">
+<strong>重要风险：</strong>Observation 使用 reward 不要只看“有没有复制工具返回”。模型可能学会机械复制。更好的 reward 是判断：最终回答是否真正被 Observation 支持，是否删除了无关信息，是否完成了用户任务。
+</div>
+
+<hr>
+
+<h2 id="sec9">9. 轨迹长度惩罚</h2>
+
+<p>Agent 的一个常见坏习惯是：为了提高成功率，疯狂调用工具。最终答案可能对，但成本极高。</p>
+
+<h3>9.1 为什么需要轨迹长度惩罚？</h3>
+<table>
+<tr><th>没有长度惩罚时</th><th>可能学到的坏行为</th></tr>
+<tr><td>只奖励最终成功</td><td>模型反复搜索，直到碰巧找到答案。</td></tr>
+<tr><td>只奖励执行成功</td><td>模型调用很多低风险工具刷成功。</td></tr>
+<tr><td>只奖励 Observation 使用</td><td>模型检索大量内容后拼接答案。</td></tr>
+<tr><td>不惩罚 token 成本</td><td>模型生成冗长 Thought 和无意义中间步骤。</td></tr>
+</table>
+
+<h3>9.2 常见惩罚方式</h3>
+<pre>R_cost = - alpha * num_tool_calls
+R_cost = - beta * total_tokens
+R_cost = - gamma * num_failed_calls
+R_cost = - delta * trajectory_seconds</pre>
+
+<table>
+<tr><th>惩罚项</th><th>适合控制什么</th></tr>
+<tr><td>num_tool_calls</td><td>工具调用次数。</td></tr>
+<tr><td>total_tokens</td><td>思考和回答长度。</td></tr>
+<tr><td>num_failed_calls</td><td>错误试探。</td></tr>
+<tr><td>trajectory_seconds</td><td>真实系统延迟。</td></tr>
+<tr><td>tool_cost</td><td>昂贵 API 或付费工具。</td></tr>
+</table>
+
+<h3>9.3 不要过度惩罚长度</h3>
+<p>轨迹长度惩罚也有副作用。如果惩罚太强，模型可能学会不调用工具，直接猜答案。</p>
+
+<div class="box note">
+<strong>平衡原则：</strong>先奖励成功，再轻微惩罚成本。不要让成本惩罚压过任务完成奖励。
+</div>
+
+<pre>推荐入门形式：
+R_total = R_success + R_format + R_execution - 0.05 * max(0, num_tool_calls - expected_calls)</pre>
+
+<hr>
+
+<h2 id="sec10">10. Rejection Sampling 筛选 Agent 轨迹</h2>
+
+<p>Rejection Sampling 在 Agent 后训练里非常有用。它的作用是：让模型或强模型对同一个任务生成多条轨迹，然后筛选成功、短、稳定、安全的轨迹作为训练数据。</p>
+
+<h3>10.1 Agent 版拒绝采样流程</h3>
+<pre>同一个任务 prompt
+  ↓
+采样 N 条 Agent trajectories
+  ↓
+执行每条轨迹中的工具调用
+  ↓
+记录 tool choice / arguments / observation / final answer
+  ↓
+用 reward function 打分
+  ↓
+保留高分轨迹作为 SFT chosen
+  ↓
+低分轨迹可作为 DPO rejected
+  ↓
+进入下一轮训练</pre>
+
+<div class="figure">
+<svg viewBox="0 0 1050 420" xmlns="http://www.w3.org/2000/svg">
+  <rect x="35" y="30" width="980" height="340" rx="18" fill="#ffffff" stroke="#d9e2ef"/>
+  <text x="525" y="70" text-anchor="middle" font-size="24" font-weight="700" fill="#0f172a">Agent Rejection Sampling</text>
+  <rect x="90" y="125" width="130" height="58" rx="12" fill="#dbeafe" stroke="#60a5fa"/>
+  <text x="155" y="160" text-anchor="middle" font-size="15" fill="#1e3a8a">Task Prompt</text>
+  <path d="M225 154 H285" stroke="#2563eb" stroke-width="3" marker-end="url(#arrE)"/>
+  <rect x="290" y="100" width="170" height="110" rx="12" fill="#eff6ff" stroke="#93c5fd"/>
+  <text x="375" y="130" text-anchor="middle" font-size="15" font-weight="700" fill="#0f172a">Sample N trajectories</text>
+  <text x="375" y="155" text-anchor="middle" font-size="12" fill="#475569">traj A / B / C / D</text>
+  <text x="375" y="177" text-anchor="middle" font-size="12" fill="#475569">不同 temperature</text>
+  <path d="M465 154 H525" stroke="#2563eb" stroke-width="3" marker-end="url(#arrE)"/>
+  <rect x="530" y="100" width="170" height="110" rx="12" fill="#ecfdf3" stroke="#86efac"/>
+  <text x="615" y="130" text-anchor="middle" font-size="15" font-weight="700" fill="#0f172a">Execute + Score</text>
+  <text x="615" y="155" text-anchor="middle" font-size="12" fill="#475569">tool / arg / obs</text>
+  <text x="615" y="177" text-anchor="middle" font-size="12" fill="#475569">reward function</text>
+  <path d="M705 154 H765" stroke="#2563eb" stroke-width="3" marker-end="url(#arrE)"/>
+  <rect x="770" y="100" width="180" height="110" rx="12" fill="#fef3c7" stroke="#f59e0b"/>
+  <text x="860" y="130" text-anchor="middle" font-size="15" font-weight="700" fill="#0f172a">Select / Reject</text>
+  <text x="860" y="155" text-anchor="middle" font-size="12" fill="#475569">chosen high-score</text>
+  <text x="860" y="177" text-anchor="middle" font-size="12" fill="#475569">rejected low-score</text>
+  <path d="M860 215 V270 H290" fill="none" stroke="#64748b" stroke-width="2.5" stroke-dasharray="8 6" marker-end="url(#arrF)"/>
+  <text x="575" y="292" text-anchor="middle" font-size="14" fill="#475569">高分轨迹继续做 SFT / 低分轨迹做 DPO / 多条轨迹做 GRPO</text>
+  <defs>
+    <marker id="arrE" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#2563eb"/></marker>
+    <marker id="arrF" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#64748b"/></marker>
+  </defs>
+</svg>
+<div class="caption">图 4：Agent Rejection Sampling 流程。图源：本文自绘，参考 Rejection Sampling、Toolformer 的自监督筛选思路，以及 Agent RL 中通过执行反馈筛选轨迹的做法。</div>
+</div>
+
+<h3>10.2 什么样的轨迹应该保留？</h3>
+<table>
+<tr><th>轨迹类型</th><th>是否保留</th><th>原因</th></tr>
+<tr><td>任务成功、工具正确、参数正确、步骤短</td><td>保留为 chosen / SFT。</td><td>高质量示范。</td></tr>
+<tr><td>任务成功但步骤过长</td><td>可保留，也可作为次优 rejected。</td><td>适合训练效率偏好。</td></tr>
+<tr><td>工具正确但参数错</td><td>作为 rejected。</td><td>训练参数偏好。</td></tr>
+<tr><td>工具选错</td><td>作为 rejected。</td><td>训练 Function Picking。</td></tr>
+<tr><td>JSON 解析失败</td><td>丢弃或作为格式 rejected。</td><td>取决于 DPO 是否需要负样本。</td></tr>
+<tr><td>出现安全越权</td><td>丢弃并加入安全负样本。</td><td>安全优先。</td></tr>
+</table>
+
+<h3>10.3 拒绝采样后的数据可以怎么用？</h3>
+<pre>高分轨迹：
+  → 加入 SFT 数据
+
+一高一低：
+  → 构造成 DPO pair
+
+同一任务多条轨迹 + reward：
+  → 用 GRPO 做组内相对优化</pre>
+
+<div class="box train">
+<strong>实践建议：</strong>Agent 数据最贵的不是 prompt，而是可执行轨迹。你可以先用强模型生成多条轨迹，再用规则 reward 筛选。这样比人工从零写轨迹更便宜，也比直接拿所有轨迹训练更安全。
+</div>
+
+<hr>
+
+<h2 id="sec11">11. DPO 比较工具调用轨迹</h2>
+
+<p>DPO 在 Agent 后训练里非常自然。普通 DPO 比较的是两个回答；Agent DPO 比较的是两条轨迹。</p>
+
+<h3>11.1 普通 DPO</h3>
+<pre>prompt + chosen_response + rejected_response</pre>
+
+<h3>11.2 Agent DPO</h3>
+<pre>task + chosen_trajectory + rejected_trajectory</pre>
+
+<h3>11.3 三类最容易构造的 Agent DPO 数据</h3>
+
+<h4>类型一：正确工具 vs 错误工具</h4>
+<pre>Task: 计算 573 * 89。
+
+Chosen:
+{"name": "calculator", "arguments": {"expression": "573 * 89"}}
+Observation: 50997
+Final Answer: 573 * 89 = 50997。
+
+Rejected:
+{"name": "search_web", "arguments": {"query": "573 * 89"}}
+Observation: 搜索结果若干
+Final Answer: 573 * 89 大约是 51000。</pre>
+
+<h4>类型二：合法参数 vs 非法参数</h4>
+<pre>Task: 搜索文档中关于 RLHF 的定义。
+
+Chosen:
+{"name": "search_doc", "arguments": {"query": "RLHF definition"}}
+
+Rejected:
+{"name": "search_doc", "arguments": {"keyword": "RLHF definition"}}</pre>
+
+<h4>类型三：短成功轨迹 vs 长低效轨迹</h4>
+<pre>Task: 总结文档中 DPO 和 PPO 的区别。
+
+Chosen:
+1. search_doc({"query": "DPO PPO 区别"})
+2. Final Answer
+
+Rejected:
+1. search_doc({"query": "DPO"})
+2. search_doc({"query": "PPO"})
+3. search_doc({"query": "RLHF"})
+4. search_web({"query": "OpenAI PPO"})
+5. Final Answer</pre>
+
+<h3>11.4 Agent DPO 的优点和局限</h3>
+<table>
+<tr><th>优点</th><th>局限</th></tr>
+<tr><td>比在线 RL 稳定。</td><td>不主动探索新策略。</td></tr>
+<tr><td>可以利用 rejected 负轨迹。</td><td>依赖 pair 数据质量。</td></tr>
+<tr><td>适合纠正工具选择和参数错误。</td><td>复杂多轮任务构造 pair 成本高。</td></tr>
+<tr><td>工程成本低于 PPO/GRPO。</td><td>无法直接利用环境实时反馈。</td></tr>
+</table>
+
+<div class="box note">
+<strong>阶段理解：</strong>Agent DPO 不是最终形态，但非常适合作为 SFT 后的第二阶段。它可以把“坏轨迹”变成有用训练信号，尤其适合训练工具选择、参数合法性、轨迹效率。
+</div>
+
+<hr>
+
+<h2 id="sec12">12. GRPO 优化多条 Agent 轨迹</h2>
+
+<p>GRPO 的核心直觉是：对同一个 prompt 生成一组回答，用组内平均 reward 做相对比较。迁移到 Agent 后，就是对同一个任务生成多条工具调用轨迹，然后比较哪条更好。</p>
+
+<h3>12.1 Reasoning GRPO</h3>
+<pre>同一道数学题
+  ↓
+生成 8 个解答
+  ↓
+每个解答打 reward
+  ↓
+比组内平均分高的，advantage 为正
+  ↓
+比组内平均分低的，advantage 为负</pre>
+
+<h3>12.2 Agent GRPO</h3>
+<pre>同一个 Agent 任务
+  ↓
+生成 8 条工具调用轨迹
+  ↓
+每条轨迹执行工具并打 reward
+  ↓
+比较工具选择、参数、执行、最终任务
+  ↓
+高分轨迹被强化
+  ↓
+低分轨迹被压低</pre>
+
+<h3>12.3 Agent 轨迹的 reward 示例</h3>
+<table>
+<tr><th>轨迹</th><th>工具选择</th><th>JSON</th><th>执行</th><th>最终答案</th><th>成本</th><th>总分</th></tr>
+<tr><td>A</td><td>正确</td><td>合法</td><td>成功</td><td>正确</td><td>1 次调用</td><td>0.95</td></tr>
+<tr><td>B</td><td>正确</td><td>合法</td><td>成功</td><td>错误</td><td>1 次调用</td><td>0.55</td></tr>
+<tr><td>C</td><td>错误</td><td>合法</td><td>成功</td><td>不准确</td><td>2 次调用</td><td>0.25</td></tr>
+<tr><td>D</td><td>正确</td><td>非法</td><td>失败</td><td>无</td><td>0 次成功</td><td>0.10</td></tr>
+</table>
+
+<p>如果组内平均分是 0.46，那么 A 和 B 的 advantage 为正，C 和 D 为负。模型会更倾向学习 A、B 中的行为，减少 C、D 的行为。更精细时，A 的优势会明显大于 B。</p>
+
+<h3>12.4 Agent GRPO 的关键难点</h3>
+<table>
+<tr><th>难点</th><th>解释</th></tr>
+<tr><td>多轮 rollout 慢</td><td>每条轨迹可能要多次调用工具，训练吞吐下降。</td></tr>
+<tr><td>reward 延迟</td><td>最终任务成功可能要到最后才知道。</td></tr>
+<tr><td>credit assignment</td><td>一条轨迹失败，究竟是哪一步导致失败？</td></tr>
+<tr><td>环境不稳定</td><td>搜索、网页、API 可能返回变化结果。</td></tr>
+<tr><td>安全边界</td><td>RL 可能鼓励模型钻工具漏洞。</td></tr>
+</table>
+
+<h3>12.5 用 TRL / verl 怎么理解 Agent GRPO？</h3>
+<table>
+<tr><th>框架概念</th><th>Agent 中的对应</th></tr>
+<tr><td>prompt</td><td>用户任务 + 工具列表 + 系统规则。</td></tr>
+<tr><td>completion</td><td>一条完整工具调用轨迹。</td></tr>
+<tr><td>reward_func</td><td>解析轨迹、执行工具、计算多项 reward。</td></tr>
+<tr><td>num_generations</td><td>同一个任务采样多少条轨迹。</td></tr>
+<tr><td>advantage</td><td>该轨迹相对同组其他轨迹好多少。</td></tr>
+<tr><td>KL</td><td>防止模型偏离参考模型太远。</td></tr>
+</table>
+
+<div class="box deep">
+<strong>核心理解：</strong>Reasoning GRPO 优化的是“哪条解题路径更好”；Agent GRPO 优化的是“哪条工具使用轨迹更好”。这就是从 DeepSeek-R1 迁移到 Tool-use Agent 的关键。
+</div>
+
+<hr>
+
+<h2 id="sec13">13. Mini Tool-use Agent 小实验</h2>
+
+<p>现在做一个最小实验，不依赖真实大模型训练，先用 Python 模拟 Agent RLVR 的核心链路：</p>
+<pre>任务 → 生成候选工具调用 → 执行工具 → 计算 reward → 选择高分轨迹</pre>
+
+<h3>13.1 定义工具</h3>
+<pre><code>import json
+import re
+
+
+def calculator(expression: str) -> str:
+    # 教学示例：真实系统不要直接 eval 用户输入
+    if not re.fullmatch(r"[0-9+\-*/ ().]+", expression):
+        raise ValueError("unsafe expression")
+    return str(eval(expression))
+
+TOOLS = {
+    "calculator": calculator,
+}</code></pre>
+
+<h3>13.2 定义候选轨迹</h3>
+<pre><code>candidates = [
+    {
+        "name": "calculator",
+        "arguments": {"expression": "573 * 89"},
+        "final_answer": "573 * 89 = 50997。"
+    },
+    {
+        "name": "search_web",
+        "arguments": {"query": "573 * 89"},
+        "final_answer": "大约是 51000。"
+    },
+    {
+        "name": "calculator",
+        "arguments": {"expr": "573 * 89"},
+        "final_answer": "50997。"
+    },
+    {
+        "name": "calculator",
+        "arguments": {"expression": "573 **"},
+        "final_answer": "无法计算。"
+    },
+]</code></pre>
+
+<h3>13.3 定义 reward function</h3>
+<pre><code>def score_trajectory(traj):
+    score = 0.0
+
+    # 1. 工具选择
+    if traj.get("name") == "calculator":
+        score += 0.2
+    else:
+        return score
+
+    # 2. 参数完整性
+    args = traj.get("arguments", {})
+    if isinstance(args, dict) and "expression" in args:
+        score += 0.2
+    else:
+        return score
+
+    # 3. 执行成功
+    try:
+        obs = calculator(args["expression"])
+        score += 0.25
+    except Exception:
+        return score
+
+    # 4. Observation 使用
+    if obs in traj.get("final_answer", ""):
+        score += 0.2
+
+    # 5. 最终答案正确
+    if obs == "50997":
+        score += 0.25
+
+    return min(score, 1.0)</code></pre>
+
+<h3>13.4 筛选高分轨迹</h3>
+<pre><code>scores = [(score_trajectory(t), t) for t in candidates]
+scores = sorted(scores, key=lambda x: x[0], reverse=True)
+
+for score, traj in scores:
+    print(score, traj)
+
+best = scores[0][1]
+print("chosen trajectory:", best)</code></pre>
+
+<h3>13.5 这个 toy experiment 对应真实训练中的什么？</h3>
+<table>
+<tr><th>Toy 代码</th><th>真实 Agent RLVR</th></tr>
+<tr><td>candidates</td><td>同一 prompt 下模型采样出的多条 trajectories。</td></tr>
+<tr><td>calculator</td><td>真实工具、API、数据库、浏览器、代码环境。</td></tr>
+<tr><td>score_trajectory</td><td>reward function / reward manager。</td></tr>
+<tr><td>scores 排序</td><td>Rejection Sampling 或 GRPO 组内 reward。</td></tr>
+<tr><td>best</td><td>SFT chosen 轨迹或 DPO chosen。</td></tr>
+</table>
+
+<div class="box practice">
+<strong>你下一步可以扩展：</strong>
+<ol>
+<li>把 calculator 扩展成 search_doc。</li>
+<li>让每个任务采样 4 条候选轨迹。</li>
+<li>把最高分作为 chosen，最低分作为 rejected。</li>
+<li>构造一个 Agent DPO 数据集。</li>
+<li>再进入 TRL / verl 做真正训练。</li>
+</ol>
+</div>
+
+<hr>
+
+<h2 id="sec14">14. 总结：从 Function Picking 到 Agent RLVR</h2>
+
+<p>这篇的主线可以压缩成一句话：</p>
+
+<div class="box note">
+<strong>Agent RLVR 的本质：</strong>把 Agent 的工具使用过程拆成可验证环节，并把这些可验证环节变成 reward，让模型从“会回答”进化到“会行动”。
+</div>
+
+<h3>14.1 完整路线</h3>
+<pre>Tool-use SFT
+  ↓
+让模型学会工具调用格式
+
+Function Picking
+  ↓
+让模型知道该选哪个工具
+
+JSON / 参数 reward
+  ↓
+让工具调用变得可解析、可执行
+
+Execution reward
+  ↓
+让模型关注工具是否真的成功
+
+Observation reward
+  ↓
+让模型学会读取和利用工具返回
+
+Trajectory penalty
+  ↓
+控制成本、防止循环调用
+
+Rejection Sampling
+  ↓
+筛选高质量 Agent 轨迹
+
+Agent DPO
+  ↓
+比较好轨迹和坏轨迹
+
+Agent GRPO / RLVR
+  ↓
+同任务多轨迹采样，根据组内 reward 优化</pre>
+
+<h3>14.2 和 DeepSeek-R1 的迁移关系</h3>
+<table>
+<tr><th>DeepSeek-R1 / Reasoning RL</th><th>Agent RLVR</th></tr>
+<tr><td>题目 prompt。</td><td>用户任务 + 工具列表。</td></tr>
+<tr><td>模型生成多条 reasoning answer。</td><td>模型生成多条 tool-use trajectories。</td></tr>
+<tr><td>检查最终答案是否正确。</td><td>检查工具、参数、执行、Observation、最终状态。</td></tr>
+<tr><td>组内比较 reasoning paths。</td><td>组内比较 Agent trajectories。</td></tr>
+<tr><td>优化推理能力。</td><td>优化行动能力。</td></tr>
+</table>
+
+<h3>14.3 这篇之后应该怎么学？</h3>
+<table>
+<tr><th>下一步</th><th>学习内容</th><th>目的</th></tr>
+<tr><td>读 ReAct</td><td>Reasoning + Acting 交替格式。</td><td>理解 Agent 轨迹结构。</td></tr>
+<tr><td>读 Toolformer</td><td>模型如何自监督学习调用 API。</td><td>理解工具调用数据生成。</td></tr>
+<tr><td>读 ToolRL</td><td>工具学习中的 reward 设计。</td><td>理解为什么细粒度 reward 重要。</td></tr>
+<tr><td>看 OpenAI Function Calling</td><td>JSON schema / tool schema。</td><td>理解真实工具调用接口。</td></tr>
+<tr><td>看 τ-bench</td><td>用户-工具-Agent 交互评测。</td><td>理解真实客服/业务 Agent 的难点。</td></tr>
+<tr><td>看 verl Agent Loop</td><td>多轮 rollout 和 agentic RL。</td><td>进入工程实现。</td></tr>
+</table>
+
+<div class="box train">
+<strong>最后一句话：</strong>Agent 后训练不是“给模型加工具”这么简单。真正的关键是：工具调用轨迹能不能被记录、执行、验证、打分、筛选、比较和优化。只要这条链路打通，你就从普通后训练进入了 Agentic RL 的核心区域。
+</div>
+
+
+
+<h2 id="sec15">15. 工程落地：从数据到训练的完整管线</h2>
+
+<p>如果你后面真的要把 Agent RLVR 跑起来，不要直接从 GRPO 开始。更稳的路线是先做数据闭环，再做训练闭环。</p>
+
+<h3>15.1 第一阶段：离线数据闭环</h3>
+<pre>定义工具 schema
+  ↓
+构造任务 prompts
+  ↓
+用强模型或当前模型生成 tool-use trajectories
+  ↓
+真实执行工具
+  ↓
+记录 observation
+  ↓
+用 reward function 打分
+  ↓
+筛选 chosen / rejected
+  ↓
+得到 SFT / DPO 数据</pre>
+
+<table>
+<tr><th>步骤</th><th>你要产出什么</th><th>最低要求</th></tr>
+<tr><td>定义工具</td><td>tool name、description、parameters。</td><td>每个字段有类型、解释、必填说明。</td></tr>
+<tr><td>构造任务</td><td>user prompts。</td><td>每个 prompt 能判断是否完成。</td></tr>
+<tr><td>生成轨迹</td><td>assistant tool_call + final answer。</td><td>每条轨迹能被 parser 提取。</td></tr>
+<tr><td>执行工具</td><td>observation。</td><td>工具结果真实，不要伪造。</td></tr>
+<tr><td>打分</td><td>reward breakdown。</td><td>不要只保存总分，要保存每项分。</td></tr>
+<tr><td>筛选</td><td>chosen / rejected。</td><td>高分轨迹和低分轨迹原因明确。</td></tr>
+</table>
+
+<h3>15.2 第二阶段：SFT 冷启动</h3>
+<p>SFT 的目标不是让模型变成最强 Agent，而是让它先稳定输出工具调用格式。</p>
+
+<pre>训练目标：
+1. 会读工具列表
+2. 会选择工具
+3. 会生成合法 JSON
+4. 会等待 Observation
+5. 会基于 Observation 回答
+6. 会在不需要工具时直接回答</pre>
+
+<div class="box note">
+<strong>SFT 评价指标：</strong>这一阶段不要只看最终任务成功率。更应该看 tool_call parse rate、schema pass rate、required argument pass rate、unnecessary tool call rate、final answer grounding rate。
+</div>
+
+<h3>15.3 第三阶段：DPO 纠偏</h3>
+<p>DPO 适合解决 SFT 后仍然存在的偏好问题：</p>
+
+<table>
+<tr><th>SFT 后问题</th><th>DPO pair 构造方式</th></tr>
+<tr><td>工具经常选错。</td><td>chosen=正确工具；rejected=错误工具。</td></tr>
+<tr><td>参数字段经常错。</td><td>chosen=合法参数；rejected=字段名错误/缺字段。</td></tr>
+<tr><td>调用工具太多。</td><td>chosen=短成功轨迹；rejected=长成功轨迹。</td></tr>
+<tr><td>忽略 Observation。</td><td>chosen=基于 Observation 回答；rejected=凭空回答。</td></tr>
+<tr><td>工具失败后不会恢复。</td><td>chosen=换策略；rejected=重复同样错误。</td></tr>
+</table>
+
+<h3>15.4 第四阶段：GRPO / RLVR 提升上限</h3>
+<p>当模型已经能稳定调用工具后，再进入 GRPO / RLVR。这个阶段的目标不是“学格式”，而是“通过探索找到更好的工具使用策略”。</p>
+
+<pre>同一个 task prompt
+  ↓
+采样 K 条轨迹
+  ↓
+每条轨迹执行工具
+  ↓
+计算 reward breakdown
+  ↓
+组内标准化 reward
+  ↓
+更新 policy model</pre>
+
+<h3>15.5 建议保存的训练日志字段</h3>
+<pre>{
+  "task_id": "math_0001",
+  "prompt": "计算 573 * 89",
+  "trajectory_id": "math_0001_sample_03",
+  "tool_calls": [
+    {"name": "calculator", "arguments": {"expression": "573 * 89"}}
+  ],
+  "observations": ["50997"],
+  "final_answer": "573 * 89 = 50997。",
+  "reward": {
+    "tool_choice": 0.2,
+    "json_schema": 0.15,
+    "arg_complete": 0.15,
+    "execution": 0.2,
+    "observation_use": 0.15,
+    "final_success": 0.3,
+    "cost_penalty": -0.05,
+    "total": 1.0
+  },
+  "error_type": null
+}</pre>
+
+<p>保存 breakdown 的好处是：训练坏了以后你能知道是哪个 reward 出问题，而不是只看到 total reward 下降。</p>
+
+<h2 id="sec16">16. 常见失败模式与排查表</h2>
+
+<p>Agent RLVR 最容易失败的原因，不是算法名选错，而是数据、环境、reward、parser 其中一个环节不稳定。</p>
+
+<h3>16.1 模型不调用工具</h3>
+<table>
+<tr><th>可能原因</th><th>解决方式</th></tr>
+<tr><td>SFT 数据里无工具回答太多。</td><td>提高需要工具的样本比例。</td></tr>
+<tr><td>工具描述不清楚。</td><td>重写 tool description，明确适用场景。</td></tr>
+<tr><td>工具调用惩罚太强。</td><td>降低 cost penalty。</td></tr>
+<tr><td>最终答案 reward 太容易拿。</td><td>加入“未调用必要工具则不给最终分”的规则。</td></tr>
+</table>
+
+<h3>16.2 模型疯狂调用工具</h3>
+<table>
+<tr><th>可能原因</th><th>解决方式</th></tr>
+<tr><td>只奖励执行成功，不惩罚成本。</td><td>加入 tool_call penalty。</td></tr>
+<tr><td>没有 stop / final answer 训练。</td><td>增加结束轨迹样本。</td></tr>
+<tr><td>Observation 使用 reward 设计错误。</td><td>不要让复制大量 Observation 获得高分。</td></tr>
+<tr><td>工具失败后无终止规则。</td><td>设置最大调用次数和失败终止。</td></tr>
+</table>
+
+<h3>16.3 模型输出 JSON 经常坏</h3>
+<table>
+<tr><th>可能原因</th><th>解决方式</th></tr>
+<tr><td>训练格式不统一。</td><td>统一 tool_call 模板。</td></tr>
+<tr><td>schema 太复杂。</td><td>先从单工具、少字段开始。</td></tr>
+<tr><td>response 中混入解释文字。</td><td>明确要求 tool_call 块内只输出 JSON。</td></tr>
+<tr><td>parser 太脆弱。</td><td>使用边界标签提取 JSON，如 &lt;tool_call&gt;...&lt;/tool_call&gt;。</td></tr>
+</table>
+
+<h3>16.4 reward 越训越高，但真实效果没变好</h3>
+<table>
+<tr><th>可能原因</th><th>表现</th><th>解决方式</th></tr>
+<tr><td>reward hacking</td><td>模型学会迎合规则漏洞。</td><td>加入人工抽查和隐藏测试。</td></tr>
+<tr><td>最终答案匹配太宽松</td><td>错误答案也拿高分。</td><td>改成严格解析或执行验证。</td></tr>
+<tr><td>Observation reward 太表面</td><td>模型复制工具返回但不总结。</td><td>加入事实一致性和任务完成检查。</td></tr>
+<tr><td>训练环境和测试环境不同</td><td>训练集好，真实任务差。</td><td>增加 held-out tools / held-out tasks。</td></tr>
+</table>
+
+<div class="box warn">
+<strong>最重要的排查习惯：</strong>每次训练后随机抽 20 条轨迹人工看。不要只看 reward 曲线。Agent 的 reward 曲线可能很好看，但轨迹已经学歪了。
+</div>
+
+<h2 id="sec17">17. 可直接复用的数据模板</h2>
+
+<p>下面给一个你后面可以直接复制改造的 Agent 数据模板。</p>
+
+<h3>17.1 单工具 SFT 模板</h3>
+<pre>{
+  "id": "calc_sft_0001",
+  "tools": [
+    {
+      "name": "calculator",
+      "description": "执行精确数学计算。适用于加减乘除、括号表达式、小数计算。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "expression": {
+            "type": "string",
+            "description": "需要计算的数学表达式"
+          }
+        },
+        "required": ["expression"]
+      }
+    }
+  ],
+  "messages": [
+    {"role": "user", "content": "计算 573 * 89。"},
+    {
+      "role": "assistant",
+      "content": "<tool_call>{\"name\":\"calculator\",\"arguments\":{\"expression\":\"573 * 89\"}}</tool_call>"
+    },
+    {"role": "tool", "name": "calculator", "content": "50997"},
+    {"role": "assistant", "content": "<final_answer>573 * 89 = 50997。</final_answer>"}
+  ]
+}</pre>
+
+<h3>17.2 Agent DPO 模板</h3>
+<pre>{
+  "id": "agent_dpo_0001",
+  "prompt": "计算 573 * 89。",
+  "tools": ["calculator", "search_web", "translate"],
+  "chosen": [
+    "<tool_call>{\"name\":\"calculator\",\"arguments\":{\"expression\":\"573 * 89\"}}</tool_call>",
+    "<observation>50997</observation>",
+    "<final_answer>573 * 89 = 50997。</final_answer>"
+  ],
+  "rejected": [
+    "<tool_call>{\"name\":\"search_web\",\"arguments\":{\"query\":\"573 * 89\"}}</tool_call>",
+    "<observation>搜索结果若干</observation>",
+    "<final_answer>结果大约是 51000。</final_answer>"
+  ],
+  "preference_reason": "chosen 使用了正确计算工具，rejected 选择了不必要的搜索工具且答案不精确。"
+}</pre>
+
+<h3>17.3 GRPO / RLVR 轨迹模板</h3>
+<pre>{
+  "task_id": "agent_rlvr_0001",
+  "prompt": "计算 573 * 89。",
+  "samples": [
+    {
+      "sample_id": "s1",
+      "trajectory": [
+        "<tool_call>{\"name\":\"calculator\",\"arguments\":{\"expression\":\"573 * 89\"}}</tool_call>",
+        "<observation>50997</observation>",
+        "<final_answer>573 * 89 = 50997。</final_answer>"
+      ],
+      "reward": 1.0
+    },
+    {
+      "sample_id": "s2",
+      "trajectory": [
+        "<tool_call>{\"name\":\"calculator\",\"arguments\":{\"expr\":\"573 * 89\"}}</tool_call>",
+        "<final_answer>50997。</final_answer>"
+      ],
+      "reward": 0.35
+    }
+  ]
+}</pre>
+
+<div class="box train">
+<strong>你真正要积累的是这三类数据：</strong>SFT 让模型学格式，DPO 让模型学偏好，GRPO/RLVR 让模型从多条轨迹中学会探索和优化。Agent 后训练不是一次完成，而是这三类数据循环迭代。
+</div>
+
+
+<h2 id="refs">参考来源与图片说明</h2>
+
+<div class="box gray">
+<p><strong>图片说明：</strong>本文所有图 1—图 4 均为学习笔记自绘示意图，不是原文截图。绘制依据来自 ReAct、Toolformer、OpenAI Function Calling、TRL GRPOTrainer、verl Agent Loop / Reward Loop、ToolRL、τ-bench 等材料。这样做的原因是：Agent RLVR 是多篇材料共同构成的工程路线，不适合只复制单篇论文的一张图。</p>
+<p><strong>主要链接：</strong></p>
+<ul>
+<li><a href="https://arxiv.org/abs/2210.03629" target="_blank">ReAct: Synergizing Reasoning and Acting in Language Models</a></li>
+<li><a href="https://arxiv.org/abs/2302.04761" target="_blank">Toolformer: Language Models Can Teach Themselves to Use Tools</a></li>
+<li><a href="https://developers.openai.com/api/docs/guides/function-calling" target="_blank">OpenAI Function Calling Guide</a></li>
+<li><a href="https://developers.openai.com/api/docs/guides/structured-outputs" target="_blank">OpenAI Structured Outputs Guide</a></li>
+<li><a href="https://arxiv.org/html/2504.13958v1" target="_blank">ToolRL: Reward is All Tool Learning Needs</a></li>
+<li><a href="https://huggingface.co/docs/trl/en/grpo_trainer" target="_blank">Hugging Face TRL GRPOTrainer</a></li>
+<li><a href="https://verl.readthedocs.io/en/latest/advance/agent_loop.html" target="_blank">verl Agent Loop</a></li>
+<li><a href="https://verl.readthedocs.io/en/latest/advance/reward_loop.html" target="_blank">verl Reward Loop</a></li>
+<li><a href="https://arxiv.org/abs/2406.12045" target="_blank">τ-bench: Tool-Agent-User Interaction Benchmark</a></li>
+<li><a href="https://arxiv.org/abs/2508.03680" target="_blank">Agent Lightning: Train ANY AI Agents with Reinforcement Learning</a></li>
+</ul>
+</div>
+
+<script>
+(function () {
+  const toc = document.querySelector('.page-toc');
+  const btn = document.querySelector('.page-toc-toggle');
+  const list = document.getElementById('page-toc-list');
+  const headings = Array.from(document.querySelectorAll('h2'));
+
+  headings.forEach((h, index) => {
+    if (!h.id) h.id = 'section-' + index;
+    const li = document.createElement('li');
+    li.className = 'page-toc-item';
+    const a = document.createElement('a');
+    a.className = 'page-toc-link';
+    a.href = '#' + h.id;
+    a.textContent = h.textContent;
+    li.appendChild(a);
+    list.appendChild(li);
+  });
+
+  btn.addEventListener('click', () => {
+    const opened = toc.classList.toggle('is-open');
+    btn.setAttribute('aria-expanded', opened ? 'true' : 'false');
+  });
+
+  document.addEventListener('click', (event) => {
+    if (!toc.contains(event.target)) {
+      toc.classList.remove('is-open');
+      btn.setAttribute('aria-expanded', 'false');
+    }
+  });
+
+  list.addEventListener('click', (event) => {
+    if (event.target.tagName.toLowerCase() === 'a') {
+      toc.classList.remove('is-open');
+      btn.setAttribute('aria-expanded', 'false');
+    }
+  });
+})();
+</script>
+
+</body>
+</html>

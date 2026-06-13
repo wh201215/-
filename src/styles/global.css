@@ -1,0 +1,388 @@
+:root {
+  --bg: #f4efe4;
+  --paper: rgba(255, 251, 245, 0.82);
+  --paper-strong: rgba(255, 251, 245, 0.94);
+  --line: rgba(37, 33, 28, 0.12);
+  --text: #1f1c17;
+  --muted: #655d52;
+  --sun: #c55f3c;
+  --sea: #1f6c6a;
+  --ink: #28344f;
+  --shadow: 0 20px 60px rgba(54, 43, 27, 0.12);
+  --radius: 28px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  color: var(--text);
+  background:
+    radial-gradient(circle at top left, rgba(197, 95, 60, 0.16), transparent 34%),
+    radial-gradient(circle at 80% 20%, rgba(31, 108, 106, 0.18), transparent 30%),
+    linear-gradient(180deg, #efe6d1 0%, #f8f3ea 42%, #f4efe4 100%);
+  font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+  line-height: 1.65;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.page-shell {
+  width: min(1180px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 24px 0 48px;
+}
+
+.site-header,
+.site-footer,
+.hero,
+.feature-card,
+.note-card,
+.resource-card,
+.workflow-card,
+.content-card {
+  backdrop-filter: blur(14px);
+}
+
+.site-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  padding: 18px 22px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 249, 240, 0.72);
+  position: sticky;
+  top: 16px;
+  z-index: 20;
+  box-shadow: var(--shadow);
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.brand strong,
+h1,
+h2,
+h3 {
+  font-family: "IBM Plex Serif", Georgia, serif;
+}
+
+.brand span {
+  display: grid;
+}
+
+.brand small {
+  color: var(--muted);
+}
+
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--sun), #e8b35c);
+  color: white;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.site-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.site-nav a {
+  padding: 10px 16px;
+  border-radius: 999px;
+  color: var(--muted);
+}
+
+.site-nav a.active,
+.site-nav a:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.site-main {
+  padding-top: 26px;
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: 1.45fr 0.9fr;
+  gap: 24px;
+  padding: 42px;
+  border: 1px solid var(--line);
+  border-radius: calc(var(--radius) + 10px);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.72), rgba(255, 252, 247, 0.46)),
+    linear-gradient(120deg, rgba(197, 95, 60, 0.12), rgba(31, 108, 106, 0.08));
+  box-shadow: var(--shadow);
+}
+
+.eyebrow {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 0.84rem;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(2.5rem, 6vw, 4.7rem);
+  line-height: 0.98;
+}
+
+.lead {
+  max-width: 60ch;
+  margin: 20px 0 0;
+  font-size: 1.08rem;
+  color: var(--muted);
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 28px;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  padding: 0 20px;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+.button-primary {
+  background: var(--text);
+  color: #fef8ef;
+}
+
+.button-secondary {
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.65);
+}
+
+.hero-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.hero-stat,
+.workflow-card,
+.content-card,
+.note-card,
+.resource-card,
+.feature-card,
+.page-intro {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--paper);
+  box-shadow: var(--shadow);
+}
+
+.hero-stat {
+  padding: 24px;
+}
+
+.hero-stat strong {
+  display: block;
+  font-size: 2rem;
+  font-family: "IBM Plex Serif", Georgia, serif;
+}
+
+.hero-stat span {
+  color: var(--muted);
+}
+
+.section,
+.page-intro {
+  margin-top: 28px;
+}
+
+.section-head h2,
+.page-intro h1 {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 3.2rem);
+}
+
+.page-intro {
+  padding: 34px;
+}
+
+.page-intro p:last-child {
+  max-width: 72ch;
+  color: var(--muted);
+}
+
+.card-grid,
+.resource-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.feature-card,
+.resource-card,
+.note-card,
+.content-card {
+  padding: 24px;
+}
+
+.feature-card {
+  min-height: 220px;
+  display: grid;
+  gap: 16px;
+}
+
+.feature-card p,
+.resource-meta,
+.note-meta {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.feature-card h3,
+.resource-card h3,
+.resource-card h2,
+.note-card h3,
+.note-card h2,
+.content-card h2 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.feature-card span,
+.resource-card p,
+.note-card p,
+.content-card p {
+  color: var(--muted);
+}
+
+.feature-card-sun {
+  background: linear-gradient(180deg, rgba(255, 244, 236, 0.95), rgba(255, 255, 255, 0.82));
+}
+
+.feature-card-sea {
+  background: linear-gradient(180deg, rgba(233, 246, 244, 0.95), rgba(255, 255, 255, 0.82));
+}
+
+.feature-card-ink {
+  background: linear-gradient(180deg, rgba(238, 241, 248, 0.95), rgba(255, 255, 255, 0.82));
+}
+
+.section-split {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 18px;
+  align-items: start;
+}
+
+.stack {
+  display: grid;
+  gap: 18px;
+}
+
+.note-meta,
+.resource-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.note-card-large h2 {
+  font-size: 2rem;
+}
+
+.workflow-card ol,
+.content-card ol,
+.link-list {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.site-footer {
+  margin-top: 32px;
+  padding: 24px 30px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--paper-strong);
+  color: var(--muted);
+}
+
+.site-footer p {
+  margin: 0;
+}
+
+.site-footer p + p {
+  margin-top: 6px;
+}
+
+@media (max-width: 900px) {
+  .site-header,
+  .hero,
+  .section-split,
+  .card-grid,
+  .resource-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .site-header {
+    border-radius: 28px;
+    align-items: flex-start;
+  }
+
+  .site-nav {
+    width: 100%;
+  }
+
+  .hero {
+    padding: 28px;
+  }
+}
+
+@media (max-width: 640px) {
+  .page-shell {
+    width: min(100% - 20px, 1180px);
+    padding-top: 14px;
+  }
+
+  .site-header,
+  .page-intro,
+  .hero,
+  .feature-card,
+  .note-card,
+  .resource-card,
+  .workflow-card,
+  .content-card,
+  .site-footer {
+    padding: 20px;
+    border-radius: 22px;
+  }
+
+  h1 {
+    font-size: 2.4rem;
+  }
+}

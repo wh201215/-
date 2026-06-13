@@ -1,0 +1,2109 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>强化学习大模型路线｜Stage 3：LLM 后训练 / SFT / Reward Model / RLHF-PPO 数学推导</title>
+
+<script>
+window.MathJax = {
+  tex: {
+    inlineMath: [['\\(', '\\)'], ['$', '$']],
+    displayMath: [['\\[', '\\]']],
+    processEscapes: true
+  },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+
+<style>
+html {
+  scroll-behavior: smooth;
+}
+body {
+  font-family: "Microsoft YaHei", Arial, sans-serif;
+  line-height: 1.85;
+  max-width: 1080px;
+  margin: 40px auto;
+  padding: 0 28px 100px;
+  background: #f7f8fb;
+  color: #1f2937;
+  font-size: 17px;
+}
+h1 {
+  font-size: 34px;
+  line-height: 1.35;
+  border-bottom: 5px solid #2563eb;
+  padding-bottom: 14px;
+}
+h2 {
+  margin-top: 48px;
+  padding: 12px 16px;
+  font-size: 27px;
+  background: #eef4ff;
+  border-left: 7px solid #2563eb;
+}
+h3 {
+  margin-top: 28px;
+  font-size: 21px;
+}
+h4 {
+  margin-top: 24px;
+  font-size: 18px;
+}
+h2, h3 {
+  scroll-margin-top: 24px;
+}
+.box {
+  background: #ffffff;
+  border: 1px solid #d9e2ef;
+  border-radius: 12px;
+  padding: 18px 22px;
+  margin: 18px 0;
+}
+.note {
+  background: #fff7d6;
+  border-left: 6px solid #d6a800;
+}
+.train {
+  background: #ecfdf3;
+  border-left: 6px solid #16a34a;
+}
+.warn {
+  background: #fff1f1;
+  border-left: 6px solid #dc2626;
+}
+.formula {
+  background: #ffffff;
+  border: 1px solid #d9e2ef;
+  border-radius: 12px;
+  padding: 16px 18px;
+  margin: 18px 0;
+  overflow-x: auto;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 18px 0;
+  background: #ffffff;
+}
+th, td {
+  border: 1px solid #d9e2ef;
+  padding: 11px 13px;
+  vertical-align: top;
+}
+th {
+  background: #f1f5f9;
+}
+pre {
+  background: #111827;
+  color: #e5e7eb;
+  padding: 18px;
+  border-radius: 10px;
+  overflow-x: auto;
+  line-height: 1.55;
+}
+code {
+  font-family: Consolas, Monaco, "Courier New", monospace;
+}
+.small {
+  color: #667085;
+  font-size: 14px;
+}
+.page-toc {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+}
+.page-toc-toggle {
+  border: 0;
+  border-radius: 999px;
+  padding: 10px 16px;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.24);
+}
+.page-toc-toggle:hover {
+  background: #1d4ed8;
+}
+.page-toc-panel {
+  display: none;
+  width: 340px;
+  max-height: calc(100vh - 90px);
+  overflow: auto;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid #d9e2ef;
+  border-radius: 14px;
+  padding: 16px 18px;
+  margin-top: 10px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+  backdrop-filter: blur(8px);
+}
+.page-toc.is-open .page-toc-panel {
+  display: block;
+}
+.page-toc-title {
+  margin-bottom: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+}
+.page-toc-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.page-toc-item + .page-toc-item {
+  margin-top: 10px;
+}
+.page-toc-link {
+  display: block;
+  color: #334155;
+  text-decoration: none;
+  font-size: 14px;
+  line-height: 1.55;
+}
+.page-toc-link:hover {
+  color: #2563eb;
+}
+.step {
+  background: #ffffff;
+  border: 1px solid #d9e2ef;
+  border-radius: 12px;
+  padding: 16px 18px;
+  margin: 16px 0;
+}
+.step-title {
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 8px;
+}
+.arrow {
+  text-align: center;
+  color: #2563eb;
+  font-weight: 700;
+  font-size: 22px;
+  margin: 10px 0;
+}
+.hr {
+  height: 1px;
+  background: #d9e2ef;
+  margin: 26px 0;
+}
+@media (max-width: 1100px) {
+  .page-toc {
+    top: 12px;
+    right: 12px;
+  }
+  .page-toc-panel {
+    width: min(340px, calc(100vw - 24px));
+    max-height: calc(100vh - 72px);
+  }
+}
+@media (max-width: 760px) {
+  body {
+    margin: 30px auto;
+    padding: 0 18px 80px;
+    font-size: 16px;
+  }
+  h1 {
+    font-size: 28px;
+  }
+  h2 {
+    font-size: 23px;
+  }
+  table {
+    font-size: 15px;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<nav class="page-toc" aria-label="文章目录">
+  <button class="page-toc-toggle" onclick="document.querySelector('.page-toc').classList.toggle('is-open')">☰ 目录</button>
+  <div class="page-toc-panel">
+    <div class="page-toc-title">目录导航</div>
+    <ol class="page-toc-list">
+      <li class="page-toc-item"><a class="page-toc-link" href="#intro">0. Stage 3 学什么</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#pipeline">1. LLM 后训练总流程</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#llm-policy">2. LLM 为什么是策略 \(\pi_\theta\)</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#pretrain">3. 从预训练目标到 SFT</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#sft-loss">4. SFT Loss 逐步推导</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#mask">5. Prompt Masking 为什么重要</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#preference">6. Preference Data 偏好数据</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#bt">7. Bradley-Terry 偏好概率模型</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#rm-loss">8. Reward Model Loss 逐步推导</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#rlhf">9. RLHF 的优化目标</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#kl">10. KL 约束为什么必须有</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#ppo-llm">11. LLM-PPO 如何使用 Stage 2 的 PPO</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#reward-shaping">12. Reward Shaping 与 KL Penalty</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#value-head">13. Value Head 和 Advantage</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#token">14. Token-level Credit Assignment</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#algorithm">15. RLHF-PPO 算法流程</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#pitfalls">16. 常见坑</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#stage4">17. 为什么下一阶段要学 DPO</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#summary">18. 一页总结</a></li>
+    </ol>
+  </div>
+</nav>
+
+<h1>强化学习大模型路线｜Stage 3：LLM 后训练 / SFT / Reward Model / RLHF-PPO 数学推导</h1>
+
+<div class="box note" id="intro">
+<p><strong>学习定位：</strong>Stage 1 解决了 MDP、Bellman、Q-learning。Stage 2 解决了 Policy Gradient、Actor-Critic、GAE、PPO。Stage 3 开始进入真正的大模型后训练：<strong>SFT → Reward Model → RLHF-PPO</strong>。</p>
+
+<p>这一阶段你要建立一个核心理解：</p>
+
+<div class="formula">
+\[
+\text{LLM 后训练}
+\neq
+\text{普通监督微调}
+\]
+</div>
+
+<p>它是把语言模型看作策略：</p>
+
+<div class="formula">
+\[
+\pi_\theta(y\mid x)
+\]
+</div>
+
+<p>然后用人类偏好、奖励模型或规则奖励去优化这个策略，使模型更符合任务目标。</p>
+
+<p><strong>Stage 3 目标：</strong></p>
+<ol>
+<li>理解 SFT 的数学本质是条件语言建模；</li>
+<li>理解偏好数据 chosen / rejected 的结构；</li>
+<li>推导 Reward Model 的 Bradley-Terry loss；</li>
+<li>理解 RLHF 为什么是 KL-constrained policy optimization；</li>
+<li>把 Stage 2 的 PPO 公式放到大模型 token 生成中；</li>
+<li>理解 reference model、KL penalty、value head 和 reward shaping。</li>
+</ol>
+</div>
+
+<h2 id="pipeline">1. LLM 后训练总流程</h2>
+
+<p>
+大模型从预训练到对齐，通常可以简化成四个阶段：
+</p>
+
+<pre>
+Pretraining 预训练
+  ↓
+SFT 监督微调
+  ↓
+Reward Model 奖励模型训练
+  ↓
+RLHF-PPO 强化学习对齐
+</pre>
+
+<table>
+<tr>
+<th>阶段</th>
+<th>训练数据</th>
+<th>训练目标</th>
+<th>学到什么</th>
+</tr>
+<tr>
+<td>Pretraining</td>
+<td>大规模文本</td>
+<td>预测下一个 token</td>
+<td>语言、知识、基本推理模式</td>
+</tr>
+<tr>
+<td>SFT</td>
+<td>prompt-response 指令数据</td>
+<td>模仿高质量回答</td>
+<td>对话格式、指令遵循、回答风格</td>
+</tr>
+<tr>
+<td>Reward Model</td>
+<td>chosen / rejected 偏好对</td>
+<td>学会判断哪个回答更好</td>
+<td>人类偏好评分函数</td>
+</tr>
+<tr>
+<td>RLHF-PPO</td>
+<td>模型自己生成的回答</td>
+<td>最大化 reward，同时限制偏移</td>
+<td>更符合偏好的策略</td>
+</tr>
+</table>
+
+<div class="box train">
+<strong>一句话理解：</strong>
+SFT 让模型“会回答”；Reward Model 让系统“能评价回答”；RLHF 让模型“朝高评价回答的方向优化”。
+</div>
+
+<h3>1.1 为什么 SFT 之后还要 RLHF？</h3>
+
+<p>
+SFT 本质是模仿学习。它只告诉模型：
+</p>
+
+<div class="box">
+给定这个 prompt，应该模仿这个标准 response。
+</div>
+
+<p>
+但它没有直接告诉模型：
+</p>
+
+<ul>
+<li>两个都看起来不错的回答，哪一个更符合人类偏好；</li>
+<li>回答太长、太短、太啰嗦、太武断时应该怎么权衡；</li>
+<li>模型生成自己没见过的回答时，怎样通过反馈继续变好；</li>
+<li>如何优化“帮助性、有用性、安全性、可读性”等非唯一标准。</li>
+</ul>
+
+<div class="box warn">
+<strong>关键差别：</strong>
+SFT 学的是“模仿给定答案”；RLHF 学的是“在很多可能答案中，让更受偏好的答案概率更高”。
+</div>
+
+<h2 id="llm-policy">2. LLM 为什么是策略 \(\pi_\theta\)</h2>
+
+<p>
+Stage 2 里，策略写成：
+</p>
+
+<div class="formula">
+\[
+\pi_\theta(a\mid s)
+\]
+</div>
+
+<p>
+在语言模型中，我们把 prompt 和已经生成的 token 看作状态，把下一个 token 看作动作。
+</p>
+
+<table>
+<tr>
+<th>强化学习</th>
+<th>语言模型</th>
+</tr>
+<tr>
+<td>状态 \(s_t\)</td>
+<td>prompt + 已经生成的 token：\((x,y_{\lt t})\)</td>
+</tr>
+<tr>
+<td>动作 \(a_t\)</td>
+<td>下一个 token：\(y_t\)</td>
+</tr>
+<tr>
+<td>策略 \(\pi_\theta(a_t\mid s_t)\)</td>
+<td>语言模型概率：\(\pi_\theta(y_t\mid x,y_{\lt t})\)</td>
+</tr>
+<tr>
+<td>轨迹 \(\tau\)</td>
+<td>完整 response：\(y=(y_1,\ldots,y_T)\)</td>
+</tr>
+<tr>
+<td>奖励 \(R\)</td>
+<td>回答质量分数、偏好分数、规则分数</td>
+</tr>
+</table>
+
+<h3>2.1 整段回答的概率</h3>
+
+<p>
+给定 prompt \(x\)，模型生成回答：
+</p>
+
+<div class="formula">
+\[
+y=(y_1,y_2,\ldots,y_T)
+\]
+</div>
+
+<p>
+整段回答的概率由自回归分解给出：
+</p>
+
+<div class="formula">
+\[
+\pi_\theta(y\mid x)
+=
+\prod_{t=1}^{T}
+\pi_\theta(y_t\mid x,y_{\lt t})
+\]
+</div>
+
+<p>
+取 log：
+</p>
+
+<div class="formula">
+\[
+\log \pi_\theta(y\mid x)
+=
+\sum_{t=1}^{T}
+\log \pi_\theta(y_t\mid x,y_{\lt t})
+\]
+</div>
+
+<div class="box note">
+<strong>非常重要：</strong>
+大模型里的策略更新通常会落到 token-level log probability 上，因为整段回答的 log 概率就是每个 token 的 log 概率之和。
+</div>
+
+<h2 id="pretrain">3. 从预训练目标到 SFT</h2>
+
+<p>
+预训练和 SFT 的数学形式很像，都是语言建模。
+</p>
+
+<h3>3.1 预训练目标</h3>
+
+<p>
+给定一段文本 token：
+</p>
+
+<div class="formula">
+\[
+w=(w_1,w_2,\ldots,w_n)
+\]
+</div>
+
+<p>
+语言模型学习：
+</p>
+
+<div class="formula">
+\[
+p_\theta(w_t\mid w_{\lt t})
+\]
+</div>
+
+<p>
+最大化整段文本概率：
+</p>
+
+<div class="formula">
+\[
+\max_\theta
+\sum_{t=1}^{n}
+\log p_\theta(w_t\mid w_{\lt t})
+\]
+</div>
+
+<p>
+等价于最小化负对数似然：
+</p>
+
+<div class="formula">
+\[
+L_{\mathrm{pretrain}}(\theta)
+=
+-
+\sum_{t=1}^{n}
+\log p_\theta(w_t\mid w_{\lt t})
+\]
+</div>
+
+<h3>3.2 SFT 目标</h3>
+
+<p>
+SFT 数据不是普通连续文本，而是指令格式：
+</p>
+
+<pre>
+User:
+请解释 Bellman 方程。
+
+Assistant:
+Bellman 方程描述当前状态价值与下一状态价值之间的递推关系……
+</pre>
+
+<p>
+把用户输入记作 \(x\)，把助手回答记作 \(y\)：
+</p>
+
+<div class="formula">
+\[
+(x,y)
+\]
+</div>
+
+<p>
+SFT 的目标是最大化：
+</p>
+
+<div class="formula">
+\[
+\pi_\theta(y\mid x)
+\]
+</div>
+
+<p>
+也就是给定 prompt \(x\)，生成标准回答 \(y\) 的概率。
+</p>
+
+<h2 id="sft-loss">4. SFT Loss 逐步推导</h2>
+
+<h3>4.1 单条样本</h3>
+
+<p>
+给定一条 SFT 样本：
+</p>
+
+<div class="formula">
+\[
+(x,y)
+\]
+</div>
+
+<p>
+其中：
+</p>
+
+<div class="formula">
+\[
+y=(y_1,y_2,\ldots,y_T)
+\]
+</div>
+
+<p>
+模型生成整段回答的概率是：
+</p>
+
+<div class="formula">
+\[
+\pi_\theta(y\mid x)
+=
+\prod_{t=1}^{T}
+\pi_\theta(y_t\mid x,y_{\lt t})
+\]
+</div>
+
+<h3>4.2 最大似然目标</h3>
+
+<p>
+我们希望标准回答概率越大越好：
+</p>
+
+<div class="formula">
+\[
+\max_\theta
+\log \pi_\theta(y\mid x)
+\]
+</div>
+
+<p>
+代入自回归展开：
+</p>
+
+<div class="formula">
+\[
+\max_\theta
+\sum_{t=1}^{T}
+\log \pi_\theta(y_t\mid x,y_{\lt t})
+\]
+</div>
+
+<h3>4.3 写成最小化 loss</h3>
+
+<p>
+深度学习框架通常最小化 loss，所以取负号：
+</p>
+
+<div class="formula">
+\[
+\boxed{
+L_{\mathrm{SFT}}(\theta)
+=
+-
+\sum_{t=1}^{T}
+\log \pi_\theta(y_t\mid x,y_{\lt t})
+}
+\]
+</div>
+
+<h3>4.4 数据集形式</h3>
+
+<p>
+如果数据集是：
+</p>
+
+<div class="formula">
+\[
+\mathcal{D}_{\mathrm{SFT}}
+=
+\{(x_i,y_i)\}_{i=1}^{N}
+\]
+</div>
+
+<p>
+总损失是：
+</p>
+
+<div class="formula">
+\[
+\boxed{
+L_{\mathrm{SFT}}(\theta)
+=
+-
+\frac{1}{N}
+\sum_{i=1}^{N}
+\sum_{t=1}^{T_i}
+\log
+\pi_\theta(y_{i,t}\mid x_i,y_{i,\lt t})
+}
+\]
+</div>
+
+<div class="box train">
+<strong>一句话理解 SFT：</strong>
+它就是让模型在 prompt 条件下，把标准回答中的每个 token 概率调高。
+</div>
+
+<h2 id="mask">5. Prompt Masking 为什么重要</h2>
+
+<p>
+SFT 训练时，完整输入通常是：
+</p>
+
+<pre>
+[System Prompt] + [User Prompt] + [Assistant Response]
+</pre>
+
+<p>
+但是 loss 一般只计算 Assistant Response 部分，不计算 User Prompt 部分。
+</p>
+
+<h3>5.1 为什么不训练模型预测用户输入？</h3>
+
+<p>
+因为我们的目标不是让模型学会复述用户问题，而是学会在用户问题后生成助手回答。
+</p>
+
+<table>
+<tr>
+<th>部分</th>
+<th>是否计算 loss</th>
+<th>原因</th>
+</tr>
+<tr>
+<td>System Prompt</td>
+<td>通常不计算</td>
+<td>它是条件，不是要模型生成的目标</td>
+</tr>
+<tr>
+<td>User Prompt</td>
+<td>通常不计算</td>
+<td>它是用户输入，不是助手输出</td>
+</tr>
+<tr>
+<td>Assistant Response</td>
+<td>计算</td>
+<td>这是模型要学习生成的内容</td>
+</tr>
+</table>
+
+<h3>5.2 Mask 后的 SFT Loss</h3>
+
+<p>
+设 \(m_t\) 是 mask：
+</p>
+
+<div class="formula">
+\[
+m_t=
+\begin{cases}
+1, & \text{token } t \text{ 属于 assistant response}\\
+0, & \text{token } t \text{ 属于 prompt}
+\end{cases}
+\]
+</div>
+
+<p>
+则 loss 写成：
+</p>
+
+<div class="formula">
+\[
+L_{\mathrm{SFT}}(\theta)
+=
+-
+\sum_{t=1}^{T}
+m_t
+\log \pi_\theta(z_t\mid z_{\lt t})
+\]
+</div>
+
+<p>
+其中 \(z\) 是拼接后的完整序列。
+</p>
+
+<div class="box warn">
+<strong>实践坑：</strong>
+如果没有正确 mask prompt，模型可能浪费大量训练信号去预测用户输入格式，而不是学习高质量回答。
+</div>
+
+<h2 id="preference">6. Preference Data 偏好数据</h2>
+
+<p>
+RLHF 不直接从标准答案学习，而是从偏好比较学习。
+</p>
+
+<p>
+一条偏好数据通常是：
+</p>
+
+<div class="formula">
+\[
+(x,y_w,y_l)
+\]
+</div>
+
+<table>
+<tr>
+<th>符号</th>
+<th>含义</th>
+</tr>
+<tr>
+<td>\(x\)</td>
+<td>prompt</td>
+</tr>
+<tr>
+<td>\(y_w\)</td>
+<td>winner / chosen response，更受偏好的回答</td>
+</tr>
+<tr>
+<td>\(y_l\)</td>
+<td>loser / rejected response，不受偏好的回答</td>
+</tr>
+</table>
+
+<p>
+例如：
+</p>
+
+<pre>
+Prompt:
+请解释什么是强化学习。
+
+Chosen:
+强化学习研究智能体如何通过与环境交互，根据奖励信号学习长期最优行为。
+
+Rejected:
+强化学习就是一种机器学习，挺有用的。
+</pre>
+
+<div class="box note">
+<strong>偏好数据不是告诉模型唯一标准答案，而是告诉模型：在两个回答中，哪个更好。</strong>
+</div>
+
+<h3>6.1 为什么用比较而不是绝对打分？</h3>
+
+<p>
+人类给绝对分数很不稳定。比如同一个回答，一个标注者可能给 7 分，另一个可能给 8 分。
+</p>
+
+<p>
+但比较两个回答哪个更好，相对更容易。
+</p>
+
+<table>
+<tr>
+<th>方式</th>
+<th>难度</th>
+<th>稳定性</th>
+</tr>
+<tr>
+<td>给单个回答打 1-10 分</td>
+<td>较难</td>
+<td>不同人尺度差异大</td>
+</tr>
+<tr>
+<td>比较 A 和 B 哪个更好</td>
+<td>较容易</td>
+<td>相对更稳定</td>
+</tr>
+</table>
+
+<h2 id="bt">7. Bradley-Terry 偏好概率模型</h2>
+
+<p>
+Reward Model 的训练通常基于 Bradley-Terry 模型。
+</p>
+
+<h3>7.1 Reward Model 输出什么？</h3>
+
+<p>
+Reward Model 接收 prompt 和 response，输出一个标量分数：
+</p>
+
+<div class="formula">
+\[
+r_\phi(x,y)\in \mathbb{R}
+\]
+</div>
+
+<p>
+其中 \(\phi\) 是 Reward Model 参数。
+</p>
+
+<p>
+分数越高，表示回答越好。
+</p>
+
+<h3>7.2 两个回答的偏好概率</h3>
+
+<p>
+给定两个回答 \(y_w\) 和 \(y_l\)，Bradley-Terry 模型假设：
+</p>
+
+<div class="formula">
+\[
+P(y_w \succ y_l\mid x)
+=
+\sigma
+\left(
+r_\phi(x,y_w)-r_\phi(x,y_l)
+\right)
+\]
+</div>
+
+<p>
+其中 \(\sigma\) 是 sigmoid 函数：
+</p>
+
+<div class="formula">
+\[
+\sigma(z)=\frac{1}{1+\exp(-z)}
+\]
+</div>
+
+<h3>7.3 为什么用分数差？</h3>
+
+<p>
+我们关心的不是单个回答的绝对分数，而是 chosen 是否比 rejected 分数更高。
+</p>
+
+<p>
+如果：
+</p>
+
+<div class="formula">
+\[
+r_\phi(x,y_w)-r_\phi(x,y_l)
+\gg 0
+\]
+</div>
+
+<p>
+则：
+</p>
+
+<div class="formula">
+\[
+\sigma(r_w-r_l)\approx 1
+\]
+</div>
+
+<p>
+表示模型非常确信 \(y_w\) 比 \(y_l\) 好。
+</p>
+
+<p>
+如果：
+</p>
+
+<div class="formula">
+\[
+r_\phi(x,y_w)-r_\phi(x,y_l)=0
+\]
+</div>
+
+<p>
+则：
+</p>
+
+<div class="formula">
+\[
+\sigma(0)=0.5
+\]
+</div>
+
+<p>
+表示模型认为两者差不多。
+</p>
+
+<div class="box train">
+<strong>一句话理解：</strong>
+Reward Model 不需要知道“绝对好到几分”，它只需要学会让 chosen 的分数高于 rejected。
+</div>
+
+<h2 id="rm-loss">8. Reward Model Loss 逐步推导</h2>
+
+<h3>8.1 偏好样本的目标</h3>
+
+<p>
+对于一条偏好样本：
+</p>
+
+<div class="formula">
+\[
+(x,y_w,y_l)
+\]
+</div>
+
+<p>
+我们希望：
+</p>
+
+<div class="formula">
+\[
+P(y_w \succ y_l\mid x)
+\]
+</div>
+
+<p>
+尽可能接近 1。
+</p>
+
+<h3>8.2 写出似然</h3>
+
+<div class="formula">
+\[
+P(y_w \succ y_l\mid x)
+=
+\sigma(r_\phi(x,y_w)-r_\phi(x,y_l))
+\]
+</div>
+
+<p>
+最大化这个概率等价于最大化 log 概率：
+</p>
+
+<div class="formula">
+\[
+\log
+\sigma(r_\phi(x,y_w)-r_\phi(x,y_l))
+\]
+</div>
+
+<h3>8.3 写成最小化 loss</h3>
+
+<p>
+取负号：
+</p>
+
+<div class="formula">
+\[
+\boxed{
+L_{\mathrm{RM}}(\phi)
+=
+-
+\log
+\sigma
+\left(
+r_\phi(x,y_w)-r_\phi(x,y_l)
+\right)
+}
+\]
+</div>
+
+<h3>8.4 数据集形式</h3>
+
+<p>
+如果偏好数据集为：
+</p>
+
+<div class="formula">
+\[
+\mathcal{D}_{\mathrm{pref}}
+=
+\{(x_i,y_{i,w},y_{i,l})\}_{i=1}^{N}
+\]
+</div>
+
+<p>
+则：
+</p>
+
+<div class="formula">
+\[
+\boxed{
+L_{\mathrm{RM}}(\phi)
+=
+-
+\frac{1}{N}
+\sum_{i=1}^{N}
+\log
+\sigma
+\left(
+r_\phi(x_i,y_{i,w})
+-
+r_\phi(x_i,y_{i,l})
+\right)
+}
+\]
+</div>
+
+<h3>8.5 梯度直观理解</h3>
+
+<p>
+如果 Reward Model 给 chosen 的分数不够高，或者给 rejected 的分数过高，loss 就会变大。
+</p>
+
+<table>
+<tr>
+<th>情况</th>
+<th>loss 倾向</th>
+<th>训练会怎么调整</th>
+</tr>
+<tr>
+<td>\(r_w \gg r_l\)</td>
+<td>loss 小</td>
+<td>说明判断正确</td>
+</tr>
+<tr>
+<td>\(r_w = r_l\)</td>
+<td>loss 中等</td>
+<td>推动 \(r_w\) 变大、\(r_l\) 变小</td>
+</tr>
+<tr>
+<td>\(r_w < r_l\)</td>
+<td>loss 大</td>
+<td>强烈纠正分数顺序</td>
+</tr>
+</table>
+
+<div class="box note">
+<strong>Reward Model 训练结束后：</strong>
+它就可以给模型自己生成的回答打分，作为 RLHF 的奖励信号。
+</div>
+
+<h2 id="rlhf">9. RLHF 的优化目标</h2>
+
+<p>
+训练好 Reward Model 后，我们让当前语言模型生成回答：
+</p>
+
+<div class="formula">
+\[
+y\sim \pi_\theta(\cdot\mid x)
+\]
+</div>
+
+<p>
+然后 Reward Model 给分：
+</p>
+
+<div class="formula">
+\[
+r_\phi(x,y)
+\]
+</div>
+
+<p>
+最直观的目标是：
+</p>
+
+<div class="formula">
+\[
+\max_\theta
+\mathbb{E}_{x\sim \mathcal{D},y\sim \pi_\theta(\cdot\mid x)}
+[
+r_\phi(x,y)
+]
+\]
+</div>
+
+<p>
+但是如果只最大化 reward，会有问题。模型可能为了骗 Reward Model，偏离原本语言模型太远。
+</p>
+
+<h3>9.1 加入 KL 约束</h3>
+
+<p>
+因此 RLHF 的常见目标是：
+</p>
+
+<div class="formula">
+\[
+\boxed{
+\max_\theta
+\mathbb{E}_{x,y\sim \pi_\theta}
+\left[
+r_\phi(x,y)
+-
+\beta
+\mathrm{KL}
+\left(
+\pi_\theta(\cdot\mid x)
+\|
+\pi_{\mathrm{ref}}(\cdot\mid x)
+\right)
+\right]
+}
+\]
+</div>
+
+<table>
+<tr>
+<th>符号</th>
+<th>含义</th>
+</tr>
+<tr>
+<td>\(\pi_\theta\)</td>
+<td>正在训练的 policy model</td>
+</tr>
+<tr>
+<td>\(\pi_{\mathrm{ref}}\)</td>
+<td>reference model，通常是 SFT model 的冻结副本</td>
+</tr>
+<tr>
+<td>\(r_\phi(x,y)\)</td>
+<td>Reward Model 给出的分数</td>
+</tr>
+<tr>
+<td>\(\beta\)</td>
+<td>KL 惩罚系数</td>
+</tr>
+</table>
+
+<div class="box train">
+<strong>一句话理解：</strong>
+RLHF 不是单纯追求 Reward Model 高分，而是在“高 reward”和“不偏离原模型太远”之间折中。
+</div>
+
+<h2 id="kl">10. KL 约束为什么必须有</h2>
+
+<p>
+KL divergence 衡量两个概率分布之间的差异。
+</p>
+
+<h3>10.1 KL 定义</h3>
+
+<div class="formula">
+\[
+\mathrm{KL}(P\|Q)
+=
+\sum_x
+P(x)
+\log
+\frac{P(x)}{Q(x)}
+\]
+</div>
+
+<p>
+在大模型里，可以理解成：
+</p>
+
+<div class="formula">
+\[
+\mathrm{KL}
+\left(
+\pi_\theta(\cdot\mid s)
+\|
+\pi_{\mathrm{ref}}(\cdot\mid s)
+\right)
+=
+\sum_a
+\pi_\theta(a\mid s)
+\log
+\frac{
+\pi_\theta(a\mid s)
+}{
+\pi_{\mathrm{ref}}(a\mid s)
+}
+\]
+</div>
+
+<h3>10.2 KL 惩罚的作用</h3>
+
+<table>
+<tr>
+<th>没有 KL</th>
+<th>有 KL</th>
+</tr>
+<tr>
+<td>模型可能为了高 reward 输出奇怪文本</td>
+<td>模型被限制在原有语言能力附近</td>
+</tr>
+<tr>
+<td>容易 reward hacking</td>
+<td>降低奖励投机风险</td>
+</tr>
+<tr>
+<td>训练不稳定</td>
+<td>训练更稳</td>
+</tr>
+<tr>
+<td>可能丢失 SFT 学到的对话能力</td>
+<td>保留原本指令遵循和语言质量</td>
+</tr>
+</table>
+
+<div class="box warn">
+<strong>关键理解：</strong>
+Reward Model 不完美。如果没有 KL，Policy Model 可能学会利用 Reward Model 的漏洞，而不是变得真正更好。
+</div>
+
+<h3>10.3 \(\beta\) 怎么理解？</h3>
+
+<div class="formula">
+\[
+r_{\mathrm{total}}
+=
+r_\phi(x,y)
+-
+\beta \cdot \mathrm{KL}
+\]
+</div>
+
+<table>
+<tr>
+<th>\(\beta\)</th>
+<th>效果</th>
+<th>风险</th>
+</tr>
+<tr>
+<td>太小</td>
+<td>模型更大胆追求 reward</td>
+<td>容易跑偏、reward hacking</td>
+</tr>
+<tr>
+<td>太大</td>
+<td>模型更接近 reference model</td>
+<td>学不动、提升有限</td>
+</tr>
+<tr>
+<td>适中</td>
+<td>reward 和稳定性平衡</td>
+<td>实践中需要调参</td>
+</tr>
+</table>
+
+<h2 id="ppo-llm">11. LLM-PPO 如何使用 Stage 2 的 PPO</h2>
+
+<p>
+Stage 2 的 PPO 目标是：
+</p>
+
+<div class="formula">
+\[
+L^{\mathrm{CLIP}}(\theta)
+=
+\mathbb{E}_t
+\left[
+\min
+\left(
+r_t(\theta)\hat{A}_t,
+\mathrm{clip}(r_t(\theta),1-\epsilon,1+\epsilon)\hat{A}_t
+\right)
+\right]
+\]
+</div>
+
+<p>
+其中：
+</p>
+
+<div class="formula">
+\[
+r_t(\theta)
+=
+\frac{
+\pi_\theta(A_t\mid S_t)
+}{
+\pi_{\theta_{\mathrm{old}}}(A_t\mid S_t)
+}
+\]
+</div>
+
+<h3>11.1 放到 LLM 中</h3>
+
+<p>
+LLM 的状态是：
+</p>
+
+<div class="formula">
+\[
+S_t=(x,y_{\lt t})
+\]
+</div>
+
+<p>
+动作是：
+</p>
+
+<div class="formula">
+\[
+A_t=y_t
+\]
+</div>
+
+<p>
+所以 ratio 是：
+</p>
+
+<div class="formula">
+\[
+r_t(\theta)
+=
+\frac{
+\pi_\theta(y_t\mid x,y_{\lt t})
+}{
+\pi_{\theta_{\mathrm{old}}}(y_t\mid x,y_{\lt t})
+}
+\]
+</div>
+
+<p>
+这就是新模型和旧模型对同一个 token 的概率比。
+</p>
+
+<h3>11.2 为什么 PPO 是 token-level</h3>
+
+<p>
+因为整段回答的概率是 token 概率连乘：
+</p>
+
+<div class="formula">
+\[
+\pi_\theta(y\mid x)
+=
+\prod_{t=1}^{T}
+\pi_\theta(y_t\mid x,y_{\lt t})
+\]
+</div>
+
+<p>
+如果写整段 ratio：
+</p>
+
+<div class="formula">
+\[
+\frac{\pi_\theta(y\mid x)}
+{\pi_{\theta_{\mathrm{old}}}(y\mid x)}
+=
+\prod_{t=1}^{T}
+\frac{
+\pi_\theta(y_t\mid x,y_{\lt t})
+}{
+\pi_{\theta_{\mathrm{old}}}(y_t\mid x,y_{\lt t})
+}
+\]
+</div>
+
+<p>
+整段 ratio 容易数值不稳定，所以实践中通常对每个 token 的 logprob、ratio、advantage 做处理。
+</p>
+
+<div class="box note">
+<strong>大模型 PPO 的核心：</strong>
+Reward 往往是整段回答级别的，但策略概率是 token-level 的，所以训练时要把 sequence-level reward 转化为 token-level 更新信号。
+</div>
+
+<h2 id="reward-shaping">12. Reward Shaping 与 KL Penalty</h2>
+
+<p>
+在 LLM-RLHF 里，最终 reward 通常来自两部分：
+</p>
+
+<table>
+<tr>
+<th>奖励来源</th>
+<th>含义</th>
+</tr>
+<tr>
+<td>Reward Model score</td>
+<td>整段回答质量分数</td>
+</tr>
+<tr>
+<td>KL penalty</td>
+<td>每个 token 偏离 reference model 的惩罚</td>
+</tr>
+</table>
+
+<h3>12.1 每个 token 的 KL 惩罚</h3>
+
+<p>
+对于生成的 token \(y_t\)，常用近似 KL penalty：
+</p>
+
+<div class="formula">
+\[
+\mathrm{kl}_t
+=
+\log
+\pi_\theta(y_t\mid x,y_{\lt t})
+-
+\log
+\pi_{\mathrm{ref}}(y_t\mid x,y_{\lt t})
+\]
+</div>
+
+<p>
+如果当前模型比 reference model 更倾向于生成这个 token，则 \(\mathrm{kl}_t\) 可能较大。
+</p>
+
+<h3>12.2 shaped reward</h3>
+
+<p>
+每个 token 可以得到一个 KL 惩罚：
+</p>
+
+<div class="formula">
+\[
+r_t^{\mathrm{KL}}
+=
+-\beta
+\left[
+\log
+\pi_\theta(y_t\mid x,y_{\lt t})
+-
+\log
+\pi_{\mathrm{ref}}(y_t\mid x,y_{\lt t})
+\right]
+\]
+</div>
+
+<p>
+最终 token 的 reward 可以写成：
+</p>
+
+<div class="formula">
+\[
+r_t=
+r_t^{\mathrm{KL}}
+\quad
+(t<T)
+\]
+</div>
+
+<p>
+在最后一个 token 或 response 结束位置，加上 Reward Model 分数：
+</p>
+
+<div class="formula">
+\[
+r_T=
+r_T^{\mathrm{KL}}
++
+r_\phi(x,y)
+\]
+</div>
+
+<div class="box train">
+<strong>一句话理解 reward shaping：</strong>
+整段回答结束时给质量奖励；每个 token 生成时都给 KL 惩罚，防止模型偏离 reference model。
+</div>
+
+<h2 id="value-head">13. Value Head 和 Advantage</h2>
+
+<p>
+PPO 需要 advantage：
+</p>
+
+<div class="formula">
+\[
+\hat{A}_t
+\]
+</div>
+
+<p>
+为了估计 advantage，LLM-PPO 通常在语言模型顶部加一个 value head：
+</p>
+
+<div class="formula">
+\[
+V_\psi(x,y_{\lt t})
+\]
+</div>
+
+<p>
+它表示：当前已经生成到 \(t\) 步时，后面预计还能得到多少 reward。
+</p>
+
+<h3>13.1 Value Head 输入是什么？</h3>
+
+<table>
+<tr>
+<th>传统 RL</th>
+<th>LLM-PPO</th>
+</tr>
+<tr>
+<td>\(V(s_t)\)</td>
+<td>\(V_\psi(x,y_{\lt t})\)</td>
+</tr>
+<tr>
+<td>状态价值</td>
+<td>当前 prompt 和已生成 token 的价值</td>
+</tr>
+</table>
+
+<h3>13.2 Value Loss</h3>
+
+<p>
+Value head 的训练目标是拟合 return：
+</p>
+
+<div class="formula">
+\[
+L_V(\psi)
+=
+\frac{1}{2}
+\sum_t
+\left(
+V_\psi(x,y_{\lt t})
+-
+\hat{R}_t
+\right)^2
+\]
+</div>
+
+<p>
+其中 \(\hat{R}_t\) 是从第 \(t\) 步开始的 reward-to-go。
+</p>
+
+<h3>13.3 Advantage 估计</h3>
+
+<p>
+最简单可以写成：
+</p>
+
+<div class="formula">
+\[
+\hat{A}_t
+=
+\hat{R}_t
+-
+V_\psi(x,y_{\lt t})
+\]
+</div>
+
+<p>
+更常见的是用 GAE：
+</p>
+
+<div class="formula">
+\[
+\hat{A}_t^{\mathrm{GAE}}
+=
+\sum_{l=0}^{\infty}
+(\gamma\lambda)^l
+\delta_{t+l}
+\]
+</div>
+
+<p>
+其中：
+</p>
+
+<div class="formula">
+\[
+\delta_t
+=
+r_t
++
+\gamma V_\psi(x,y_{\le t})
+-
+V_\psi(x,y_{\lt t})
+\]
+</div>
+
+<div class="box note">
+<strong>LLM 中的 Critic：</strong>
+Value head 就是 Stage 2 里 Critic 的大模型版本。
+</div>
+
+<h2 id="token">14. Token-level Credit Assignment</h2>
+
+<p>
+大模型 RLHF 有一个难点：奖励通常在整段回答结束后才出现。
+</p>
+
+<pre>
+Prompt:
+请证明某个结论。
+
+Model response:
+token1 token2 token3 ... tokenT
+
+Reward Model:
+整段 response 得分 2.7
+</pre>
+
+<p>
+问题是：
+</p>
+
+<div class="box warn">
+这 2.7 分应该分给哪些 token？是所有 token 都有贡献，还是只有最后结论有贡献？
+</div>
+
+<h3>14.1 简单处理：所有 token 共享最终 reward</h3>
+
+<p>
+最简单做法是用同一个最终 reward 影响整段生成。
+</p>
+
+<p>
+这类似 Stage 2 中 REINFORCE 的思想：
+</p>
+
+<div class="formula">
+\[
+\nabla_\theta J
+\approx
+\sum_{t=1}^{T}
+\nabla_\theta
+\log
+\pi_\theta(y_t\mid x,y_{\lt t})
+\cdot
+\hat{A}_t
+\]
+</div>
+
+<p>
+如果整段回答 reward 高，就提高这段回答中 token 的概率。
+</p>
+
+<h3>14.2 问题：长回答信用分配更难</h3>
+
+<p>
+如果回答很长，其中某些 token 可能是错误的，但最终 reward 只有一个标量，就很难准确判断哪一步导致了好或坏。
+</p>
+
+<table>
+<tr>
+<th>奖励粒度</th>
+<th>优点</th>
+<th>缺点</th>
+</tr>
+<tr>
+<td>Sequence-level reward</td>
+<td>容易标注和训练 Reward Model</td>
+<td>信用分配粗糙</td>
+</tr>
+<tr>
+<td>Token-level reward</td>
+<td>信用分配细</td>
+<td>标注和建模困难</td>
+</tr>
+<tr>
+<td>Process reward</td>
+<td>适合推理任务</td>
+<td>需要过程级验证或标注</td>
+</tr>
+</table>
+
+<div class="box train">
+<strong>后面学 GRPO / RLVR 时要记住：</strong>
+数学和代码任务之所以适合 RL，是因为它们可以通过最终答案或测试结果自动给 reward，但长链推理仍然存在 credit assignment 难题。
+</div>
+
+<h2 id="algorithm">15. RLHF-PPO 算法流程</h2>
+
+<p>
+现在把整个流程串起来。
+</p>
+
+<h3>15.1 第一步：准备 SFT 模型</h3>
+
+<pre>
+Base Model
+  ↓ SFT
+SFT Model
+</pre>
+
+<p>
+SFT Model 既作为 RLHF 的初始化模型，也常作为 reference model。
+</p>
+
+<h3>15.2 第二步：训练 Reward Model</h3>
+
+<pre>
+Prompt x
+  ↓
+Response A
+Response B
+  ↓
+人类偏好标注
+  ↓
+chosen / rejected
+  ↓
+训练 Reward Model
+</pre>
+
+<p>
+Reward Model loss：
+</p>
+
+<div class="formula">
+\[
+L_{\mathrm{RM}}
+=
+-
+\log
+\sigma
+\left(
+r_\phi(x,y_w)-r_\phi(x,y_l)
+\right)
+\]
+</div>
+
+<h3>15.3 第三步：PPO Rollout</h3>
+
+<p>
+用当前 policy model 生成回答：
+</p>
+
+<div class="formula">
+\[
+y\sim \pi_\theta(\cdot\mid x)
+\]
+</div>
+
+<p>
+记录每个 token 的 logprob：
+</p>
+
+<div class="formula">
+\[
+\log \pi_\theta(y_t\mid x,y_{\lt t})
+\]
+</div>
+
+<p>
+同时计算 reference logprob：
+</p>
+
+<div class="formula">
+\[
+\log \pi_{\mathrm{ref}}(y_t\mid x,y_{\lt t})
+\]
+</div>
+
+<h3>15.4 第四步：计算 reward</h3>
+
+<div class="formula">
+\[
+r_{\mathrm{RM}}=r_\phi(x,y)
+\]
+</div>
+
+<div class="formula">
+\[
+r_t^{\mathrm{KL}}
+=
+-\beta
+\left[
+\log \pi_\theta(y_t\mid x,y_{\lt t})
+-
+\log \pi_{\mathrm{ref}}(y_t\mid x,y_{\lt t})
+\right]
+\]
+</div>
+
+<p>
+最终得到每个 token 的 shaped reward。
+</p>
+
+<h3>15.5 第五步：计算 advantage</h3>
+
+<p>
+用 value head 和 GAE 计算：
+</p>
+
+<div class="formula">
+\[
+\hat{A}_t
+\]
+</div>
+
+<h3>15.6 第六步：PPO 更新</h3>
+
+<div class="formula">
+\[
+r_t(\theta)
+=
+\frac{
+\pi_\theta(y_t\mid x,y_{\lt t})
+}{
+\pi_{\theta_{\mathrm{old}}}(y_t\mid x,y_{\lt t})
+}
+\]
+</div>
+
+<div class="formula">
+\[
+L^{\mathrm{CLIP}}
+=
+\mathbb{E}_t
+\left[
+\min
+\left(
+r_t(\theta)\hat{A}_t,
+\mathrm{clip}(r_t(\theta),1-\epsilon,1+\epsilon)\hat{A}_t
+\right)
+\right]
+\]
+</div>
+
+<h3>15.7 总流程伪代码</h3>
+
+<pre><code>初始化 policy model = SFT model
+初始化 reference model = frozen SFT model
+训练好 reward model
+
+for each RLHF iteration:
+
+    1. 从 prompt dataset 采样一批 prompts
+
+    2. policy model 生成 responses
+
+    3. reward model 给每个 response 打分
+
+    4. 计算 policy model 与 reference model 的 KL penalty
+
+    5. 得到 shaped rewards
+
+    6. value head 估计 values
+
+    7. 用 GAE 计算 advantages
+
+    8. 用 PPO clip objective 更新 policy model
+
+    9. 更新 value head</code></pre>
+
+<div class="box note">
+<strong>这一节要背下来：</strong>
+RLHF-PPO 的核心不是“拿 Reward Model 分数直接微调”，而是“生成样本 → 打分 → 计算 advantage → PPO 限制更新 → 保持 KL 稳定”。
+</div>
+
+<h2 id="pitfalls">16. 常见坑</h2>
+
+<h3>16.1 Reward Hacking</h3>
+
+<p>
+Reward Model 不完美。Policy Model 可能找到让 Reward Model 打高分但人类不喜欢的回答。
+</p>
+
+<table>
+<tr>
+<th>目标</th>
+<th>Reward Model 漏洞</th>
+<th>模型可能学到</th>
+</tr>
+<tr>
+<td>有帮助</td>
+<td>偏好长回答</td>
+<td>输出冗长废话</td>
+</tr>
+<tr>
+<td>有礼貌</td>
+<td>偏好客套表达</td>
+<td>过度道歉、空洞客气</td>
+</tr>
+<tr>
+<td>推理充分</td>
+<td>偏好长推理</td>
+<td>编造复杂但错误的推理</td>
+</tr>
+<tr>
+<td>安全</td>
+<td>过度惩罚风险</td>
+<td>过度拒答</td>
+</tr>
+</table>
+
+<h3>16.2 KL 太小或太大</h3>
+
+<table>
+<tr>
+<th>问题</th>
+<th>表现</th>
+</tr>
+<tr>
+<td>KL 系数太小</td>
+<td>模型偏离太快，输出风格崩坏</td>
+</tr>
+<tr>
+<td>KL 系数太大</td>
+<td>模型几乎不变，reward 提升有限</td>
+</tr>
+</table>
+
+<h3>16.3 Value Head 不准</h3>
+
+<p>
+如果 value head 估计不准，advantage 就会很噪，PPO 更新会不稳定。
+</p>
+
+<h3>16.4 Reward Scale 不稳定</h3>
+
+<p>
+Reward Model 输出分数尺度如果变化太大，PPO 的 advantage 也会不稳定。
+</p>
+
+<div class="box warn">
+<strong>实践判断：</strong>
+RLHF-PPO 难不是因为公式特别难，而是因为 reward、KL、value、advantage、采样分布互相影响，训练系统非常敏感。
+</div>
+
+<h2 id="stage4">17. 为什么下一阶段要学 DPO</h2>
+
+<p>
+RLHF-PPO 很强，但工程复杂。它需要：
+</p>
+
+<ul>
+<li>训练 Reward Model；</li>
+<li>维护 reference model；</li>
+<li>做在线 rollout；</li>
+<li>训练 value head；</li>
+<li>计算 advantage；</li>
+<li>调 PPO clip、KL、reward scale；</li>
+<li>防止 reward hacking。</li>
+</ul>
+
+<p>
+DPO 的出现，就是为了简化这个过程。
+</p>
+
+<div class="box train">
+<strong>Stage 4 的核心问题：</strong>
+既然我们最终还是从 chosen / rejected 偏好数据学习，能不能不显式训练 Reward Model，也不用 PPO，直接优化 policy？
+</div>
+
+<p>
+这就引出 Stage 4：
+</p>
+
+<pre>
+DPO Direct Preference Optimization
+直接偏好优化
+</pre>
+
+<p>
+它会把 RLHF 的 KL-constrained reward maximization 推导成一个非常简洁的偏好分类 loss。
+</p>
+
+<h2 id="summary">18. 一页总结</h2>
+
+<table>
+<tr>
+<th>模块</th>
+<th>核心公式</th>
+<th>你要理解什么</th>
+</tr>
+<tr>
+<td>LLM 策略</td>
+<td>\(\pi_\theta(y\mid x)=\prod_t\pi_\theta(y_t\mid x,y_{\lt t})\)</td>
+<td>整段回答概率由 token 概率连乘。</td>
+</tr>
+<tr>
+<td>SFT Loss</td>
+<td>\(L_{\mathrm{SFT}}=-\sum_t\log\pi_\theta(y_t\mid x,y_{\lt t})\)</td>
+<td>提高标准回答 token 的概率。</td>
+</tr>
+<tr>
+<td>偏好数据</td>
+<td>\((x,y_w,y_l)\)</td>
+<td>chosen 比 rejected 更受偏好。</td>
+</tr>
+<tr>
+<td>Reward Model</td>
+<td>\(r_\phi(x,y)\)</td>
+<td>给 prompt-response 打一个标量分数。</td>
+</tr>
+<tr>
+<td>BT 概率</td>
+<td>\(\sigma(r_w-r_l)\)</td>
+<td>chosen 胜过 rejected 的概率。</td>
+</tr>
+<tr>
+<td>RM Loss</td>
+<td>\(-\log\sigma(r_w-r_l)\)</td>
+<td>让 chosen 分数高于 rejected。</td>
+</tr>
+<tr>
+<td>RLHF 目标</td>
+<td>\(\mathbb{E}[r_\phi-\beta KL]\)</td>
+<td>高 reward 和不偏离 reference 之间折中。</td>
+</tr>
+<tr>
+<td>Token Ratio</td>
+<td>\(\frac{\pi_\theta(y_t\mid x,y_{\lt t})}{\pi_{\mathrm{old}}(y_t\mid x,y_{\lt t})}\)</td>
+<td>新旧模型对同一 token 的概率变化。</td>
+</tr>
+<tr>
+<td>Value Head</td>
+<td>\(V_\psi(x,y_{\lt t})\)</td>
+<td>估计当前生成状态的未来 reward。</td>
+</tr>
+<tr>
+<td>PPO Clip</td>
+<td>\(\min(r_t\hat{A}_t,\mathrm{clip}(r_t,1-\epsilon,1+\epsilon)\hat{A}_t)\)</td>
+<td>限制 policy 每次更新不要太猛。</td>
+</tr>
+</table>
+
+<div class="box train">
+<strong>进入 Stage 4 前的标准：</strong>
+你应该能解释清楚：
+<ol>
+<li>SFT loss 为什么是 token-level negative log likelihood；</li>
+<li>Reward Model 为什么用 \(-\log\sigma(r_w-r_l)\)；</li>
+<li>RLHF 为什么要加 KL penalty；</li>
+<li>LLM-PPO 中 ratio 是新旧模型对同一个 token 的概率比；</li>
+<li>为什么 PPO 工程复杂，DPO 才有必要出现。</li>
+</ol>
+</div>
+
+<h2>19. 本阶段练习</h2>
+
+<h3>19.1 手推练习</h3>
+
+<ol>
+<li>从 \(\pi_\theta(y\mid x)=\prod_t\pi_\theta(y_t\mid x,y_{\lt t})\) 推导 SFT loss。</li>
+<li>从 Bradley-Terry 模型推导 Reward Model loss。</li>
+<li>解释为什么 \(\sigma(r_w-r_l)\) 可以表示 chosen 胜过 rejected 的概率。</li>
+<li>写出 RLHF 的 KL-constrained objective，并解释每一项。</li>
+<li>把 PPO ratio 从传统 \(A_t,S_t\) 改写成 LLM token 形式。</li>
+</ol>
+
+<h3>19.2 编程练习</h3>
+
+<pre><code>建议做一个不训练大模型的 toy demo：
+
+1. 准备 5 条 prompt。
+2. 为每条 prompt 写两个 response：chosen 和 rejected。
+3. 假设 reward model 输出两个分数 r_w, r_l。
+4. 手动计算：
+   loss = -log sigmoid(r_w - r_l)
+5. 改变 r_w - r_l，观察 loss 如何变化。
+6. 再模拟一个 token-level KL penalty：
+   kl_t = logp_policy_t - logp_ref_t
+   reward_t = -beta * kl_t</code></pre>
+
+<h3>19.3 大模型思考题</h3>
+
+<div class="box note">
+<ol>
+<li>如果 Reward Model 偏好长回答，Policy Model 会发生什么？</li>
+<li>如果 KL 系数太大，RLHF 还会有效吗？</li>
+<li>如果只用 SFT，不用偏好数据，模型会缺少什么能力？</li>
+<li>为什么 DPO 可以看作对 RLHF 的简化？</li>
+<li>数学推理任务更适合 RLHF、DPO，还是 RLVR？为什么？</li>
+</ol>
+</div>
+
+<p class="small">强化学习大模型路线 · Stage 3 · LLM Post-training / SFT / Reward Model / RLHF-PPO 数学推导版</p>
+
+</body>
+</html>

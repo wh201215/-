@@ -1,0 +1,2096 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>强化学习大模型路线｜Stage 2：Policy Gradient / Actor-Critic / GAE / PPO 数学推导</title>
+
+<script>
+window.MathJax = {
+  tex: {
+    inlineMath: [['\\(', '\\)'], ['$', '$']],
+    displayMath: [['\\[', '\\]']],
+    processEscapes: true
+  },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+
+<style>
+html {
+  scroll-behavior: smooth;
+}
+body {
+  font-family: "Microsoft YaHei", Arial, sans-serif;
+  line-height: 1.85;
+  max-width: 1080px;
+  margin: 40px auto;
+  padding: 0 28px 100px;
+  background: #f7f8fb;
+  color: #1f2937;
+  font-size: 17px;
+}
+h1 {
+  font-size: 34px;
+  line-height: 1.35;
+  border-bottom: 5px solid #2563eb;
+  padding-bottom: 14px;
+}
+h2 {
+  margin-top: 48px;
+  padding: 12px 16px;
+  font-size: 27px;
+  background: #eef4ff;
+  border-left: 7px solid #2563eb;
+}
+h3 {
+  margin-top: 28px;
+  font-size: 21px;
+}
+h4 {
+  margin-top: 24px;
+  font-size: 18px;
+}
+h2, h3 {
+  scroll-margin-top: 24px;
+}
+.box {
+  background: #ffffff;
+  border: 1px solid #d9e2ef;
+  border-radius: 12px;
+  padding: 18px 22px;
+  margin: 18px 0;
+}
+.note {
+  background: #fff7d6;
+  border-left: 6px solid #d6a800;
+}
+.train {
+  background: #ecfdf3;
+  border-left: 6px solid #16a34a;
+}
+.warn {
+  background: #fff1f1;
+  border-left: 6px solid #dc2626;
+}
+.formula {
+  background: #ffffff;
+  border: 1px solid #d9e2ef;
+  border-radius: 12px;
+  padding: 16px 18px;
+  margin: 18px 0;
+  overflow-x: auto;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 18px 0;
+  background: #ffffff;
+}
+th, td {
+  border: 1px solid #d9e2ef;
+  padding: 11px 13px;
+  vertical-align: top;
+}
+th {
+  background: #f1f5f9;
+}
+pre {
+  background: #111827;
+  color: #e5e7eb;
+  padding: 18px;
+  border-radius: 10px;
+  overflow-x: auto;
+  line-height: 1.55;
+}
+code {
+  font-family: Consolas, Monaco, "Courier New", monospace;
+}
+.small {
+  color: #667085;
+  font-size: 14px;
+}
+.page-toc {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+}
+.page-toc-toggle {
+  border: 0;
+  border-radius: 999px;
+  padding: 10px 16px;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.24);
+}
+.page-toc-toggle:hover {
+  background: #1d4ed8;
+}
+.page-toc-panel {
+  display: none;
+  width: 330px;
+  max-height: calc(100vh - 90px);
+  overflow: auto;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid #d9e2ef;
+  border-radius: 14px;
+  padding: 16px 18px;
+  margin-top: 10px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+  backdrop-filter: blur(8px);
+}
+.page-toc.is-open .page-toc-panel {
+  display: block;
+}
+.page-toc-title {
+  margin-bottom: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+}
+.page-toc-list,
+.page-toc-sublist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.page-toc-item + .page-toc-item {
+  margin-top: 10px;
+}
+.page-toc-link {
+  display: block;
+  color: #334155;
+  text-decoration: none;
+  font-size: 14px;
+  line-height: 1.55;
+}
+.page-toc-link:hover {
+  color: #2563eb;
+}
+.step {
+  background: #ffffff;
+  border: 1px solid #d9e2ef;
+  border-radius: 12px;
+  padding: 16px 18px;
+  margin: 16px 0;
+}
+.step-title {
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 8px;
+}
+.arrow {
+  text-align: center;
+  color: #2563eb;
+  font-weight: 700;
+  font-size: 22px;
+  margin: 10px 0;
+}
+.hr {
+  height: 1px;
+  background: #d9e2ef;
+  margin: 26px 0;
+}
+@media (max-width: 1100px) {
+  .page-toc {
+    top: 12px;
+    right: 12px;
+  }
+  .page-toc-panel {
+    width: min(330px, calc(100vw - 24px));
+    max-height: calc(100vh - 72px);
+  }
+}
+@media (max-width: 760px) {
+  body {
+    margin: 30px auto;
+    padding: 0 18px 80px;
+    font-size: 16px;
+  }
+  h1 {
+    font-size: 28px;
+  }
+  h2 {
+    font-size: 23px;
+  }
+  table {
+    font-size: 15px;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<nav class="page-toc" aria-label="文章目录">
+  <button class="page-toc-toggle" onclick="document.querySelector('.page-toc').classList.toggle('is-open')">☰ 目录</button>
+  <div class="page-toc-panel">
+    <div class="page-toc-title">目录导航</div>
+    <ol class="page-toc-list">
+      <li class="page-toc-item"><a class="page-toc-link" href="#intro">0. Stage 2 学什么</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#from-q">1. 为什么从 Q-learning 转向 Policy Gradient</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#policy">2. 参数化策略 \(\pi_\theta(a\mid s)\)</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#objective">3. 强化学习目标函数 \(J(\theta)\)</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#log-derivative">4. log-derivative trick</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#pg">5. Policy Gradient 定理逐步推导</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#reinforce">6. REINFORCE 算法</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#baseline">7. Baseline 为什么不改变期望梯度</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#advantage">8. Advantage Function</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#actor-critic">9. Actor-Critic</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#td">10. TD Error 与 Advantage 的关系</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#gae">11. GAE 逐步推导</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#importance">12. Importance Sampling Ratio</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#ppo">13. PPO Clip Objective</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#loss">14. PPO 总损失</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#llm">15. 和大模型 RLHF 的对应关系</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#summary">16. 一页总结</a></li>
+    </ol>
+  </div>
+</nav>
+
+<h1>强化学习大模型路线｜Stage 2：Policy Gradient / Actor-Critic / GAE / PPO 数学推导</h1>
+
+<div class="box note" id="intro">
+<p><strong>学习定位：</strong>Stage 1 你已经理解了 MDP、Return、Value Function、Bellman Equation 和 Q-learning。Stage 2 开始进入大模型后训练真正相关的部分：<strong>策略梯度 Policy Gradient</strong>。</p>
+
+<p>为什么这一阶段重要？因为大模型本身就是一个策略：</p>
+
+<div class="formula">
+\[
+\pi_\theta(a\mid s)
+\]
+</div>
+
+<p>给定上下文 \(s\)，模型输出下一个 token \(a\) 的概率。RLHF、PPO、GRPO 本质上都在调整这个策略分布。</p>
+
+<p><strong>Stage 2 目标：</strong></p>
+<ol>
+<li>理解为什么 Q-learning 不适合直接作为大模型后训练主线；</li>
+<li>推导 Policy Gradient 的核心公式；</li>
+<li>理解 REINFORCE 为什么可以用采样轨迹更新策略；</li>
+<li>理解 baseline、advantage、Actor-Critic、GAE；</li>
+<li>推导 PPO 的 clip objective，为后面 RLHF 做准备。</li>
+</ol>
+</div>
+
+<h2 id="from-q">1. 为什么从 Q-learning 转向 Policy Gradient？</h2>
+
+<p>
+Stage 1 里，Q-learning 的核心是学习：
+</p>
+
+<div class="formula">
+\[
+Q(s,a)
+\]
+</div>
+
+<p>
+然后用：
+</p>
+
+<div class="formula">
+\[
+a^*=\arg\max_a Q(s,a)
+\]
+</div>
+
+<p>
+选择动作。
+</p>
+
+<p>
+这在小动作空间里很好用。例如 GridWorld 里动作只有：
+</p>
+
+<pre>
+up, down, left, right
+</pre>
+
+<p>
+但是到了大模型，动作空间非常巨大。
+</p>
+
+<div class="box warn">
+<strong>关键问题：</strong>
+语言模型每一步的动作是“选择下一个 token”。如果词表有 50,000 个 token，那么每一步动作空间就是 50,000。
+</div>
+
+<table>
+<tr>
+<th>任务</th>
+<th>动作空间</th>
+<th>Q-learning 是否方便</th>
+</tr>
+<tr>
+<td>GridWorld</td>
+<td>4 个动作</td>
+<td>方便</td>
+</tr>
+<tr>
+<td>Atari 游戏</td>
+<td>几十个动作</td>
+<td>还可以</td>
+</tr>
+<tr>
+<td>机器人连续控制</td>
+<td>连续动作</td>
+<td>不方便</td>
+</tr>
+<tr>
+<td>大模型生成</td>
+<td>几万 token，每步一个 token</td>
+<td>非常不方便</td>
+</tr>
+</table>
+
+<p>
+所以大模型后训练更自然的方式不是显式学习每个动作的 \(Q(s,a)\)，而是直接学习策略：
+</p>
+
+<div class="formula">
+\[
+\pi_\theta(a\mid s)
+\]
+</div>
+
+<p>
+也就是让模型直接输出动作概率分布。
+</p>
+
+<div class="box train">
+<strong>一句话理解：</strong>
+Q-learning 是先学“每个动作有多好”，再选最好的动作；Policy Gradient 是直接调整“好动作出现的概率”。
+</div>
+
+<h2 id="policy">2. 参数化策略 \(\pi_\theta(a\mid s)\)</h2>
+
+<p>
+Policy Gradient 的出发点是：策略不是一个固定表格，而是一个带参数的函数。
+</p>
+
+<div class="formula">
+\[
+\pi_\theta(a\mid s)
+\]
+</div>
+
+<p>
+其中：
+</p>
+
+<table>
+<tr>
+<th>符号</th>
+<th>含义</th>
+<th>大模型中对应什么</th>
+</tr>
+<tr>
+<td>\(\theta\)</td>
+<td>策略参数</td>
+<td>神经网络参数，也就是 LLM 的权重</td>
+</tr>
+<tr>
+<td>\(s\)</td>
+<td>状态</td>
+<td>prompt + 已生成上下文</td>
+</tr>
+<tr>
+<td>\(a\)</td>
+<td>动作</td>
+<td>下一个 token，或者一整段 response</td>
+</tr>
+<tr>
+<td>\(\pi_\theta(a\mid s)\)</td>
+<td>动作概率</td>
+<td>模型在上下文中生成某个 token 的概率</td>
+</tr>
+</table>
+
+<h3>2.1 离散动作策略</h3>
+
+<p>
+如果动作是离散的，例如：
+</p>
+
+<pre>
+a ∈ {up, down, left, right}
+</pre>
+
+<p>
+策略可以输出一个 softmax 分布：
+</p>
+
+<div class="formula">
+\[
+\pi_\theta(a\mid s)
+=
+\frac{\exp(f_\theta(s,a))}
+{\sum_{a'}\exp(f_\theta(s,a'))}
+\]
+</div>
+
+<p>
+这里 \(f_\theta(s,a)\) 是神经网络给动作 \(a\) 的打分，也叫 logit。
+</p>
+
+<h3>2.2 大模型中的 token 策略</h3>
+
+<p>
+大模型也是一样。给定上下文 \(s\)，模型输出每个 token 的 logit：
+</p>
+
+<div class="formula">
+\[
+z_\theta(s)=(z_1,z_2,\ldots,z_{|\mathcal{V}|})
+\]
+</div>
+
+<p>
+其中 \(|\mathcal{V}|\) 是词表大小。经过 softmax 得到每个 token 的概率：
+</p>
+
+<div class="formula">
+\[
+\pi_\theta(a_i\mid s)
+=
+\frac{\exp(z_i)}
+{\sum_{j=1}^{|\mathcal{V}|}\exp(z_j)}
+\]
+</div>
+
+<div class="box note">
+<strong>大模型视角：</strong>
+LLM 的 next-token prediction 本身就是一个策略分布。后训练的 RL 不是把模型变成策略，而是对已有策略进行奖励驱动的优化。
+</div>
+
+<h2 id="objective">3. 强化学习目标函数 \(J(\theta)\)</h2>
+
+<p>
+既然策略有参数 \(\theta\)，我们就要定义一个目标函数，然后让 \(\theta\) 朝着目标变好的方向更新。
+</p>
+
+<h3>3.1 目标：最大化期望回报</h3>
+
+<p>
+最自然的目标是：
+</p>
+
+<div class="formula">
+\[
+J(\theta)=\mathbb{E}_{\tau\sim p_\theta(\tau)}[G(\tau)]
+\]
+</div>
+
+<p>
+逐个解释：
+</p>
+
+<table>
+<tr>
+<th>符号</th>
+<th>含义</th>
+</tr>
+<tr>
+<td>\(\tau\)</td>
+<td>一条轨迹，例如 \(s_0,a_0,r_1,s_1,a_1,r_2,\ldots\)</td>
+</tr>
+<tr>
+<td>\(p_\theta(\tau)\)</td>
+<td>策略 \(\pi_\theta\) 诱导出的轨迹概率</td>
+</tr>
+<tr>
+<td>\(G(\tau)\)</td>
+<td>这条轨迹的总回报</td>
+</tr>
+<tr>
+<td>\(J(\theta)\)</td>
+<td>策略参数为 \(\theta\) 时的平均表现</td>
+</tr>
+</table>
+
+<div class="box train">
+<strong>一句话理解：</strong>
+\(J(\theta)\) 表示当前策略平均能拿多少奖励。Policy Gradient 的目标就是调整 \(\theta\)，让 \(J(\theta)\) 变大。
+</div>
+
+<h3>3.2 轨迹概率展开</h3>
+
+<p>
+根据 Stage 1 的内容，一条轨迹概率可以写成：
+</p>
+
+<div class="formula">
+\[
+p_\theta(\tau)
+=
+\rho_0(s_0)
+\prod_{t=0}^{T-1}
+\pi_\theta(a_t\mid s_t)
+p(s_{t+1},r_{t+1}\mid s_t,a_t)
+\]
+</div>
+
+<p>
+注意，这里只有策略项 \(\pi_\theta(a_t\mid s_t)\) 含有参数 \(\theta\)。环境转移概率：
+</p>
+
+<div class="formula">
+\[
+p(s_{t+1},r_{t+1}\mid s_t,a_t)
+\]
+</div>
+
+<p>
+不由智能体控制，所以通常不对 \(\theta\) 求导。
+</p>
+
+<h3>3.3 我们真正想求什么</h3>
+
+<p>
+为了最大化 \(J(\theta)\)，我们要计算梯度：
+</p>
+
+<div class="formula">
+\[
+\nabla_\theta J(\theta)
+\]
+</div>
+
+<p>
+然后做梯度上升：
+</p>
+
+<div class="formula">
+\[
+\theta \leftarrow \theta+\alpha\nabla_\theta J(\theta)
+\]
+</div>
+
+<p>
+注意这里是加号，因为我们要最大化奖励。如果写成 loss 最小化，才会用减号。
+</p>
+
+<h2 id="log-derivative">4. log-derivative trick</h2>
+
+<p>
+Policy Gradient 推导最关键的技巧叫：
+</p>
+
+<div class="box note">
+<strong>log-derivative trick，也叫 score function trick。</strong>
+</div>
+
+<p>
+它的核心公式是：
+</p>
+
+<div class="formula">
+\[
+\nabla_\theta p_\theta(x)
+=
+p_\theta(x)\nabla_\theta \log p_\theta(x)
+\]
+</div>
+
+<p>
+这一步非常重要，我们慢慢推。
+</p>
+
+<h3>4.1 从对数求导开始</h3>
+
+<p>
+根据链式法则：
+</p>
+
+<div class="formula">
+\[
+\nabla_\theta \log p_\theta(x)
+=
+\frac{1}{p_\theta(x)}
+\nabla_\theta p_\theta(x)
+\]
+</div>
+
+<p>
+两边同时乘上 \(p_\theta(x)\)：
+</p>
+
+<div class="formula">
+\[
+p_\theta(x)\nabla_\theta \log p_\theta(x)
+=
+\nabla_\theta p_\theta(x)
+\]
+</div>
+
+<p>
+所以得到：
+</p>
+
+<div class="formula">
+\[
+\boxed{
+\nabla_\theta p_\theta(x)
+=
+p_\theta(x)\nabla_\theta \log p_\theta(x)
+}
+\]
+</div>
+
+<h3>4.2 为什么这个技巧重要？</h3>
+
+<p>
+因为我们要求的是：
+</p>
+
+<div class="formula">
+\[
+\nabla_\theta J(\theta)
+=
+\nabla_\theta
+\sum_\tau p_\theta(\tau)G(\tau)
+\]
+</div>
+
+<p>
+难点是 \(p_\theta(\tau)\) 是一个复杂轨迹概率。用 log-derivative trick 后，可以把：
+</p>
+
+<div class="formula">
+\[
+\nabla_\theta p_\theta(\tau)
+\]
+</div>
+
+<p>
+变成：
+</p>
+
+<div class="formula">
+\[
+p_\theta(\tau)\nabla_\theta \log p_\theta(\tau)
+\]
+</div>
+
+<p>
+这样就可以转回期望形式，用采样轨迹估计。
+</p>
+
+<h2 id="pg">5. Policy Gradient 定理逐步推导</h2>
+
+<p>
+现在开始推导最核心公式。
+</p>
+
+<h3>5.1 从目标函数开始</h3>
+
+<div class="formula">
+\[
+J(\theta)=\mathbb{E}_{\tau\sim p_\theta(\tau)}[G(\tau)]
+\]
+</div>
+
+<p>
+如果轨迹空间是离散的，可以写成求和：
+</p>
+
+<div class="formula">
+\[
+J(\theta)=\sum_\tau p_\theta(\tau)G(\tau)
+\]
+</div>
+
+<h3>5.2 对 \(\theta\) 求梯度</h3>
+
+<div class="formula">
+\[
+\nabla_\theta J(\theta)
+=
+\nabla_\theta
+\sum_\tau p_\theta(\tau)G(\tau)
+\]
+</div>
+
+<p>
+因为 \(G(\tau)\) 是这条轨迹的回报，先把它看成对 \(\theta\) 不直接求导的样本函数，于是：
+</p>
+
+<div class="formula">
+\[
+\nabla_\theta J(\theta)
+=
+\sum_\tau
+\nabla_\theta p_\theta(\tau)
+G(\tau)
+\]
+</div>
+
+<h3>5.3 使用 log-derivative trick</h3>
+
+<p>
+用：
+</p>
+
+<div class="formula">
+\[
+\nabla_\theta p_\theta(\tau)
+=
+p_\theta(\tau)\nabla_\theta \log p_\theta(\tau)
+\]
+</div>
+
+<p>
+代入：
+</p>
+
+<div class="formula">
+\[
+\nabla_\theta J(\theta)
+=
+\sum_\tau
+p_\theta(\tau)
+\nabla_\theta \log p_\theta(\tau)
+G(\tau)
+\]
+</div>
+
+<h3>5.4 重新写成期望</h3>
+
+<p>
+因为：
+</p>
+
+<div class="formula">
+\[
+\sum_\tau p_\theta(\tau)f(\tau)
+=
+\mathbb{E}_{\tau\sim p_\theta(\tau)}[f(\tau)]
+\]
+</div>
+
+<p>
+所以：
+</p>
+
+<div class="formula">
+\[
+\nabla_\theta J(\theta)
+=
+\mathbb{E}_{\tau\sim p_\theta(\tau)}
+\left[
+\nabla_\theta \log p_\theta(\tau)G(\tau)
+\right]
+\]
+</div>
+
+<h3>5.5 展开轨迹 log 概率</h3>
+
+<p>
+轨迹概率为：
+</p>
+
+<div class="formula">
+\[
+p_\theta(\tau)
+=
+\rho_0(s_0)
+\prod_{t=0}^{T-1}
+\pi_\theta(a_t\mid s_t)
+p(s_{t+1},r_{t+1}\mid s_t,a_t)
+\]
+</div>
+
+<p>
+取 log：
+</p>
+
+<div class="formula">
+\[
+\log p_\theta(\tau)
+=
+\log \rho_0(s_0)
++
+\sum_{t=0}^{T-1}\log \pi_\theta(a_t\mid s_t)
++
+\sum_{t=0}^{T-1}
+\log p(s_{t+1},r_{t+1}\mid s_t,a_t)
+\]
+</div>
+
+<p>
+对 \(\theta\) 求梯度。初始分布和环境转移概率不含 \(\theta\)，梯度为 0：
+</p>
+
+<div class="formula">
+\[
+\nabla_\theta \log p_\theta(\tau)
+=
+\sum_{t=0}^{T-1}
+\nabla_\theta \log \pi_\theta(a_t\mid s_t)
+\]
+</div>
+
+<h3>5.6 得到基础 Policy Gradient 公式</h3>
+
+<p>
+代回前面：
+</p>
+
+<div class="formula">
+\[
+\boxed{
+\nabla_\theta J(\theta)
+=
+\mathbb{E}_{\tau\sim p_\theta(\tau)}
+\left[
+\sum_{t=0}^{T-1}
+\nabla_\theta \log \pi_\theta(a_t\mid s_t)
+G(\tau)
+\right]
+}
+\]
+</div>
+
+<p>
+这就是最基础的轨迹级 Policy Gradient。
+</p>
+
+<div class="box train">
+<strong>直观理解：</strong>
+如果一条轨迹回报 \(G(\tau)\) 很高，就提高这条轨迹中所有动作的概率；如果回报低，就降低这些动作的概率。
+</div>
+
+<h3>5.7 从整条轨迹回报改成从当前时刻开始的回报</h3>
+
+<p>
+更常见的写法是：
+</p>
+
+<div class="formula">
+\[
+\boxed{
+\nabla_\theta J(\theta)
+=
+\mathbb{E}_{\pi_\theta}
+\left[
+\sum_{t=0}^{T-1}
+\nabla_\theta \log \pi_\theta(A_t\mid S_t)
+G_t
+\right]
+}
+\]
+</div>
+
+<p>
+这里的 \(G_t\) 是从第 \(t\) 步开始的回报：
+</p>
+
+<div class="formula">
+\[
+G_t=R_{t+1}+\gamma R_{t+2}+\gamma^2R_{t+3}+\cdots
+\]
+</div>
+
+<p>
+为什么可以用 \(G_t\) 而不是整条 \(G(\tau)\)？因为动作 \(A_t\) 不可能影响过去已经发生的奖励，只能影响当前及未来的奖励。
+</p>
+
+<div class="box note">
+<strong>重要理解：</strong>
+在第 \(t\) 步选择动作时，过去奖励已经发生，和当前动作没有因果关系。所以给第 \(t\) 步动作分配信用时，应该使用从 \(t\) 开始的未来回报 \(G_t\)。
+</div>
+
+<h2 id="reinforce">6. REINFORCE 算法</h2>
+
+<p>
+REINFORCE 是最基础的 Monte Carlo Policy Gradient 算法。
+</p>
+
+<h3>6.1 REINFORCE 更新公式</h3>
+
+<div class="formula">
+\[
+\theta
+\leftarrow
+\theta
++
+\alpha
+G_t
+\nabla_\theta \log \pi_\theta(A_t\mid S_t)
+\]
+</div>
+
+<p>
+如果一条 episode 有多个时间步，就对每一步都更新：
+</p>
+
+<div class="formula">
+\[
+\theta
+\leftarrow
+\theta
++
+\alpha
+\sum_{t=0}^{T-1}
+G_t
+\nabla_\theta \log \pi_\theta(A_t\mid S_t)
+\]
+</div>
+
+<h3>6.2 这个公式到底在干什么？</h3>
+
+<table>
+<tr>
+<th>部分</th>
+<th>作用</th>
+</tr>
+<tr>
+<td>\(\nabla_\theta \log \pi_\theta(A_t\mid S_t)\)</td>
+<td>告诉参数如何变化才能提高当前动作概率。</td>
+</tr>
+<tr>
+<td>\(G_t\)</td>
+<td>告诉这个动作后面的结果好不好。</td>
+</tr>
+<tr>
+<td>\(\alpha\)</td>
+<td>学习率，控制更新幅度。</td>
+</tr>
+</table>
+
+<div class="box note">
+<strong>一句话：</strong>
+如果 \(G_t\) 大，说明这个动作之后表现好，就提高这个动作概率；如果 \(G_t\) 小或为负，就降低这个动作概率。
+</div>
+
+<h3>6.3 REINFORCE 伪代码</h3>
+
+<pre><code>初始化策略参数 θ
+
+for each episode:
+    用当前策略 πθ 采样一条完整轨迹:
+        S0, A0, R1, S1, A1, R2, ...
+
+    对每个时间步 t:
+        计算从 t 开始的回报 Gt
+        更新参数:
+        θ ← θ + α Gt ∇θ log πθ(At | St)</code></pre>
+
+<h3>6.4 REINFORCE 的问题</h3>
+
+<p>
+REINFORCE 虽然简单，但方差很大。
+</p>
+
+<div class="box warn">
+<strong>为什么方差大？</strong>
+同一个动作有时因为后续运气好得到高回报，有时因为环境随机性得到低回报。直接用整段回报 \(G_t\) 更新，会导致梯度非常不稳定。
+</div>
+
+<p>
+解决思路是加入 baseline。
+</p>
+
+<h2 id="baseline">7. Baseline 为什么不改变期望梯度？</h2>
+
+<p>
+我们可以把更新中的 \(G_t\) 换成：
+</p>
+
+<div class="formula">
+\[
+G_t-b(S_t)
+\]
+</div>
+
+<p>
+其中 \(b(S_t)\) 是 baseline，通常取状态价值函数：
+</p>
+
+<div class="formula">
+\[
+b(S_t)=V^\pi(S_t)
+\]
+</div>
+
+<h3>7.1 加 baseline 后的梯度</h3>
+
+<div class="formula">
+\[
+\nabla_\theta J(\theta)
+=
+\mathbb{E}_{\pi_\theta}
+\left[
+\nabla_\theta \log \pi_\theta(A_t\mid S_t)
+\left(G_t-b(S_t)\right)
+\right]
+\]
+</div>
+
+<p>
+关键问题是：为什么减去 \(b(S_t)\) 不会改变期望梯度？
+</p>
+
+<h3>7.2 证明 baseline 项期望为 0</h3>
+
+<p>
+我们只看 baseline 那一项：
+</p>
+
+<div class="formula">
+\[
+\mathbb{E}_{A_t\sim \pi_\theta}
+\left[
+\nabla_\theta \log \pi_\theta(A_t\mid S_t)b(S_t)
+\right]
+\]
+</div>
+
+<p>
+在给定 \(S_t=s\) 时，\(b(s)\) 与动作 \(a\) 无关，可以提出：
+</p>
+
+<div class="formula">
+\[
+b(s)
+\sum_a
+\pi_\theta(a\mid s)
+\nabla_\theta \log \pi_\theta(a\mid s)
+\]
+</div>
+
+<p>
+使用 log-derivative trick：
+</p>
+
+<div class="formula">
+\[
+\pi_\theta(a\mid s)
+\nabla_\theta \log \pi_\theta(a\mid s)
+=
+\nabla_\theta \pi_\theta(a\mid s)
+\]
+</div>
+
+<p>
+所以：
+</p>
+
+<div class="formula">
+\[
+b(s)
+\sum_a
+\nabla_\theta \pi_\theta(a\mid s)
+=
+b(s)
+\nabla_\theta
+\sum_a
+\pi_\theta(a\mid s)
+\]
+</div>
+
+<p>
+由于策略概率和为 1：
+</p>
+
+<div class="formula">
+\[
+\sum_a \pi_\theta(a\mid s)=1
+\]
+</div>
+
+<p>
+所以：
+</p>
+
+<div class="formula">
+\[
+b(s)\nabla_\theta 1=0
+\]
+</div>
+
+<p>
+因此 baseline 项的期望为 0。
+</p>
+
+<div class="box train">
+<strong>结论：</strong>
+减去只依赖状态、不依赖动作的 baseline，不会改变梯度期望，但可以降低方差。
+</div>
+
+<h2 id="advantage">8. Advantage Function</h2>
+
+<p>
+当 baseline 取状态价值函数：
+</p>
+
+<div class="formula">
+\[
+b(S_t)=V^\pi(S_t)
+\]
+</div>
+
+<p>
+就得到 Advantage：
+</p>
+
+<div class="formula">
+\[
+A^\pi(S_t,A_t)=Q^\pi(S_t,A_t)-V^\pi(S_t)
+\]
+</div>
+
+<h3>8.1 Advantage 的直观含义</h3>
+
+<div class="box note">
+<strong>Advantage 表示：</strong>
+某个动作比当前状态下的平均动作好多少。
+</div>
+
+<p>
+如果：
+</p>
+
+<div class="formula">
+\[
+A^\pi(s,a)>0
+\]
+</div>
+
+<p>
+说明动作 \(a\) 比平均水平好，应该提高概率。
+</p>
+
+<p>
+如果：
+</p>
+
+<div class="formula">
+\[
+A^\pi(s,a)<0
+\]
+</div>
+
+<p>
+说明动作 \(a\) 比平均水平差，应该降低概率。
+</p>
+
+<h3>8.2 Policy Gradient 的 Advantage 形式</h3>
+
+<div class="formula">
+\[
+\boxed{
+\nabla_\theta J(\theta)
+=
+\mathbb{E}_{\pi_\theta}
+\left[
+\nabla_\theta \log \pi_\theta(A_t\mid S_t)
+A^\pi(S_t,A_t)
+\right]
+}
+\]
+</div>
+
+<p>
+这是后面 PPO、GRPO 都会用到的核心结构。
+</p>
+
+<div class="box train">
+<strong>大模型后训练里的理解：</strong>
+不是所有高概率 token 都应该继续提高概率，而是那些“比当前模型平均表现更好”的生成动作应该提高概率。
+</div>
+
+<h2 id="actor-critic">9. Actor-Critic</h2>
+
+<p>
+Actor-Critic 是 Policy Gradient 的重要改进。
+</p>
+
+<table>
+<tr>
+<th>组件</th>
+<th>作用</th>
+<th>对应函数</th>
+</tr>
+<tr>
+<td>Actor</td>
+<td>负责选择动作</td>
+<td>\(\pi_\theta(a\mid s)\)</td>
+</tr>
+<tr>
+<td>Critic</td>
+<td>负责评价状态或动作</td>
+<td>\(V_\phi(s)\) 或 \(Q_\phi(s,a)\)</td>
+</tr>
+</table>
+
+<h3>9.1 为什么需要 Critic？</h3>
+
+<p>
+REINFORCE 用完整回报 \(G_t\) 估计动作好坏，方差很大。Critic 用神经网络估计价值函数：
+</p>
+
+<div class="formula">
+\[
+V_\phi(s)\approx V^\pi(s)
+\]
+</div>
+
+<p>
+然后用它作为 baseline 或 advantage 估计。
+</p>
+
+<h3>9.2 Actor 的更新</h3>
+
+<p>
+Actor 用 advantage 更新策略：
+</p>
+
+<div class="formula">
+\[
+\theta
+\leftarrow
+\theta
++
+\alpha_\theta
+\nabla_\theta
+\log \pi_\theta(A_t\mid S_t)
+\hat{A}_t
+\]
+</div>
+
+<h3>9.3 Critic 的更新</h3>
+
+<p>
+Critic 用 TD target 学习价值函数：
+</p>
+
+<div class="formula">
+\[
+y_t=R_{t+1}+\gamma V_\phi(S_{t+1})
+\]
+</div>
+
+<p>
+价值函数预测是：
+</p>
+
+<div class="formula">
+\[
+V_\phi(S_t)
+\]
+</div>
+
+<p>
+所以 Critic 的 loss 是：
+</p>
+
+<div class="formula">
+\[
+L_V(\phi)
+=
+\frac{1}{2}
+\left(
+V_\phi(S_t)-y_t
+\right)^2
+\]
+</div>
+
+<p>
+即：
+</p>
+
+<div class="formula">
+\[
+L_V(\phi)
+=
+\frac{1}{2}
+\left(
+V_\phi(S_t)
+-
+\left[
+R_{t+1}+\gamma V_\phi(S_{t+1})
+\right]
+\right)^2
+\]
+</div>
+
+<div class="box note">
+<strong>一句话理解：</strong>
+Actor 负责“怎么做”，Critic 负责“评价做得好不好”。
+</div>
+
+<h2 id="td">10. TD Error 与 Advantage 的关系</h2>
+
+<p>
+TD error 定义为：
+</p>
+
+<div class="formula">
+\[
+\delta_t
+=
+R_{t+1}
++
+\gamma V(S_{t+1})
+-
+V(S_t)
+\]
+</div>
+
+<p>
+它其实可以看作一步 advantage 的估计。
+</p>
+
+<h3>10.1 从 Advantage 定义出发</h3>
+
+<div class="formula">
+\[
+A^\pi(s,a)=Q^\pi(s,a)-V^\pi(s)
+\]
+</div>
+
+<p>
+而 \(Q^\pi(s,a)\) 可以写成：
+</p>
+
+<div class="formula">
+\[
+Q^\pi(S_t,A_t)
+=
+\mathbb{E}
+[
+R_{t+1}+\gamma V^\pi(S_{t+1})
+\mid S_t,A_t
+]
+\]
+</div>
+
+<p>
+所以：
+</p>
+
+<div class="formula">
+\[
+A^\pi(S_t,A_t)
+=
+\mathbb{E}
+[
+R_{t+1}+\gamma V^\pi(S_{t+1})-V^\pi(S_t)
+\mid S_t,A_t
+]
+\]
+</div>
+
+<p>
+括号里的样本量就是：
+</p>
+
+<div class="formula">
+\[
+\delta_t=R_{t+1}+\gamma V(S_{t+1})-V(S_t)
+\]
+</div>
+
+<div class="box train">
+<strong>结论：</strong>
+TD error \(\delta_t\) 是 advantage 的一个单步样本估计。
+</div>
+
+<h2 id="gae">11. GAE 逐步推导</h2>
+
+<p>
+GAE 全称是 Generalized Advantage Estimation，中文可以叫广义优势估计。
+</p>
+
+<p>
+它想解决的问题是：
+</p>
+
+<div class="box warn">
+单步 TD 方差小但偏差大；完整 Monte Carlo 回报偏差小但方差大。GAE 用一个参数 \(\lambda\) 在二者之间折中。
+</div>
+
+<h3>11.1 单步 TD Advantage</h3>
+
+<div class="formula">
+\[
+\hat{A}_t^{(1)}
+=
+\delta_t
+=
+R_{t+1}+\gamma V(S_{t+1})-V(S_t)
+\]
+</div>
+
+<h3>11.2 两步 Advantage</h3>
+
+<p>
+两步回报目标是：
+</p>
+
+<div class="formula">
+\[
+R_{t+1}
++
+\gamma R_{t+2}
++
+\gamma^2 V(S_{t+2})
+\]
+</div>
+
+<p>
+减去当前价值：
+</p>
+
+<div class="formula">
+\[
+\hat{A}_t^{(2)}
+=
+R_{t+1}
++
+\gamma R_{t+2}
++
+\gamma^2 V(S_{t+2})
+-
+V(S_t)
+\]
+</div>
+
+<p>
+它也可以写成 TD error 的形式：
+</p>
+
+<div class="formula">
+\[
+\hat{A}_t^{(2)}
+=
+\delta_t+\gamma\delta_{t+1}
+\]
+</div>
+
+<h3>11.3 三步 Advantage</h3>
+
+<div class="formula">
+\[
+\hat{A}_t^{(3)}
+=
+\delta_t+\gamma\delta_{t+1}+\gamma^2\delta_{t+2}
+\]
+</div>
+
+<h3>11.4 一般 \(n\) 步 Advantage</h3>
+
+<div class="formula">
+\[
+\hat{A}_t^{(n)}
+=
+\sum_{l=0}^{n-1}
+\gamma^l
+\delta_{t+l}
+\]
+</div>
+
+<h3>11.5 GAE 加权平均</h3>
+
+<p>
+GAE 把不同步数的 advantage 加权平均，权重由 \(\lambda\) 控制。最终可以化简为：
+</p>
+
+<div class="formula">
+\[
+\boxed{
+\hat{A}_t^{\mathrm{GAE}(\gamma,\lambda)}
+=
+\sum_{l=0}^{\infty}
+(\gamma\lambda)^l
+\delta_{t+l}
+}
+\]
+</div>
+
+<p>
+其中：
+</p>
+
+<div class="formula">
+\[
+\delta_t
+=
+R_{t+1}+\gamma V(S_{t+1})-V(S_t)
+\]
+</div>
+
+<h3>11.6 \(\lambda\) 怎么理解？</h3>
+
+<table>
+<tr>
+<th>\(\lambda\)</th>
+<th>含义</th>
+<th>效果</th>
+</tr>
+<tr>
+<td>\(\lambda=0\)</td>
+<td>只用单步 TD</td>
+<td>方差小，偏差大</td>
+</tr>
+<tr>
+<td>\(\lambda=1\)</td>
+<td>接近 Monte Carlo</td>
+<td>偏差小，方差大</td>
+</tr>
+<tr>
+<td>\(0<\lambda<1\)</td>
+<td>多步折中</td>
+<td>实践中常用</td>
+</tr>
+</table>
+
+<div class="box note">
+<strong>一句话理解 GAE：</strong>
+它把未来多个 TD error 按 \((\gamma\lambda)^l\) 衰减加起来，得到更稳定的 advantage 估计。
+</div>
+
+<h2 id="importance">12. Importance Sampling Ratio</h2>
+
+<p>
+PPO 的一个核心问题是：数据是旧策略采样来的，但我们要更新新策略。
+</p>
+
+<p>
+假设采样数据来自旧策略：
+</p>
+
+<div class="formula">
+\[
+\pi_{\theta_{\mathrm{old}}}(a\mid s)
+\]
+</div>
+
+<p>
+当前要更新的是新策略：
+</p>
+
+<div class="formula">
+\[
+\pi_\theta(a\mid s)
+\]
+</div>
+
+<p>
+为了衡量新旧策略对同一个动作的概率变化，定义 ratio：
+</p>
+
+<div class="formula">
+\[
+\boxed{
+r_t(\theta)
+=
+\frac{\pi_\theta(A_t\mid S_t)}
+{\pi_{\theta_{\mathrm{old}}}(A_t\mid S_t)}
+}
+\]
+</div>
+
+<h3>12.1 ratio 的直观含义</h3>
+
+<table>
+<tr>
+<th>情况</th>
+<th>含义</th>
+</tr>
+<tr>
+<td>\(r_t(\theta)=1\)</td>
+<td>新旧策略给这个动作的概率一样。</td>
+</tr>
+<tr>
+<td>\(r_t(\theta)>1\)</td>
+<td>新策略提高了这个动作的概率。</td>
+</tr>
+<tr>
+<td>\(r_t(\theta)<1\)</td>
+<td>新策略降低了这个动作的概率。</td>
+</tr>
+</table>
+
+<h3>12.2 普通策略目标</h3>
+
+<p>
+如果直接用 ratio 写策略目标：
+</p>
+
+<div class="formula">
+\[
+L^{\mathrm{PG}}(\theta)
+=
+\mathbb{E}_t
+\left[
+r_t(\theta)\hat{A}_t
+\right]
+\]
+</div>
+
+<p>
+如果 \(\hat{A}_t>0\)，我们希望增大 \(r_t(\theta)\)，也就是提高这个动作概率。
+</p>
+
+<p>
+如果 \(\hat{A}_t<0\)，我们希望减小 \(r_t(\theta)\)，也就是降低这个动作概率。
+</p>
+
+<div class="box warn">
+<strong>问题：</strong>
+如果不加限制，策略可能更新过猛，导致新策略和旧策略差得太远，训练崩掉。
+</div>
+
+<h2 id="ppo">13. PPO Clip Objective</h2>
+
+<p>
+PPO 的核心思想是：允许策略变好，但不允许每次更新变化太大。
+</p>
+
+<h3>13.1 Clip ratio</h3>
+
+<p>
+PPO 把 ratio 限制在：
+</p>
+
+<div class="formula">
+\[
+[1-\epsilon,1+\epsilon]
+\]
+</div>
+
+<p>
+例如 \(\epsilon=0.2\)，那么：
+</p>
+
+<div class="formula">
+\[
+r_t(\theta)\in[0.8,1.2]
+\]
+</div>
+
+<p>
+clip 后的 ratio 是：
+</p>
+
+<div class="formula">
+\[
+\mathrm{clip}(r_t(\theta),1-\epsilon,1+\epsilon)
+\]
+</div>
+
+<h3>13.2 PPO clipped objective</h3>
+
+<div class="formula">
+\[
+\boxed{
+L^{\mathrm{CLIP}}(\theta)
+=
+\mathbb{E}_t
+\left[
+\min
+\left(
+r_t(\theta)\hat{A}_t,
+\mathrm{clip}(r_t(\theta),1-\epsilon,1+\epsilon)\hat{A}_t
+\right)
+\right]
+}
+\]
+</div>
+
+<h3>13.3 为什么有 min？</h3>
+
+<p>
+这个公式初学者很容易卡住。我们分情况理解。
+</p>
+
+<h4>情况一：\(\hat{A}_t>0\)</h4>
+
+<p>
+动作比平均好，应该提高概率。也就是希望：
+</p>
+
+<div class="formula">
+\[
+r_t(\theta)>1
+\]
+</div>
+
+<p>
+但是不能提高太多。如果 \(r_t(\theta)>1+\epsilon\)，clip 后只算到 \(1+\epsilon\)。
+</p>
+
+<p>
+由于 \(\hat{A}_t>0\)，过大的 \(r_t\hat{A}_t\) 会被 min 截断：
+</p>
+
+<div class="formula">
+\[
+\min(r_t\hat{A}_t,(1+\epsilon)\hat{A}_t)
+=
+(1+\epsilon)\hat{A}_t
+\]
+</div>
+
+<p>
+意思是：这个好动作可以提高概率，但最多提高到一个范围内。
+</p>
+
+<h4>情况二：\(\hat{A}_t<0\)</h4>
+
+<p>
+动作比平均差，应该降低概率。也就是希望：
+</p>
+
+<div class="formula">
+\[
+r_t(\theta)<1
+\]
+</div>
+
+<p>
+但是也不能降低太多。如果 \(r_t(\theta)<1-\epsilon\)，clip 后只算到 \(1-\epsilon\)。
+</p>
+
+<p>
+注意 \(\hat{A}_t<0\)，乘负数会反向。min 会阻止策略从“过度降低坏动作概率”中获得更多收益。
+</p>
+
+<div class="box note">
+<strong>PPO 的一句话理解：</strong>
+好动作可以提高概率，但不能一下提高太多；坏动作可以降低概率，但不能一下降低太多。
+</div>
+
+<h2 id="loss">14. PPO 总损失</h2>
+
+<p>
+实际 PPO 通常不只有 policy loss，还包括 value loss 和 entropy bonus。
+</p>
+
+<h3>14.1 Policy loss</h3>
+
+<p>
+由于深度学习框架通常做最小化，所以最大化 \(L^{\mathrm{CLIP}}\) 等价于最小化：
+</p>
+
+<div class="formula">
+\[
+L_{\mathrm{policy}}
+=
+-
+L^{\mathrm{CLIP}}(\theta)
+\]
+</div>
+
+<h3>14.2 Value loss</h3>
+
+<div class="formula">
+\[
+L_{\mathrm{value}}
+=
+\frac{1}{2}
+\left(
+V_\phi(S_t)-\hat{R}_t
+\right)^2
+\]
+</div>
+
+<p>
+其中 \(\hat{R}_t\) 是 value target，例如：
+</p>
+
+<div class="formula">
+\[
+\hat{R}_t=\hat{A}_t+V_\phi(S_t)
+\]
+</div>
+
+<h3>14.3 Entropy bonus</h3>
+
+<p>
+为了鼓励探索，常加入策略熵：
+</p>
+
+<div class="formula">
+\[
+H(\pi_\theta(\cdot\mid s))
+=
+-\sum_a
+\pi_\theta(a\mid s)
+\log \pi_\theta(a\mid s)
+\]
+</div>
+
+<p>
+熵越大，说明策略越分散，探索越多。
+</p>
+
+<h3>14.4 PPO 总目标</h3>
+
+<p>
+常见写法：
+</p>
+
+<div class="formula">
+\[
+L_{\mathrm{total}}
+=
+L_{\mathrm{policy}}
++
+c_1L_{\mathrm{value}}
+-
+c_2H(\pi_\theta)
+\]
+</div>
+
+<p>
+这里：
+</p>
+
+<table>
+<tr>
+<th>项</th>
+<th>作用</th>
+</tr>
+<tr>
+<td>\(L_{\mathrm{policy}}\)</td>
+<td>让策略提高高 advantage 动作的概率。</td>
+</tr>
+<tr>
+<td>\(L_{\mathrm{value}}\)</td>
+<td>让 Critic 更准确估计价值。</td>
+</tr>
+<tr>
+<td>\(-c_2H\)</td>
+<td>鼓励策略保持一定探索。</td>
+</tr>
+</table>
+
+<h2 id="llm">15. 和大模型 RLHF 的对应关系</h2>
+
+<p>
+现在把 Stage 2 的概念映射到大模型后训练。
+</p>
+
+<table>
+<tr>
+<th>强化学习概念</th>
+<th>大模型中对应什么</th>
+<th>解释</th>
+</tr>
+<tr>
+<td>策略 \(\pi_\theta(a\mid s)\)</td>
+<td>语言模型</td>
+<td>给定上下文，输出 token 概率。</td>
+</tr>
+<tr>
+<td>状态 \(s\)</td>
+<td>prompt + 已生成 tokens</td>
+<td>模型当前上下文。</td>
+</tr>
+<tr>
+<td>动作 \(a\)</td>
+<td>下一个 token 或 response</td>
+<td>模型生成行为。</td>
+</tr>
+<tr>
+<td>轨迹 \(\tau\)</td>
+<td>完整生成序列</td>
+<td>从 prompt 到 final answer。</td>
+</tr>
+<tr>
+<td>Reward</td>
+<td>奖励模型分数 / 规则奖励</td>
+<td>回答质量、答案正确性、偏好分数。</td>
+</tr>
+<tr>
+<td>Critic / Value Model</td>
+<td>Value Head</td>
+<td>估计当前生成状态的未来 reward。</td>
+</tr>
+<tr>
+<td>Advantage</td>
+<td>回答比 baseline 好多少</td>
+<td>PPO 更新的核心权重。</td>
+</tr>
+<tr>
+<td>Ratio \(r_t(\theta)\)</td>
+<td>新旧模型 token 概率比</td>
+<td>控制策略更新幅度。</td>
+</tr>
+<tr>
+<td>KL / clip</td>
+<td>防止模型偏离 reference model</td>
+<td>避免模型为了 reward 训崩。</td>
+</tr>
+</table>
+
+<h3>15.1 LLM PPO 的特殊点</h3>
+
+<p>
+在传统 PPO 中，每一步动作都有一个 reward。但大模型中，很多时候是一整段回答生成完之后才给一个 reward。
+</p>
+
+<pre>
+Prompt
+  ↓
+token1
+  ↓
+token2
+  ↓
+...
+  ↓
+tokenN
+  ↓
+Reward Model 给整段 response 打分
+</pre>
+
+<p>
+这会带来 credit assignment 问题：最终 reward 应该如何分配给中间每个 token？
+</p>
+
+<div class="box warn">
+<strong>这也是 LLM PPO 难的地方：</strong>
+reward 往往是 sequence-level，但策略更新发生在 token-level。
+</div>
+
+<h3>15.2 为什么需要 KL 约束？</h3>
+
+<p>
+如果只追求 reward，模型可能学会钻奖励模型漏洞，输出奇怪文本。因此 RLHF 中通常加入 KL 惩罚：
+</p>
+
+<div class="formula">
+\[
+\mathrm{KL}
+\left(
+\pi_\theta(\cdot\mid s)
+\|
+\pi_{\mathrm{ref}}(\cdot\mid s)
+\right)
+\]
+</div>
+
+<p>
+它的作用是限制当前模型不要偏离 reference model 太远。
+</p>
+
+<div class="box train">
+<strong>一句话：</strong>
+PPO 负责让模型朝高 reward 方向走；KL 负责提醒模型不要走太远。
+</div>
+
+<h2 id="summary">16. 一页总结</h2>
+
+<table>
+<tr>
+<th>概念</th>
+<th>核心公式</th>
+<th>你要理解什么</th>
+</tr>
+<tr>
+<td>目标函数</td>
+<td>\(J(\theta)=\mathbb{E}_{\tau\sim p_\theta(\tau)}[G(\tau)]\)</td>
+<td>策略平均能拿多少回报。</td>
+</tr>
+<tr>
+<td>log-derivative trick</td>
+<td>\(\nabla p=p\nabla\log p\)</td>
+<td>把轨迹概率求导变成 log 概率求导。</td>
+</tr>
+<tr>
+<td>Policy Gradient</td>
+<td>\(\nabla J=\mathbb{E}[\nabla\log\pi_\theta(A_t\mid S_t)G_t]\)</td>
+<td>高回报动作提高概率。</td>
+</tr>
+<tr>
+<td>Baseline</td>
+<td>\(G_t-b(S_t)\)</td>
+<td>降低方差，不改变期望梯度。</td>
+</tr>
+<tr>
+<td>Advantage</td>
+<td>\(A^\pi(s,a)=Q^\pi(s,a)-V^\pi(s)\)</td>
+<td>动作比平均水平好多少。</td>
+</tr>
+<tr>
+<td>Actor-Critic</td>
+<td>Actor 更新策略，Critic 估计价值</td>
+<td>用 value model 辅助策略更新。</td>
+</tr>
+<tr>
+<td>GAE</td>
+<td>\(\hat{A}_t=\sum_l(\gamma\lambda)^l\delta_{t+l}\)</td>
+<td>多步 TD error 加权，平衡偏差方差。</td>
+</tr>
+<tr>
+<td>PPO Ratio</td>
+<td>\(r_t=\frac{\pi_\theta(A_t\mid S_t)}{\pi_{\theta_{\mathrm{old}}}(A_t\mid S_t)}\)</td>
+<td>衡量新旧策略概率变化。</td>
+</tr>
+<tr>
+<td>PPO Clip</td>
+<td>\(\min(r_t\hat{A}_t,\mathrm{clip}(r_t,1-\epsilon,1+\epsilon)\hat{A}_t)\)</td>
+<td>限制策略每次更新幅度。</td>
+</tr>
+</table>
+
+<div class="box train">
+<strong>进入 Stage 3 前的标准：</strong>
+你应该能解释清楚三件事：
+<ol>
+<li>为什么 \(\nabla_\theta \log \pi_\theta(a\mid s)\) 可以提高某个动作的概率；</li>
+<li>为什么 advantage 比直接用 return 更稳定；</li>
+<li>为什么 PPO 要限制 ratio，不能让策略一次变化太大。</li>
+</ol>
+</div>
+
+<h2>17. 本阶段练习</h2>
+
+<h3>17.1 手推练习</h3>
+
+<ol>
+<li>从 \(J(\theta)=\sum_\tau p_\theta(\tau)G(\tau)\) 推导 Policy Gradient。</li>
+<li>证明 baseline \(b(s)\) 不改变期望梯度。</li>
+<li>从 TD error 推导 \(\hat{A}_t^{(2)}=\delta_t+\gamma\delta_{t+1}\)。</li>
+<li>解释 PPO clip objective 中 min 的作用。</li>
+</ol>
+
+<h3>17.2 编程练习</h3>
+
+<pre><code>建议先不用大模型，做两个小实验：
+
+1. 用 REINFORCE 训练 CartPole。
+2. 用 Actor-Critic 训练 CartPole。
+3. 对比：
+   - 不加 baseline 的 REINFORCE
+   - 加 baseline 的 REINFORCE
+   - Actor-Critic
+   - PPO
+
+观察训练曲线的稳定性。</code></pre>
+
+<h3>17.3 大模型思考题</h3>
+
+<div class="box note">
+<p><strong>问题：</strong>如果把数学题回答看成 RL 任务：</p>
+<ol>
+<li>状态 \(s\) 是什么？</li>
+<li>动作 \(a\) 是 token 还是整段 answer？</li>
+<li>reward 是最终答案正确性，还是每一步推理正确性？</li>
+<li>如果只给最终 reward，怎么解决中间 token 的 credit assignment？</li>
+<li>PPO 中的 value model 在这里估计的是什么？</li>
+</ol>
+</div>
+
+<p class="small">强化学习大模型路线 · Stage 2 · Policy Gradient / PPO 数学推导版</p>
+
+</body>
+</html>

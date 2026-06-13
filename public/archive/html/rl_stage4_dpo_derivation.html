@@ -1,0 +1,2351 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>强化学习大模型路线｜Stage 4：DPO 直接偏好优化数学推导</title>
+
+<script>
+window.MathJax = {
+  tex: {
+    inlineMath: [['\\(', '\\)'], ['$', '$']],
+    displayMath: [['\\[', '\\]']],
+    processEscapes: true
+  },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+
+<style>
+html {
+  scroll-behavior: smooth;
+}
+body {
+  font-family: "Microsoft YaHei", Arial, sans-serif;
+  line-height: 1.85;
+  max-width: 1080px;
+  margin: 40px auto;
+  padding: 0 28px 100px;
+  background: #f7f8fb;
+  color: #1f2937;
+  font-size: 17px;
+}
+h1 {
+  font-size: 34px;
+  line-height: 1.35;
+  border-bottom: 5px solid #2563eb;
+  padding-bottom: 14px;
+}
+h2 {
+  margin-top: 48px;
+  padding: 12px 16px;
+  font-size: 27px;
+  background: #eef4ff;
+  border-left: 7px solid #2563eb;
+}
+h3 {
+  margin-top: 28px;
+  font-size: 21px;
+}
+h4 {
+  margin-top: 24px;
+  font-size: 18px;
+}
+h2, h3 {
+  scroll-margin-top: 24px;
+}
+.box {
+  background: #ffffff;
+  border: 1px solid #d9e2ef;
+  border-radius: 12px;
+  padding: 18px 22px;
+  margin: 18px 0;
+}
+.note {
+  background: #fff7d6;
+  border-left: 6px solid #d6a800;
+}
+.train {
+  background: #ecfdf3;
+  border-left: 6px solid #16a34a;
+}
+.warn {
+  background: #fff1f1;
+  border-left: 6px solid #dc2626;
+}
+.formula {
+  background: #ffffff;
+  border: 1px solid #d9e2ef;
+  border-radius: 12px;
+  padding: 16px 18px;
+  margin: 18px 0;
+  overflow-x: auto;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 18px 0;
+  background: #ffffff;
+}
+th, td {
+  border: 1px solid #d9e2ef;
+  padding: 11px 13px;
+  vertical-align: top;
+}
+th {
+  background: #f1f5f9;
+}
+pre {
+  background: #111827;
+  color: #e5e7eb;
+  padding: 18px;
+  border-radius: 10px;
+  overflow-x: auto;
+  line-height: 1.55;
+}
+code {
+  font-family: Consolas, Monaco, "Courier New", monospace;
+}
+.small {
+  color: #667085;
+  font-size: 14px;
+}
+.page-toc {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+}
+.page-toc-toggle {
+  border: 0;
+  border-radius: 999px;
+  padding: 10px 16px;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.24);
+}
+.page-toc-toggle:hover {
+  background: #1d4ed8;
+}
+.page-toc-panel {
+  display: none;
+  width: 350px;
+  max-height: calc(100vh - 90px);
+  overflow: auto;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid #d9e2ef;
+  border-radius: 14px;
+  padding: 16px 18px;
+  margin-top: 10px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+  backdrop-filter: blur(8px);
+}
+.page-toc.is-open .page-toc-panel {
+  display: block;
+}
+.page-toc-title {
+  margin-bottom: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+}
+.page-toc-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.page-toc-item + .page-toc-item {
+  margin-top: 10px;
+}
+.page-toc-link {
+  display: block;
+  color: #334155;
+  text-decoration: none;
+  font-size: 14px;
+  line-height: 1.55;
+}
+.page-toc-link:hover {
+  color: #2563eb;
+}
+.step {
+  background: #ffffff;
+  border: 1px solid #d9e2ef;
+  border-radius: 12px;
+  padding: 16px 18px;
+  margin: 16px 0;
+}
+.step-title {
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 8px;
+}
+.arrow {
+  text-align: center;
+  color: #2563eb;
+  font-weight: 700;
+  font-size: 22px;
+  margin: 10px 0;
+}
+.hr {
+  height: 1px;
+  background: #d9e2ef;
+  margin: 26px 0;
+}
+@media (max-width: 1100px) {
+  .page-toc {
+    top: 12px;
+    right: 12px;
+  }
+  .page-toc-panel {
+    width: min(350px, calc(100vw - 24px));
+    max-height: calc(100vh - 72px);
+  }
+}
+@media (max-width: 760px) {
+  body {
+    margin: 30px auto;
+    padding: 0 18px 80px;
+    font-size: 16px;
+  }
+  h1 {
+    font-size: 28px;
+  }
+  h2 {
+    font-size: 23px;
+  }
+  table {
+    font-size: 15px;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<nav class="page-toc" aria-label="文章目录">
+  <button class="page-toc-toggle" onclick="document.querySelector('.page-toc').classList.toggle('is-open')">☰ 目录</button>
+  <div class="page-toc-panel">
+    <div class="page-toc-title">目录导航</div>
+    <ol class="page-toc-list">
+      <li class="page-toc-item"><a class="page-toc-link" href="#intro">0. Stage 4 学什么</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#why">1. 为什么 RLHF-PPO 之后要学 DPO</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#recap">2. 回顾 RLHF 的 KL 约束目标</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#solve">3. 求解最优策略 \(\pi^*\)</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#reward-policy">4. 从最优策略反推出隐式奖励</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#bt">5. 接入 Bradley-Terry 偏好模型</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#dpo-loss">6. DPO Loss 完整推导</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#meaning">7. DPO Loss 每一项是什么意思</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#gradient">8. DPO 梯度直观理解</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#beta">9. \(\beta\) 参数怎么理解</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#compare">10. DPO、SFT、RM、PPO 对比</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#token">11. Sequence logprob 与 token logprob</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#code">12. DPO 伪代码与最小实现逻辑</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#mistakes">13. 常见误解与训练坑</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#variants">14. DPO 相关变体简表</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#stage5">15. 为什么下一阶段要学 GRPO / RLVR</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#summary">16. 一页总结</a></li>
+    </ol>
+  </div>
+</nav>
+
+<h1>强化学习大模型路线｜Stage 4：DPO 直接偏好优化数学推导</h1>
+
+<div class="box note" id="intro">
+<p><strong>学习定位：</strong>Stage 3 讲了 SFT、Reward Model、RLHF-PPO。Stage 4 进入 <strong>DPO，Direct Preference Optimization，直接偏好优化</strong>。</p>
+
+<p>DPO 的关键思想是：</p>
+
+<div class="formula">
+\[
+\text{不显式训练 Reward Model，不跑 PPO，也可以直接用偏好数据优化策略模型。}
+\]
+</div>
+
+<p>你这一阶段要掌握的核心链条是：</p>
+
+<pre>
+RLHF 的 KL 约束目标
+  ↓
+求出最优策略 π*
+  ↓
+把 reward 写成 policy 和 reference policy 的 log ratio
+  ↓
+代入 Bradley-Terry 偏好模型
+  ↓
+得到 DPO loss
+</pre>
+
+<p><strong>Stage 4 目标：</strong></p>
+<ol>
+<li>理解 DPO 为什么来自 RLHF，而不是一个普通分类 loss；</li>
+<li>完整推导 DPO 的核心公式；</li>
+<li>理解 reference model 在 DPO 中的作用；</li>
+<li>理解 \(\beta\) 控制什么；</li>
+<li>能解释 DPO 与 SFT、Reward Model、PPO 的区别；</li>
+<li>为 Stage 5 的 GRPO / RLVR 做准备。</li>
+</ol>
+</div>
+
+<h2 id="why">1. 为什么 RLHF-PPO 之后要学 DPO？</h2>
+
+<p>
+Stage 3 里的 RLHF-PPO 很完整，但工程链路比较重。
+</p>
+
+<pre>
+SFT Model
+  ↓
+收集 chosen / rejected 偏好数据
+  ↓
+训练 Reward Model
+  ↓
+用当前 Policy 生成回答
+  ↓
+Reward Model 打分
+  ↓
+计算 KL penalty
+  ↓
+训练 Value Head
+  ↓
+计算 Advantage / GAE
+  ↓
+PPO 更新 Policy
+</pre>
+
+<p>
+这里面有很多组件：
+</p>
+
+<table>
+<tr>
+<th>组件</th>
+<th>作用</th>
+<th>复杂性</th>
+</tr>
+<tr>
+<td>Reward Model</td>
+<td>给回答打分</td>
+<td>需要单独训练，可能 reward hacking</td>
+</tr>
+<tr>
+<td>Policy Model</td>
+<td>被优化的语言模型</td>
+<td>需要 rollout 采样</td>
+</tr>
+<tr>
+<td>Reference Model</td>
+<td>提供 KL 约束</td>
+<td>需要保存和计算 logprob</td>
+</tr>
+<tr>
+<td>Value Head</td>
+<td>估计 advantage</td>
+<td>训练不稳会影响 PPO</td>
+</tr>
+<tr>
+<td>PPO</td>
+<td>策略优化</td>
+<td>超参数多，训练敏感</td>
+</tr>
+</table>
+
+<div class="box warn">
+<strong>RLHF-PPO 的痛点：</strong>
+它不是数学上不能理解，而是工程上组件多、调参多、训练不稳定。
+</div>
+
+<p>
+DPO 想解决的问题是：
+</p>
+
+<div class="box train">
+<strong>既然我们本来就有 chosen / rejected 偏好数据，能不能直接用这些偏好数据优化语言模型，而不是先训练 Reward Model，再跑 PPO？</strong>
+</div>
+
+<h2 id="recap">2. 回顾 RLHF 的 KL 约束目标</h2>
+
+<p>
+DPO 的推导从 Stage 3 的 RLHF 目标开始。
+</p>
+
+<p>
+给定 prompt \(x\)，我们希望找到一个策略 \(\pi\)，让它生成的回答 \(y\) 得到高 reward，同时不要偏离 reference policy 太远。
+</p>
+
+<div class="formula">
+\[
+\max_{\pi}
+\mathbb{E}_{y\sim \pi(\cdot\mid x)}
+\left[
+r(x,y)
+\right]
+-
+\beta
+\mathrm{KL}
+\left(
+\pi(\cdot\mid x)
+\|
+\pi_{\mathrm{ref}}(\cdot\mid x)
+\right)
+\]
+</div>
+
+<p>
+其中：
+</p>
+
+<table>
+<tr>
+<th>符号</th>
+<th>含义</th>
+</tr>
+<tr>
+<td>\(\pi(\cdot\mid x)\)</td>
+<td>我们要优化的策略</td>
+</tr>
+<tr>
+<td>\(\pi_{\mathrm{ref}}(\cdot\mid x)\)</td>
+<td>reference policy，通常是 SFT 模型</td>
+</tr>
+<tr>
+<td>\(r(x,y)\)</td>
+<td>回答 \(y\) 的奖励</td>
+</tr>
+<tr>
+<td>\(\beta\)</td>
+<td>控制 KL 惩罚强度的系数</td>
+</tr>
+</table>
+
+<h3>2.1 把 KL 展开</h3>
+
+<p>
+KL 定义为：
+</p>
+
+<div class="formula">
+\[
+\mathrm{KL}
+\left(
+\pi
+\|
+\pi_{\mathrm{ref}}
+\right)
+=
+\mathbb{E}_{y\sim \pi}
+\left[
+\log
+\frac{
+\pi(y\mid x)
+}{
+\pi_{\mathrm{ref}}(y\mid x)
+}
+\right]
+\]
+</div>
+
+<p>
+代入目标：
+</p>
+
+<div class="formula">
+\[
+\max_{\pi}
+\mathbb{E}_{y\sim \pi}
+\left[
+r(x,y)
+-
+\beta
+\log
+\frac{
+\pi(y\mid x)
+}{
+\pi_{\mathrm{ref}}(y\mid x)
+}
+\right]
+\]
+</div>
+
+<p>
+这就是 DPO 推导的起点。
+</p>
+
+<div class="box note">
+<strong>一句话：</strong>
+RLHF 的目标不是单纯最大化 reward，而是最大化 reward，同时惩罚和 reference model 的差异。
+</div>
+
+<h2 id="solve">3. 求解最优策略 \(\pi^*\)</h2>
+
+<p>
+现在我们固定 prompt \(x\)，把问题看成对所有可能回答 \(y\) 的分布优化。
+</p>
+
+<p>
+目标函数写成：
+</p>
+
+<div class="formula">
+\[
+\max_{\pi}
+\sum_y
+\pi(y\mid x)
+\left[
+r(x,y)
+-
+\beta
+\log
+\frac{
+\pi(y\mid x)
+}{
+\pi_{\mathrm{ref}}(y\mid x)
+}
+\right]
+\]
+</div>
+
+<p>
+同时策略必须满足概率归一化：
+</p>
+
+<div class="formula">
+\[
+\sum_y \pi(y\mid x)=1
+\]
+</div>
+
+<h3>3.1 使用拉格朗日乘子</h3>
+
+<p>
+构造拉格朗日函数：
+</p>
+
+<div class="formula">
+\[
+\mathcal{L}(\pi,\lambda)
+=
+\sum_y
+\pi(y\mid x)
+\left[
+r(x,y)
+-
+\beta
+\log
+\frac{
+\pi(y\mid x)
+}{
+\pi_{\mathrm{ref}}(y\mid x)
+}
+\right]
++
+\lambda
+\left(
+\sum_y \pi(y\mid x)-1
+\right)
+\]
+</div>
+
+<p>
+为了简化记号，下面暂时把 \(\pi(y\mid x)\) 写成 \(\pi_y\)，把 \(\pi_{\mathrm{ref}}(y\mid x)\) 写成 \(\pi_{\mathrm{ref},y}\)。
+</p>
+
+<div class="formula">
+\[
+\mathcal{L}
+=
+\sum_y
+\pi_y
+\left[
+r_y
+-
+\beta
+\log
+\frac{\pi_y}{\pi_{\mathrm{ref},y}}
+\right]
++
+\lambda
+\left(
+\sum_y \pi_y-1
+\right)
+\]
+</div>
+
+<h3>3.2 对 \(\pi_y\) 求导</h3>
+
+<p>
+我们需要计算：
+</p>
+
+<div class="formula">
+\[
+\frac{\partial \mathcal{L}}{\partial \pi_y}
+\]
+</div>
+
+<p>
+先看其中一项：
+</p>
+
+<div class="formula">
+\[
+\pi_y
+\left[
+r_y
+-
+\beta
+\log
+\frac{\pi_y}{\pi_{\mathrm{ref},y}}
+\right]
+\]
+</div>
+
+<p>
+展开：
+</p>
+
+<div class="formula">
+\[
+\pi_y r_y
+-
+\beta
+\pi_y
+\log
+\pi_y
++
+\beta
+\pi_y
+\log
+\pi_{\mathrm{ref},y}
+\]
+</div>
+
+<p>
+逐项求导：
+</p>
+
+<div class="formula">
+\[
+\frac{\partial}{\partial \pi_y}(\pi_y r_y)=r_y
+\]
+</div>
+
+<div class="formula">
+\[
+\frac{\partial}{\partial \pi_y}
+\left(
+-\beta \pi_y \log \pi_y
+\right)
+=
+-\beta(\log \pi_y+1)
+\]
+</div>
+
+<div class="formula">
+\[
+\frac{\partial}{\partial \pi_y}
+\left(
+\beta \pi_y \log \pi_{\mathrm{ref},y}
+\right)
+=
+\beta \log \pi_{\mathrm{ref},y}
+\]
+</div>
+
+<p>
+拉格朗日约束项求导为：
+</p>
+
+<div class="formula">
+\[
+\frac{\partial}{\partial \pi_y}
+\lambda
+\left(
+\sum_y \pi_y-1
+\right)
+=
+\lambda
+\]
+</div>
+
+<p>
+合并：
+</p>
+
+<div class="formula">
+\[
+\frac{\partial \mathcal{L}}{\partial \pi_y}
+=
+r_y
+-
+\beta(\log \pi_y+1)
++
+\beta\log \pi_{\mathrm{ref},y}
++
+\lambda
+\]
+</div>
+
+<h3>3.3 令导数为 0</h3>
+
+<div class="formula">
+\[
+r_y
+-
+\beta(\log \pi_y+1)
++
+\beta\log \pi_{\mathrm{ref},y}
++
+\lambda
+=
+0
+\]
+</div>
+
+<p>
+整理：
+</p>
+
+<div class="formula">
+\[
+\beta\log \pi_y
+=
+r_y
++
+\beta\log \pi_{\mathrm{ref},y}
++
+\lambda
+-
+\beta
+\]
+</div>
+
+<p>
+两边除以 \(\beta\)：
+</p>
+
+<div class="formula">
+\[
+\log \pi_y
+=
+\frac{1}{\beta}r_y
++
+\log \pi_{\mathrm{ref},y}
++
+\frac{\lambda}{\beta}
+-
+1
+\]
+</div>
+
+<p>
+指数化：
+</p>
+
+<div class="formula">
+\[
+\pi_y
+=
+\pi_{\mathrm{ref},y}
+\exp
+\left(
+\frac{1}{\beta}r_y
+\right)
+\exp
+\left(
+\frac{\lambda}{\beta}-1
+\right)
+\]
+</div>
+
+<p>
+最后一项和 \(y\) 无关，是归一化常数的一部分。记作：
+</p>
+
+<div class="formula">
+\[
+\frac{1}{Z(x)}
+=
+\exp
+\left(
+\frac{\lambda}{\beta}-1
+\right)
+\]
+</div>
+
+<p>
+于是得到最优策略：
+</p>
+
+<div class="formula">
+\[
+\boxed{
+\pi^*(y\mid x)
+=
+\frac{1}{Z(x)}
+\pi_{\mathrm{ref}}(y\mid x)
+\exp
+\left(
+\frac{1}{\beta}r(x,y)
+\right)
+}
+\]
+</div>
+
+<h3>3.4 这个公式怎么理解？</h3>
+
+<table>
+<tr>
+<th>部分</th>
+<th>含义</th>
+</tr>
+<tr>
+<td>\(\pi_{\mathrm{ref}}(y\mid x)\)</td>
+<td>原来的参考模型概率</td>
+</tr>
+<tr>
+<td>\(\exp(r(x,y)/\beta)\)</td>
+<td>reward 越高，回答概率被放大越多</td>
+</tr>
+<tr>
+<td>\(Z(x)\)</td>
+<td>归一化常数，保证所有回答概率加起来等于 1</td>
+</tr>
+</table>
+
+<div class="box train">
+<strong>一句话理解：</strong>
+最优策略等于 reference policy 乘上一个 reward 指数加权项。reward 高的回答会被提高概率，reward 低的回答会被降低概率。
+</div>
+
+<h2 id="reward-policy">4. 从最优策略反推出隐式奖励</h2>
+
+<p>
+刚才得到：
+</p>
+
+<div class="formula">
+\[
+\pi^*(y\mid x)
+=
+\frac{1}{Z(x)}
+\pi_{\mathrm{ref}}(y\mid x)
+\exp
+\left(
+\frac{1}{\beta}r(x,y)
+\right)
+\]
+</div>
+
+<p>
+现在我们把它反过来，解出 \(r(x,y)\)。
+</p>
+
+<h3>4.1 两边乘以 \(Z(x)\)</h3>
+
+<div class="formula">
+\[
+Z(x)\pi^*(y\mid x)
+=
+\pi_{\mathrm{ref}}(y\mid x)
+\exp
+\left(
+\frac{1}{\beta}r(x,y)
+\right)
+\]
+</div>
+
+<h3>4.2 两边除以 reference policy</h3>
+
+<div class="formula">
+\[
+\frac{
+Z(x)\pi^*(y\mid x)
+}{
+\pi_{\mathrm{ref}}(y\mid x)
+}
+=
+\exp
+\left(
+\frac{1}{\beta}r(x,y)
+\right)
+\]
+</div>
+
+<h3>4.3 两边取 log</h3>
+
+<div class="formula">
+\[
+\log Z(x)
++
+\log
+\frac{
+\pi^*(y\mid x)
+}{
+\pi_{\mathrm{ref}}(y\mid x)
+}
+=
+\frac{1}{\beta}r(x,y)
+\]
+</div>
+
+<h3>4.4 两边乘以 \(\beta\)</h3>
+
+<div class="formula">
+\[
+\boxed{
+r(x,y)
+=
+\beta
+\log
+\frac{
+\pi^*(y\mid x)
+}{
+\pi_{\mathrm{ref}}(y\mid x)
+}
++
+\beta \log Z(x)
+}
+\]
+</div>
+
+<p>
+这一步是 DPO 的灵魂。
+</p>
+
+<div class="box note">
+<strong>关键理解：</strong>
+如果一个策略 \(\pi^*\) 是某个 reward 下的最优策略，那么这个 reward 可以用 \(\pi^*\) 和 reference policy 的 log ratio 表示出来。
+</div>
+
+<h3>4.5 为什么 \(\log Z(x)\) 后面会消掉？</h3>
+
+<p>
+偏好模型只关心两个回答的 reward 差：
+</p>
+
+<div class="formula">
+\[
+r(x,y_w)-r(x,y_l)
+\]
+</div>
+
+<p>
+代入上式：
+</p>
+
+<div class="formula">
+\[
+r(x,y_w)
+=
+\beta
+\log
+\frac{
+\pi^*(y_w\mid x)
+}{
+\pi_{\mathrm{ref}}(y_w\mid x)
+}
++
+\beta\log Z(x)
+\]
+</div>
+
+<div class="formula">
+\[
+r(x,y_l)
+=
+\beta
+\log
+\frac{
+\pi^*(y_l\mid x)
+}{
+\pi_{\mathrm{ref}}(y_l\mid x)
+}
++
+\beta\log Z(x)
+\]
+</div>
+
+<p>
+两者相减：
+</p>
+
+<div class="formula">
+\[
+r(x,y_w)-r(x,y_l)
+=
+\beta
+\log
+\frac{
+\pi^*(y_w\mid x)
+}{
+\pi_{\mathrm{ref}}(y_w\mid x)
+}
+-
+\beta
+\log
+\frac{
+\pi^*(y_l\mid x)
+}{
+\pi_{\mathrm{ref}}(y_l\mid x)
+}
+\]
+</div>
+
+<p>
+因为两边都有同一个 \(\beta\log Z(x)\)，所以相减后消失。
+</p>
+
+<div class="box train">
+<strong>这就是 DPO 不需要知道归一化常数 \(Z(x)\) 的原因。</strong>
+</div>
+
+<h2 id="bt">5. 接入 Bradley-Terry 偏好模型</h2>
+
+<p>
+Stage 3 里我们学过 Reward Model 的偏好概率：
+</p>
+
+<div class="formula">
+\[
+P(y_w \succ y_l\mid x)
+=
+\sigma
+\left(
+r(x,y_w)-r(x,y_l)
+\right)
+\]
+</div>
+
+<p>
+其中：
+</p>
+
+<div class="formula">
+\[
+\sigma(z)=\frac{1}{1+\exp(-z)}
+\]
+</div>
+
+<p>
+现在我们不用显式 Reward Model，而是用上一节推出来的隐式 reward。
+</p>
+
+<h3>5.1 用 policy log ratio 表示 reward 差</h3>
+
+<p>
+由上一节：
+</p>
+
+<div class="formula">
+\[
+r(x,y_w)-r(x,y_l)
+=
+\beta
+\left[
+\log
+\frac{
+\pi^*(y_w\mid x)
+}{
+\pi_{\mathrm{ref}}(y_w\mid x)
+}
+-
+\log
+\frac{
+\pi^*(y_l\mid x)
+}{
+\pi_{\mathrm{ref}}(y_l\mid x)
+}
+\right]
+\]
+</div>
+
+<p>
+DPO 用当前要训练的模型 \(\pi_\theta\) 近似 \(\pi^*\)：
+</p>
+
+<div class="formula">
+\[
+\pi^*(y\mid x)
+\approx
+\pi_\theta(y\mid x)
+\]
+</div>
+
+<p>
+于是：
+</p>
+
+<div class="formula">
+\[
+r_\theta(x,y_w)-r_\theta(x,y_l)
+=
+\beta
+\left[
+\log
+\frac{
+\pi_\theta(y_w\mid x)
+}{
+\pi_{\mathrm{ref}}(y_w\mid x)
+}
+-
+\log
+\frac{
+\pi_\theta(y_l\mid x)
+}{
+\pi_{\mathrm{ref}}(y_l\mid x)
+}
+\right]
+\]
+</div>
+
+<h3>5.2 得到 DPO 偏好概率</h3>
+
+<div class="formula">
+\[
+P_\theta(y_w \succ y_l\mid x)
+=
+\sigma
+\left(
+\beta
+\left[
+\log
+\frac{
+\pi_\theta(y_w\mid x)
+}{
+\pi_{\mathrm{ref}}(y_w\mid x)
+}
+-
+\log
+\frac{
+\pi_\theta(y_l\mid x)
+}{
+\pi_{\mathrm{ref}}(y_l\mid x)
+}
+\right]
+\right)
+\]
+</div>
+
+<div class="box note">
+<strong>一句话理解：</strong>
+DPO 判断 chosen 是否胜过 rejected，不是看原始概率谁大，而是看相对于 reference model，当前模型是否更偏向 chosen。
+</div>
+
+<h2 id="dpo-loss">6. DPO Loss 完整推导</h2>
+
+<h3>6.1 单条偏好样本</h3>
+
+<p>
+一条偏好样本是：
+</p>
+
+<div class="formula">
+\[
+(x,y_w,y_l)
+\]
+</div>
+
+<p>
+其中 \(y_w\) 是 chosen，\(y_l\) 是 rejected。
+</p>
+
+<p>
+我们希望模型认为：
+</p>
+
+<div class="formula">
+\[
+P_\theta(y_w \succ y_l\mid x)
+\]
+</div>
+
+<p>
+越接近 1 越好。
+</p>
+
+<h3>6.2 最大化 log likelihood</h3>
+
+<div class="formula">
+\[
+\max_\theta
+\log
+P_\theta(y_w \succ y_l\mid x)
+\]
+</div>
+
+<p>
+代入上一节的概率：
+</p>
+
+<div class="formula">
+\[
+\max_\theta
+\log
+\sigma
+\left(
+\beta
+\left[
+\log
+\frac{
+\pi_\theta(y_w\mid x)
+}{
+\pi_{\mathrm{ref}}(y_w\mid x)
+}
+-
+\log
+\frac{
+\pi_\theta(y_l\mid x)
+}{
+\pi_{\mathrm{ref}}(y_l\mid x)
+}
+\right]
+\right)
+\]
+</div>
+
+<h3>6.3 写成最小化 loss</h3>
+
+<p>
+取负号，得到 DPO loss：
+</p>
+
+<div class="formula">
+\[
+\boxed{
+L_{\mathrm{DPO}}(\theta)
+=
+-
+\log
+\sigma
+\left(
+\beta
+\left[
+\log
+\frac{
+\pi_\theta(y_w\mid x)
+}{
+\pi_{\mathrm{ref}}(y_w\mid x)
+}
+-
+\log
+\frac{
+\pi_\theta(y_l\mid x)
+}{
+\pi_{\mathrm{ref}}(y_l\mid x)
+}
+\right]
+\right)
+}
+\]
+</div>
+
+<h3>6.4 展开成 logprob 形式</h3>
+
+<p>
+用：
+</p>
+
+<div class="formula">
+\[
+\log \frac{a}{b}=\log a-\log b
+\]
+</div>
+
+<p>
+得到：
+</p>
+
+<div class="formula">
+\[
+L_{\mathrm{DPO}}(\theta)
+=
+-
+\log
+\sigma
+\left(
+\beta
+\left[
+\log\pi_\theta(y_w\mid x)
+-
+\log\pi_{\mathrm{ref}}(y_w\mid x)
+-
+\log\pi_\theta(y_l\mid x)
++
+\log\pi_{\mathrm{ref}}(y_l\mid x)
+\right]
+\right)
+\]
+</div>
+
+<p>
+也可以写成：
+</p>
+
+<div class="formula">
+\[
+\boxed{
+L_{\mathrm{DPO}}(\theta)
+=
+-
+\log
+\sigma
+\left(
+\beta
+\left[
+\log\pi_\theta(y_w\mid x)
+-
+\log\pi_\theta(y_l\mid x)
+-
+\log\pi_{\mathrm{ref}}(y_w\mid x)
++
+\log\pi_{\mathrm{ref}}(y_l\mid x)
+\right]
+\right)
+}
+\]
+</div>
+
+<h3>6.5 数据集形式</h3>
+
+<p>
+如果偏好数据集是：
+</p>
+
+<div class="formula">
+\[
+\mathcal{D}
+=
+\{(x_i,y_{i,w},y_{i,l})\}_{i=1}^{N}
+\]
+</div>
+
+<p>
+则：
+</p>
+
+<div class="formula">
+\[
+\boxed{
+L_{\mathrm{DPO}}(\theta)
+=
+-
+\frac{1}{N}
+\sum_{i=1}^{N}
+\log
+\sigma
+\left(
+\beta
+\left[
+\log
+\frac{
+\pi_\theta(y_{i,w}\mid x_i)
+}{
+\pi_{\mathrm{ref}}(y_{i,w}\mid x_i)
+}
+-
+\log
+\frac{
+\pi_\theta(y_{i,l}\mid x_i)
+}{
+\pi_{\mathrm{ref}}(y_{i,l}\mid x_i)
+}
+\right]
+\right)
+}
+\]
+</div>
+
+<div class="box train">
+<strong>这一节是 Stage 4 最核心公式。</strong>
+你要能从 RLHF 目标一路推到这个 loss，而不是只背结论。
+</div>
+
+<h2 id="meaning">7. DPO Loss 每一项是什么意思？</h2>
+
+<p>
+DPO 的核心量是：
+</p>
+
+<div class="formula">
+\[
+\Delta_\theta
+=
+\log
+\frac{
+\pi_\theta(y_w\mid x)
+}{
+\pi_{\mathrm{ref}}(y_w\mid x)
+}
+-
+\log
+\frac{
+\pi_\theta(y_l\mid x)
+}{
+\pi_{\mathrm{ref}}(y_l\mid x)
+}
+\]
+</div>
+
+<p>
+DPO loss 就是：
+</p>
+
+<div class="formula">
+\[
+L_{\mathrm{DPO}}
+=
+-\log\sigma(\beta\Delta_\theta)
+\]
+</div>
+
+<h3>7.1 第一项：chosen 的 log ratio</h3>
+
+<div class="formula">
+\[
+\log
+\frac{
+\pi_\theta(y_w\mid x)
+}{
+\pi_{\mathrm{ref}}(y_w\mid x)
+}
+\]
+</div>
+
+<p>
+它表示：相对于 reference model，当前模型是否更愿意生成 chosen。
+</p>
+
+<table>
+<tr>
+<th>值</th>
+<th>含义</th>
+</tr>
+<tr>
+<td>大于 0</td>
+<td>当前模型比 reference 更偏向 chosen</td>
+</tr>
+<tr>
+<td>等于 0</td>
+<td>当前模型和 reference 对 chosen 的倾向一样</td>
+</tr>
+<tr>
+<td>小于 0</td>
+<td>当前模型比 reference 更不偏向 chosen</td>
+</tr>
+</table>
+
+<h3>7.2 第二项：rejected 的 log ratio</h3>
+
+<div class="formula">
+\[
+\log
+\frac{
+\pi_\theta(y_l\mid x)
+}{
+\pi_{\mathrm{ref}}(y_l\mid x)
+}
+\]
+</div>
+
+<p>
+它表示：相对于 reference model，当前模型是否更愿意生成 rejected。
+</p>
+
+<h3>7.3 两者相减</h3>
+
+<div class="formula">
+\[
+\Delta_\theta
+=
+\text{chosen 相对提升}
+-
+\text{rejected 相对提升}
+\]
+</div>
+
+<p>
+如果 \(\Delta_\theta\) 越大，说明当前模型相对于 reference，更偏向 chosen 而不是 rejected。
+</p>
+
+<div class="box note">
+<strong>DPO 不是简单地让 chosen 概率大于 rejected 概率。</strong>
+它让当前模型相对于 reference model，更加偏向 chosen。
+</div>
+
+<h3>7.4 为什么需要 reference model？</h3>
+
+<p>
+如果没有 reference model，目标可能退化成：
+</p>
+
+<div class="formula">
+\[
+-\log\sigma
+\left(
+\beta[
+\log\pi_\theta(y_w\mid x)
+-
+\log\pi_\theta(y_l\mid x)
+]
+\right)
+\]
+</div>
+
+<p>
+这会直接鼓励 chosen 概率高于 rejected 概率，但缺少“不要偏离原模型太远”的约束来源。
+</p>
+
+<p>
+reference model 的作用类似 Stage 3 里的 KL anchor：
+</p>
+
+<table>
+<tr>
+<th>在 RLHF-PPO 中</th>
+<th>在 DPO 中</th>
+</tr>
+<tr>
+<td>显式 KL penalty 限制 policy 偏移</td>
+<td>通过 log ratio 隐式引入 reference policy</td>
+</tr>
+<tr>
+<td>需要 rollout 和 PPO</td>
+<td>直接在偏好数据上优化</td>
+</tr>
+</table>
+
+<div class="box train">
+<strong>一句话：</strong>
+reference model 让 DPO 不是无约束地追逐 chosen，而是在相对于原模型的变化中优化偏好。
+</div>
+
+<h2 id="gradient">8. DPO 梯度直观理解</h2>
+
+<p>
+DPO loss：
+</p>
+
+<div class="formula">
+\[
+L_{\mathrm{DPO}}
+=
+-\log\sigma(\beta\Delta_\theta)
+\]
+</div>
+
+<p>
+其中：
+</p>
+
+<div class="formula">
+\[
+\Delta_\theta
+=
+\log\pi_\theta(y_w\mid x)
+-
+\log\pi_\theta(y_l\mid x)
+-
+\log\pi_{\mathrm{ref}}(y_w\mid x)
++
+\log\pi_{\mathrm{ref}}(y_l\mid x)
+\]
+</div>
+
+<p>
+reference model 冻结，所以对 \(\theta\) 求导时，reference 项不变。
+</p>
+
+<h3>8.1 只看与 \(\theta\) 有关的部分</h3>
+
+<div class="formula">
+\[
+\Delta_\theta
+=
+\log\pi_\theta(y_w\mid x)
+-
+\log\pi_\theta(y_l\mid x)
++
+\text{constant}
+\]
+</div>
+
+<p>
+因此梯度方向直观上是：
+</p>
+
+<div class="formula">
+\[
+\text{提高 }
+\log\pi_\theta(y_w\mid x)
+\quad
+\text{降低 }
+\log\pi_\theta(y_l\mid x)
+\]
+</div>
+
+<h3>8.2 但提高和降低的强度由 sigmoid 控制</h3>
+
+<p>
+当 \(\Delta_\theta\) 很小甚至为负时：
+</p>
+
+<div class="formula">
+\[
+\sigma(\beta\Delta_\theta)
+\]
+</div>
+
+<p>
+较小，loss 大，梯度强。模型会强烈纠正。
+</p>
+
+<p>
+当 \(\Delta_\theta\) 已经很大时，sigmoid 接近 1，loss 接近 0，梯度变弱。
+</p>
+
+<table>
+<tr>
+<th>情况</th>
+<th>含义</th>
+<th>梯度强度</th>
+</tr>
+<tr>
+<td>\(\Delta_\theta \lt 0\)</td>
+<td>模型相对更偏向 rejected</td>
+<td>强烈更新</td>
+</tr>
+<tr>
+<td>\(\Delta_\theta \approx 0\)</td>
+<td>chosen 和 rejected 相对优势不明显</td>
+<td>中等更新</td>
+</tr>
+<tr>
+<td>\(\Delta_\theta \gg 0\)</td>
+<td>模型已经明显偏向 chosen</td>
+<td>更新变弱</td>
+</tr>
+</table>
+
+<div class="box note">
+<strong>一句话理解梯度：</strong>
+DPO 会提高 chosen 的 logprob，降低 rejected 的 logprob；但如果模型已经很好地区分二者，更新会自然变弱。
+</div>
+
+<h2 id="beta">9. \(\beta\) 参数怎么理解？</h2>
+
+<p>
+DPO loss 中有一个重要参数：
+</p>
+
+<div class="formula">
+\[
+\beta
+\]
+</div>
+
+<p>
+它来自 RLHF 目标中的 KL 系数。
+</p>
+
+<h3>9.1 在 RLHF 目标里</h3>
+
+<div class="formula">
+\[
+\max_\pi
+\mathbb{E}[r]
+-
+\beta
+\mathrm{KL}(\pi\|\pi_{\mathrm{ref}})
+\]
+</div>
+
+<p>
+这里 \(\beta\) 越大，KL 惩罚越强，模型越不容易偏离 reference。
+</p>
+
+<h3>9.2 在 DPO loss 里</h3>
+
+<div class="formula">
+\[
+L_{\mathrm{DPO}}
+=
+-\log\sigma(\beta\Delta_\theta)
+\]
+</div>
+
+<p>
+这里 \(\beta\) 控制偏好差异的放大程度。
+</p>
+
+<table>
+<tr>
+<th>\(\beta\)</th>
+<th>效果</th>
+<th>可能风险</th>
+</tr>
+<tr>
+<td>较小</td>
+<td>更新更温和，偏好差距被压缩</td>
+<td>学习慢，偏好优化弱</td>
+</tr>
+<tr>
+<td>较大</td>
+<td>偏好差距被放大，更新更激进</td>
+<td>容易过拟合偏好数据，风格变化大</td>
+</tr>
+<tr>
+<td>适中</td>
+<td>保持偏好学习和稳定性平衡</td>
+<td>需要实验调参</td>
+</tr>
+</table>
+
+<div class="box warn">
+<strong>注意：</strong>
+不同论文和框架中 \(\beta\) 的解释可能会和温度、KL 强度联系在一起。实践中不要只背“越大越强”这句话，要结合 loss 实现和训练现象观察。
+</div>
+
+<h2 id="compare">10. DPO、SFT、RM、PPO 对比</h2>
+
+<table>
+<tr>
+<th>方法</th>
+<th>数据</th>
+<th>目标</th>
+<th>是否需要 Reward Model</th>
+<th>是否需要 rollout</th>
+</tr>
+<tr>
+<td>SFT</td>
+<td>prompt-response</td>
+<td>模仿标准回答</td>
+<td>不需要</td>
+<td>不需要</td>
+</tr>
+<tr>
+<td>Reward Model</td>
+<td>chosen / rejected</td>
+<td>学习偏好评分函数</td>
+<td>它本身就是 RM</td>
+<td>不需要</td>
+</tr>
+<tr>
+<td>RLHF-PPO</td>
+<td>prompt + 在线生成 response</td>
+<td>最大化 RM reward 并控制 KL</td>
+<td>需要</td>
+<td>需要</td>
+</tr>
+<tr>
+<td>DPO</td>
+<td>chosen / rejected</td>
+<td>直接优化偏好概率</td>
+<td>不显式需要</td>
+<td>不需要</td>
+</tr>
+</table>
+
+<h3>10.1 DPO 和 SFT 的区别</h3>
+
+<p>
+SFT 只看 chosen：
+</p>
+
+<div class="formula">
+\[
+L_{\mathrm{SFT}}
+=
+-\log\pi_\theta(y_w\mid x)
+\]
+</div>
+
+<p>
+DPO 同时看 chosen 和 rejected：
+</p>
+
+<div class="formula">
+\[
+L_{\mathrm{DPO}}
+=
+-\log\sigma
+\left(
+\beta[
+\text{chosen log ratio}
+-
+\text{rejected log ratio}
+]
+\right)
+\]
+</div>
+
+<div class="box train">
+<strong>核心差别：</strong>
+SFT 学“这个答案要生成出来”；DPO 学“这个答案要比另一个答案更值得生成”。
+</div>
+
+<h3>10.2 DPO 和 Reward Model 训练的区别</h3>
+
+<p>
+Reward Model loss 是：
+</p>
+
+<div class="formula">
+\[
+L_{\mathrm{RM}}
+=
+-\log\sigma(r_\phi(x,y_w)-r_\phi(x,y_l))
+\]
+</div>
+
+<p>
+DPO loss 是：
+</p>
+
+<div class="formula">
+\[
+L_{\mathrm{DPO}}
+=
+-\log\sigma
+\left(
+\beta[
+\log\frac{\pi_\theta(y_w\mid x)}{\pi_{\mathrm{ref}}(y_w\mid x)}
+-
+\log\frac{\pi_\theta(y_l\mid x)}{\pi_{\mathrm{ref}}(y_l\mid x)}
+]
+\right)
+\]
+</div>
+
+<p>
+可以看到，DPO 把 reward difference 替换成了 policy log ratio difference。
+</p>
+
+<h3>10.3 DPO 和 PPO 的区别</h3>
+
+<table>
+<tr>
+<th>维度</th>
+<th>RLHF-PPO</th>
+<th>DPO</th>
+</tr>
+<tr>
+<td>训练方式</td>
+<td>online / on-policy 或近似 on-policy</td>
+<td>offline preference optimization</td>
+</tr>
+<tr>
+<td>是否生成新回答</td>
+<td>训练中需要 rollout</td>
+<td>直接用偏好数据</td>
+</tr>
+<tr>
+<td>是否训练 Value Head</td>
+<td>通常需要</td>
+<td>不需要</td>
+</tr>
+<tr>
+<td>是否显式 Reward Model</td>
+<td>需要</td>
+<td>不需要</td>
+</tr>
+<tr>
+<td>工程复杂度</td>
+<td>高</td>
+<td>低</td>
+</tr>
+<tr>
+<td>探索能力</td>
+<td>更强，可在线发现新样本</td>
+<td>受限于已有偏好数据</td>
+</tr>
+</table>
+
+<div class="box note">
+<strong>一句话：</strong>
+DPO 更简单、更稳定、更像监督训练；PPO 更复杂，但可以在线探索和优化新的模型输出分布。
+</div>
+
+<h2 id="token">11. Sequence logprob 与 token logprob</h2>
+
+<p>
+DPO 公式里有：
+</p>
+
+<div class="formula">
+\[
+\log\pi_\theta(y\mid x)
+\]
+</div>
+
+<p>
+这里 \(y\) 是整段回答，不是单个 token。
+</p>
+
+<h3>11.1 自回归展开</h3>
+
+<p>
+如果：
+</p>
+
+<div class="formula">
+\[
+y=(y_1,y_2,\ldots,y_T)
+\]
+</div>
+
+<p>
+那么：
+</p>
+
+<div class="formula">
+\[
+\pi_\theta(y\mid x)
+=
+\prod_{t=1}^{T}
+\pi_\theta(y_t\mid x,y_{\lt t})
+\]
+</div>
+
+<p>
+取 log：
+</p>
+
+<div class="formula">
+\[
+\boxed{
+\log\pi_\theta(y\mid x)
+=
+\sum_{t=1}^{T}
+\log\pi_\theta(y_t\mid x,y_{\lt t})
+}
+\]
+</div>
+
+<div class="box note">
+<strong>HTML 注意：</strong>
+这里写 \(y_{\lt t}\)，不是直接写尖括号形式，避免浏览器把公式误解析成标签。
+</div>
+
+<h3>11.2 DPO 中 chosen 和 rejected 的 logprob</h3>
+
+<p>
+chosen 的序列 logprob：
+</p>
+
+<div class="formula">
+\[
+\log\pi_\theta(y_w\mid x)
+=
+\sum_{t=1}^{T_w}
+\log\pi_\theta(y_{w,t}\mid x,y_{w,\lt t})
+\]
+</div>
+
+<p>
+rejected 的序列 logprob：
+</p>
+
+<div class="formula">
+\[
+\log\pi_\theta(y_l\mid x)
+=
+\sum_{t=1}^{T_l}
+\log\pi_\theta(y_{l,t}\mid x,y_{l,\lt t})
+\]
+</div>
+
+<h3>11.3 长度问题</h3>
+
+<p>
+因为 logprob 是 token logprob 的和，长回答通常会有更负的总 logprob。
+</p>
+
+<table>
+<tr>
+<th>做法</th>
+<th>特点</th>
+</tr>
+<tr>
+<td>sum logprob</td>
+<td>符合序列概率定义，但受长度影响明显</td>
+</tr>
+<tr>
+<td>average logprob</td>
+<td>减弱长度影响，但不完全等于原始 DPO 推导</td>
+</tr>
+<tr>
+<td>长度归一化</td>
+<td>实践中可能有用，但要注意目标变化</td>
+</tr>
+</table>
+
+<div class="box warn">
+<strong>实践坑：</strong>
+如果数据里 chosen 普遍比 rejected 更长或更短，DPO 可能学到长度偏好，而不是真正质量偏好。
+</div>
+
+<h2 id="code">12. DPO 伪代码与最小实现逻辑</h2>
+
+<h3>12.1 一条样本需要什么</h3>
+
+<pre><code>sample = {
+    "prompt": x,
+    "chosen": y_w,
+    "rejected": y_l
+}</code></pre>
+
+<h3>12.2 模型需要计算什么</h3>
+
+<pre><code>policy_chosen_logp   = log πθ(y_w | x)
+policy_rejected_logp = log πθ(y_l | x)
+
+ref_chosen_logp      = log πref(y_w | x)
+ref_rejected_logp    = log πref(y_l | x)</code></pre>
+
+<h3>12.3 计算 log ratio difference</h3>
+
+<pre><code>chosen_log_ratio = policy_chosen_logp - ref_chosen_logp
+rejected_log_ratio = policy_rejected_logp - ref_rejected_logp
+
+delta = chosen_log_ratio - rejected_log_ratio</code></pre>
+
+<h3>12.4 计算 DPO loss</h3>
+
+<pre><code>loss = - log_sigmoid(beta * delta)</code></pre>
+
+<h3>12.5 伪代码完整流程</h3>
+
+<pre><code>for batch in preference_dataset:
+
+    prompt = batch["prompt"]
+    chosen = batch["chosen"]
+    rejected = batch["rejected"]
+
+    # policy model logprob
+    logp_chosen = policy.logprob(prompt, chosen)
+    logp_rejected = policy.logprob(prompt, rejected)
+
+    # reference model logprob, no grad
+    with no_grad:
+        ref_logp_chosen = ref_model.logprob(prompt, chosen)
+        ref_logp_rejected = ref_model.logprob(prompt, rejected)
+
+    chosen_log_ratio = logp_chosen - ref_logp_chosen
+    rejected_log_ratio = logp_rejected - ref_logp_rejected
+
+    logits = beta * (chosen_log_ratio - rejected_log_ratio)
+
+    loss = -log_sigmoid(logits)
+
+    loss.backward()
+    optimizer.step()</code></pre>
+
+<div class="box train">
+<strong>实现重点：</strong>
+reference model 必须冻结；loss 只更新 policy model。
+</div>
+
+<h2 id="mistakes">13. 常见误解与训练坑</h2>
+
+<h3>13.1 误解一：DPO 就是 SFT 加 rejected 惩罚</h3>
+
+<p>
+不完全对。DPO 不是简单：
+</p>
+
+<div class="formula">
+\[
+-\log\pi_\theta(y_w\mid x)
++
+\log\pi_\theta(y_l\mid x)
+\]
+</div>
+
+<p>
+它有 reference model log ratio：
+</p>
+
+<div class="formula">
+\[
+\log
+\frac{\pi_\theta(y\mid x)}
+{\pi_{\mathrm{ref}}(y\mid x)}
+\]
+</div>
+
+<p>
+这让它和 KL-constrained RLHF 有理论联系。
+</p>
+
+<h3>13.2 误解二：DPO 不需要 reference model</h3>
+
+<p>
+标准 DPO 需要 reference model。reference model 提供隐式 KL anchor。
+</p>
+
+<div class="box warn">
+<strong>如果去掉 reference model，训练目标会变得更像普通 pairwise ranking，失去 DPO 与 RLHF 目标之间的关键联系。</strong>
+</div>
+
+<h3>13.3 误解三：DPO 一定比 PPO 好</h3>
+
+<p>
+DPO 更简单，但不一定总是更强。
+</p>
+
+<table>
+<tr>
+<th>场景</th>
+<th>DPO 表现</th>
+<th>PPO / GRPO 可能优势</th>
+</tr>
+<tr>
+<td>已有高质量偏好数据</td>
+<td>很适合</td>
+<td>不一定需要在线 RL</td>
+</tr>
+<tr>
+<td>需要模型探索新解法</td>
+<td>受限于数据</td>
+<td>在线 RL 可以探索</td>
+</tr>
+<tr>
+<td>数学 / 代码可验证任务</td>
+<td>可用，但不是最自然</td>
+<td>GRPO / RLVR 更直接</td>
+</tr>
+<tr>
+<td>复杂 Agent 多轮环境</td>
+<td>难覆盖轨迹空间</td>
+<td>在线 RL 更适合</td>
+</tr>
+</table>
+
+<h3>13.4 训练坑：偏好数据质量决定上限</h3>
+
+<p>
+DPO 是 offline preference optimization。它不会在训练中主动探索新回答，而是依赖已有 chosen / rejected 数据。
+</p>
+
+<div class="box note">
+<strong>所以数据很关键：</strong>
+如果 chosen 和 rejected 差异很浅，DPO 学到的东西也会很浅；如果偏好标注噪声大，DPO 会直接学习噪声。
+</div>
+
+<h3>13.5 训练坑：过度降低 rejected</h3>
+
+<p>
+某些 rejected 并不是完全错误，只是比 chosen 稍差。如果训练过猛，模型可能过度排斥某些合理表达。
+</p>
+
+<h3>13.6 训练坑：长度偏置</h3>
+
+<p>
+如果 chosen 总是更长，模型可能学会变长；如果 chosen 总是更短，模型可能学会过短回答。
+</p>
+
+<h2 id="variants">14. DPO 相关变体简表</h2>
+
+<p>
+这一节只做路线图，不展开推导。后续可以单独做 Stage 4.5。
+</p>
+
+<table>
+<tr>
+<th>方法</th>
+<th>核心想法</th>
+<th>适合什么时候看</th>
+</tr>
+<tr>
+<td>DPO</td>
+<td>直接用偏好对优化 policy log ratio</td>
+<td>现在重点掌握</td>
+</tr>
+<tr>
+<td>IPO</td>
+<td>对偏好优化目标做不同形式的正则和回归处理</td>
+<td>DPO 后进阶</td>
+</tr>
+<tr>
+<td>KTO</td>
+<td>用 desirable / undesirable 单样本反馈，不一定要求成对偏好</td>
+<td>偏好数据不是成对时</td>
+</tr>
+<tr>
+<td>ORPO</td>
+<td>把 SFT 和偏好优化合在一个目标里</td>
+<td>想减少 reference model 或训练阶段时</td>
+</tr>
+<tr>
+<td>SimPO</td>
+<td>简化偏好优化，减少 reference dependency</td>
+<td>理解 DPO 后再看</td>
+</tr>
+<tr>
+<td>R-DPO</td>
+<td>关注偏好噪声和鲁棒性</td>
+<td>偏好数据有噪声时</td>
+</tr>
+</table>
+
+<div class="box warn">
+<strong>学习建议：</strong>
+不要现在就同时学所有 DPO 变体。先把标准 DPO 的 RLHF 推导链条吃透，再看变体。
+</div>
+
+<h2 id="stage5">15. 为什么下一阶段要学 GRPO / RLVR</h2>
+
+<p>
+DPO 解决的是偏好数据上的离线优化。
+</p>
+
+<p>
+但是很多 reasoning 任务不只是“哪个回答更受人喜欢”，而是：
+</p>
+
+<ul>
+<li>数学答案是否正确；</li>
+<li>代码是否通过测试；</li>
+<li>SQL 查询结果是否正确；</li>
+<li>工具调用参数是否正确；</li>
+<li>Agent 任务是否完成。</li>
+</ul>
+
+<p>
+这些任务有一个特点：
+</p>
+
+<div class="box train">
+<strong>它们可以被自动验证。</strong>
+</div>
+
+<p>
+所以 Stage 5 要进入：
+</p>
+
+<pre>
+RLVR：Reinforcement Learning with Verifiable Reward
+GRPO：Group Relative Policy Optimization
+</pre>
+
+<p>
+它们的核心问题是：
+</p>
+
+<div class="box note">
+如果我们不需要人类偏好标注，而是可以用规则、单元测试、答案验证器直接给 reward，那么该怎样训练大模型？
+</div>
+
+<h2 id="summary">16. 一页总结</h2>
+
+<table>
+<tr>
+<th>概念</th>
+<th>核心公式</th>
+<th>你要理解什么</th>
+</tr>
+<tr>
+<td>RLHF 目标</td>
+<td>\(\max_\pi \mathbb{E}[r]-\beta KL(\pi\|\pi_{\mathrm{ref}})\)</td>
+<td>高 reward 与不偏离 reference 的折中。</td>
+</tr>
+<tr>
+<td>最优策略</td>
+<td>\(\pi^*(y\mid x)=\frac{1}{Z(x)}\pi_{\mathrm{ref}}(y\mid x)\exp(r(x,y)/\beta)\)</td>
+<td>reference policy 被 reward 指数加权。</td>
+</tr>
+<tr>
+<td>隐式奖励</td>
+<td>\(r(x,y)=\beta\log\frac{\pi^*(y\mid x)}{\pi_{\mathrm{ref}}(y\mid x)}+\beta\log Z(x)\)</td>
+<td>reward 可以由最优策略和 reference 的 log ratio 表示。</td>
+</tr>
+<tr>
+<td>偏好概率</td>
+<td>\(\sigma(r_w-r_l)\)</td>
+<td>chosen 胜过 rejected 的概率。</td>
+</tr>
+<tr>
+<td>DPO reward 差</td>
+<td>\(\beta[\log\frac{\pi_\theta(y_w)}{\pi_{\mathrm{ref}}(y_w)}-\log\frac{\pi_\theta(y_l)}{\pi_{\mathrm{ref}}(y_l)}]\)</td>
+<td>用 policy log ratio 差替代 reward 差。</td>
+</tr>
+<tr>
+<td>DPO Loss</td>
+<td>\(-\log\sigma(\beta[\text{chosen log ratio}-\text{rejected log ratio}])\)</td>
+<td>直接用偏好对优化 policy。</td>
+</tr>
+<tr>
+<td>Reference Model</td>
+<td>\(\pi_{\mathrm{ref}}\)</td>
+<td>提供隐式 KL anchor。</td>
+</tr>
+<tr>
+<td>\(\beta\)</td>
+<td>偏好差异缩放 / KL 相关参数</td>
+<td>控制更新强度和稳定性。</td>
+</tr>
+</table>
+
+<div class="box train">
+<strong>进入 Stage 5 前的标准：</strong>
+你应该能解释清楚：
+<ol>
+<li>DPO 为什么不需要显式 Reward Model；</li>
+<li>DPO 为什么仍然需要 reference model；</li>
+<li>DPO loss 中 chosen log ratio 和 rejected log ratio 分别是什么；</li>
+<li>DPO 和 SFT 的区别；</li>
+<li>DPO 和 RLHF-PPO 的区别；</li>
+<li>为什么数学、代码任务下一步更适合进入 GRPO / RLVR。</li>
+</ol>
+</div>
+
+<h2>17. 本阶段练习</h2>
+
+<h3>17.1 手推练习</h3>
+
+<ol>
+<li>从 \(\max_\pi \mathbb{E}[r]-\beta KL(\pi\|\pi_{\mathrm{ref}})\) 推导 \(\pi^*(y\mid x)\)。</li>
+<li>从 \(\pi^*(y\mid x)\) 反推出 \(r(x,y)\)。</li>
+<li>证明 \(r(x,y_w)-r(x,y_l)\) 中 \(\log Z(x)\) 会消掉。</li>
+<li>把 Bradley-Terry 偏好模型与隐式 reward 结合，推导 DPO loss。</li>
+<li>解释为什么 DPO 的目标不是简单的 \(-\log\pi(y_w)+\log\pi(y_l)\)。</li>
+</ol>
+
+<h3>17.2 编程练习</h3>
+
+<pre><code>做一个最小 DPO loss 计算：
+
+给定：
+policy_chosen_logp = -10.0
+policy_rejected_logp = -13.0
+ref_chosen_logp = -11.0
+ref_rejected_logp = -12.0
+beta = 0.1
+
+计算：
+chosen_log_ratio = policy_chosen_logp - ref_chosen_logp
+rejected_log_ratio = policy_rejected_logp - ref_rejected_logp
+delta = chosen_log_ratio - rejected_log_ratio
+loss = -log_sigmoid(beta * delta)
+
+然后改变 beta，观察 loss 的变化。</code></pre>
+
+<h3>17.3 大模型思考题</h3>
+
+<div class="box note">
+<ol>
+<li>如果 chosen 和 rejected 都很差，DPO 会学到什么？</li>
+<li>如果偏好数据中 chosen 普遍更长，模型会不会学会变长？</li>
+<li>如果没有 reference model，DPO 的理论联系会发生什么变化？</li>
+<li>为什么 DPO 适合离线偏好优化，但不一定适合需要探索的 reasoning 任务？</li>
+<li>数学题训练中，DPO 和 GRPO 的奖励信号有什么区别？</li>
+</ol>
+</div>
+
+<p class="small">强化学习大模型路线 · Stage 4 · DPO Direct Preference Optimization 数学推导版</p>
+
+</body>
+</html>

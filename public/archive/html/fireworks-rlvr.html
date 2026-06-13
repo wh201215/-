@@ -1,0 +1,3644 @@
+```html
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Fireworks AI《Reinforcement Learning With Verifiable Reward》中文精读：RLVR / GRPO 后训练版</title>
+
+<style>
+html {
+  scroll-behavior: smooth;
+}
+body {
+  font-family: "Microsoft YaHei", Arial, sans-serif;
+  line-height: 1.85;
+  max-width: 1080px;
+  margin: 40px auto;
+  padding: 0 28px 100px;
+  background: #f7f8fb;
+  color: #1f2937;
+}
+h1 {
+  font-size: 34px;
+  line-height: 1.35;
+  border-bottom: 5px solid #2563eb;
+  padding-bottom: 14px;
+}
+h2 {
+  margin-top: 48px;
+  padding: 12px 16px;
+  font-size: 27px;
+  background: #eef4ff;
+  border-left: 7px solid #2563eb;
+}
+h3 {
+  margin-top: 28px;
+  font-size: 21px;
+}
+h4 {
+  margin-top: 24px;
+  font-size: 18px;
+}
+h2, h3 {
+  scroll-margin-top: 24px;
+}
+.box {
+  background: #ffffff;
+  border: 1px solid #d9e2ef;
+  border-radius: 12px;
+  padding: 18px 22px;
+  margin: 18px 0;
+}
+.note {
+  background: #fff7d6;
+  border-left: 6px solid #d6a800;
+}
+.train {
+  background: #ecfdf3;
+  border-left: 6px solid #16a34a;
+}
+.warn {
+  background: #fff1f1;
+  border-left: 6px solid #dc2626;
+}
+.figure {
+  background: #ffffff;
+  border: 1px solid #d9e2ef;
+  border-radius: 14px;
+  padding: 16px;
+  margin: 22px 0;
+}
+.figure img {
+  width: 100%;
+  max-height: 680px;
+  object-fit: contain;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+}
+.caption {
+  color: #667085;
+  font-size: 14px;
+  margin-top: 10px;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 18px 0;
+  background: #ffffff;
+}
+th, td {
+  border: 1px solid #d9e2ef;
+  padding: 11px 13px;
+  vertical-align: top;
+}
+th {
+  background: #f1f5f9;
+}
+pre {
+  background: #111827;
+  color: #e5e7eb;
+  padding: 18px;
+  border-radius: 10px;
+  overflow-x: auto;
+  line-height: 1.55;
+}
+code {
+  font-family: Consolas, Monaco, "Courier New", monospace;
+}
+.small {
+  color: #667085;
+  font-size: 14px;
+}
+.page-toc {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+}
+.page-toc-toggle {
+  border: 0;
+  border-radius: 999px;
+  padding: 10px 16px;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.24);
+}
+.page-toc-toggle:hover {
+  background: #1d4ed8;
+}
+.page-toc-panel {
+  display: none;
+  width: 300px;
+  max-height: calc(100vh - 90px);
+  overflow: auto;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid #d9e2ef;
+  border-radius: 14px;
+  padding: 16px 18px;
+  margin-top: 10px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+  backdrop-filter: blur(8px);
+}
+.page-toc.is-open .page-toc-panel {
+  display: block;
+}
+.page-toc > .page-toc-title,
+.page-toc > .page-toc-list {
+  display: none;
+}
+.page-toc-title {
+  margin-bottom: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+}
+.page-toc-list,
+.page-toc-sublist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.page-toc-item + .page-toc-item {
+  margin-top: 10px;
+}
+.page-toc-sublist {
+  margin-top: 8px;
+  padding-left: 14px;
+  border-left: 2px solid #e5e7eb;
+}
+.page-toc-subitem + .page-toc-subitem {
+  margin-top: 6px;
+}
+.page-toc-link {
+  display: block;
+  color: #334155;
+  text-decoration: none;
+  font-size: 14px;
+  line-height: 1.55;
+}
+.page-toc-link:hover {
+  color: #2563eb;
+}
+@media (max-width: 1100px) {
+  .page-toc {
+    top: 12px;
+    right: 12px;
+  }
+  .page-toc-panel {
+    width: min(300px, calc(100vw - 24px));
+    max-height: calc(100vh - 72px);
+  }
+}
+</style>
+</head>
+
+<body>
+
+<nav class="page-toc" aria-label="文章目录">
+  <div class="page-toc-title">目录导航</div>
+  <ol class="page-toc-list" id="page-toc-list"></ol>
+</nav>
+
+<h1>Fireworks AI《Reinforcement Learning With Verifiable Reward》中文精读笔记<br>RLVR / GRPO / Reasoning 后训练版</h1>
+
+<div class="box note">
+<p><strong>原文标题：</strong>Beyond Supervised Fine Tuning: How Reinforcement Learning Empowers AI with Minimal Labels</p>
+
+<p><strong>页面主题：</strong>Reinforcement Learning With Verifiable Reward</p>
+
+<p><strong>来源：</strong>Fireworks AI Blog</p>
+
+<p><strong>发布时间：</strong>2025 年 1 月 27 日</p>
+
+<p><strong>原文链接：</strong>
+<a href="https://fireworks.ai/blog/reinforcement-learning-with-verifiable-reward" target="_blank">
+https://fireworks.ai/blog/reinforcement-learning-with-verifiable-reward
+</a>
+</p>
+
+<p><strong>学习定位：</strong>
+这篇文章适合作为“后训练路线”的第二篇。第一篇 PyTorch《A Primer on LLM Post-Training》帮助我们建立
+SFT、DPO、PPO、GRPO、Reward Pipeline 的整体地图；这一篇则专门进入
+<strong>RLVR</strong>，也就是 <strong>Reinforcement Learning with Verifiable Reward</strong>，
+中文可以理解为“基于可验证奖励的强化学习”。它重点解释：当任务答案可以被自动验证时，
+我们能不能不用大量人工偏好标注，而是直接用规则、测试器、格式检查器、工具执行结果来训练模型。
+</p>
+</div>
+
+<h2>0. 这篇博客应该怎么读？</h2>
+
+<p>
+这篇 Fireworks AI 博客不要当成单纯的“GRPO 介绍”来读。它真正想讲的是：
+<strong>大模型后训练可以从监督微调，走向基于可验证奖励的强化学习。</strong>
+</p>
+
+<p>
+上一篇 PyTorch Primer 已经讲清楚后训练的主线：
+</p>
+
+<pre>
+Base Model 基座模型
+  ↓
+SFT 监督微调
+  ↓
+DPO / RLHF 偏好优化
+  ↓
+Online RL / PPO / GRPO
+  ↓
+Reward Pipeline 奖励管线
+  ↓
+Reasoning / Agent 后训练
+</pre>
+
+<p>
+而这篇 Fireworks AI 文章要解决的是其中最关键的一段：
+</p>
+
+<pre>
+SFT 只能模仿已有答案
+  ↓
+DPO / RLHF 依赖偏好数据或 Reward Model
+  ↓
+如果任务可以自动判断对错
+  ↓
+就可以使用 Verifiable Reward Function
+  ↓
+再用 GRPO / RL 更新模型
+  ↓
+让模型在数学、代码、工具调用任务上通过试错变强
+</pre>
+
+<div class="box note">
+<strong>一句话理解：</strong>
+SFT 是“看标准答案学习”；DPO 是“看好坏样本学习”；RLHF 是“看奖励模型打分学习”；
+RLVR 是“看任务是否被验证成功来学习”。
+</div>
+
+<h3>0.1 这篇和上一篇 PyTorch Primer 的关系</h3>
+
+<table>
+<tr>
+<th>上一篇 PyTorch Primer</th>
+<th>这一篇 Fireworks AI RLVR</th>
+</tr>
+<tr>
+<td>建立后训练总路线。</td>
+<td>深入可验证奖励这条具体路线。</td>
+</tr>
+<tr>
+<td>讲 SFT、DPO、PPO、GRPO 各自的位置。</td>
+<td>重点讲 GRPO 为什么适合 RLVR。</td>
+</tr>
+<tr>
+<td>强调 reward pipeline 在后训练中的重要性。</td>
+<td>具体说明 reward 可以是硬编码函数、规则检查器或验证器。</td>
+</tr>
+<tr>
+<td>偏重“路线图”。</td>
+<td>偏重“为什么可验证任务可以直接做 RL”。</td>
+</tr>
+<tr>
+<td>适合做第一篇入门。</td>
+<td>适合做第二篇进阶。</td>
+</tr>
+</table>
+
+<h3>0.2 本篇学习目标</h3>
+
+<div class="box train">
+<strong>读完这一篇，你应该能建立 5 个理解：</strong>
+<ol>
+<li>为什么 SFT 不足以解决所有 reasoning 和 Agent 任务；</li>
+<li>什么是 Verifiable Reward，可验证奖励到底从哪里来；</li>
+<li>为什么 GRPO 比 PPO 更轻量；</li>
+<li>Fireworks AI 的两个实验分别说明了什么；</li>
+<li>RLVR 如何迁移到工具调用、代码 Agent、SQL Agent 和 RAG Agent。</li>
+</ol>
+</div>
+
+<h2>1. 为什么要从 SFT 走向 RLVR？</h2>
+
+<p>
+SFT 的全称是 <strong>Supervised Fine-Tuning</strong>，中文是监督微调。
+它是后训练的第一步，也是最稳定、最容易理解的一步。
+</p>
+
+<p>
+SFT 的基本形式是：
+</p>
+
+<pre>
+输入 prompt：
+请计算 1497 × 63。
+
+标准回答 response：
+1497 × 63 = 94311。
+所以最终答案是 94311。
+</pre>
+
+<p>
+模型在训练时学习的是：
+</p>
+
+<pre>
+给定 prompt，尽量生成和标准 response 相似的 token 序列。
+</pre>
+
+<div class="box note">
+<strong>一句话理解：</strong>
+SFT 本质上是模仿学习。它让模型模仿高质量示范，但不一定让模型真正学会试错和探索。
+</div>
+
+<h3>1.1 SFT 的优点</h3>
+
+<table>
+<tr>
+<th>SFT 优点</th>
+<th>解释</th>
+</tr>
+<tr>
+<td>训练稳定</td>
+<td>就是普通 next-token prediction，工程上最成熟。</td>
+</tr>
+<tr>
+<td>容易启动</td>
+<td>只要有 prompt-response 数据就能训练。</td>
+</tr>
+<tr>
+<td>适合学格式</td>
+<td>比如 Chat Template、JSON、工具调用格式、回答风格。</td>
+</tr>
+<tr>
+<td>适合冷启动</td>
+<td>让 base model 先学会像助手一样回答。</td>
+</tr>
+</table>
+
+<h3>1.2 SFT 的局限</h3>
+
+<p>
+SFT 的问题也很明显：它依赖标准答案。
+如果每一道数学题、每一个代码任务、每一个工具调用轨迹都要人工写完整示范，成本会非常高。
+</p>
+
+<table>
+<tr>
+<th>任务</th>
+<th>SFT 的困难</th>
+<th>可能更适合什么</th>
+</tr>
+<tr>
+<td>数学推理</td>
+<td>中间解法很多，人工写完整推理成本高。</td>
+<td>用最终答案是否正确作为 reward。</td>
+</tr>
+<tr>
+<td>代码生成</td>
+<td>同一个需求可以有很多实现方式。</td>
+<td>用单元测试是否通过作为 reward。</td>
+</tr>
+<tr>
+<td>工具调用</td>
+<td>轨迹多样，人工标注每一步成本高。</td>
+<td>用工具名、参数、执行结果作为 reward。</td>
+</tr>
+<tr>
+<td>SQL Agent</td>
+<td>SQL 写法不唯一，但查询结果可验证。</td>
+<td>用执行结果是否匹配作为 reward。</td>
+</tr>
+<tr>
+<td>网页 Agent</td>
+<td>操作路径不唯一。</td>
+<td>用最终页面状态是否达成目标作为 reward。</td>
+</tr>
+</table>
+
+<div class="box warn">
+<strong>关键问题：</strong>
+SFT 需要“标准答案”；但很多任务不需要唯一标准答案，只需要判断结果是否成功。
+这就是 RLVR 出现的根本原因。
+</div>
+
+<h3>1.3 从“模仿答案”到“验证结果”</h3>
+
+<p>
+如果一个任务可以被自动验证，我们就可以把训练目标从“模仿一个固定答案”改成“最大化任务成功率”。
+</p>
+
+<pre>
+SFT：
+人写出标准答案 → 模型模仿这个答案
+
+RLVR：
+模型自己生成答案 → 验证器判断是否正确 → 正确就奖励，错误就惩罚
+</pre>
+
+<p>
+这种变化非常重要。它意味着模型不一定只能学习人类已经写好的推理路径，
+也可以通过多次生成、自动检查、奖励反馈，逐渐提高自己在可验证任务上的成功率。
+</p>
+
+<h2>2. Verifiable Reward：什么叫可验证奖励？</h2>
+
+<p>
+Verifiable Reward 可以翻译成<strong>可验证奖励</strong>。
+它不是一个抽象口号，而是一个可以执行的函数。
+</p>
+
+<p>
+最简单的形式是：
+</p>
+
+<pre>
+输入：
+标准答案 reference_answer
+模型输出 model_response
+
+输出：
+reward 分数
+</pre>
+
+<p>
+伪代码如下：
+</p>
+
+<pre>
+def verifiable_reward_function(reference_answer, model_response):
+    if extract_answer(model_response) == reference_answer:
+        return 1.0
+    else:
+        return 0.0
+</pre>
+
+<div class="box note">
+<strong>一句话理解：</strong>
+可验证奖励就是：不用人主观评价，而是用规则、程序、测试器、执行结果来判断模型输出是否成功。
+</div>
+
+<h3>2.1 可验证奖励的三种典型来源</h3>
+
+<table>
+<tr>
+<th>来源</th>
+<th>例子</th>
+<th>适合任务</th>
+</tr>
+<tr>
+<td>规则函数</td>
+<td>正则抽取答案、字符串匹配、格式检查。</td>
+<td>数学答案、分类标签、JSON 格式。</td>
+</tr>
+<tr>
+<td>测试器 / 执行器</td>
+<td>单元测试、编译器、SQL 执行、schema validator。</td>
+<td>代码生成、SQL Agent、工具调用。</td>
+</tr>
+<tr>
+<td>环境反馈</td>
+<td>网页状态变化、任务是否完成、API 是否返回成功。</td>
+<td>Web Agent、工具 Agent、多步任务。</td>
+</tr>
+</table>
+
+<h3>2.2 为什么它叫“Verifiable”？</h3>
+
+<p>
+因为它判断的是可以被验证的结果。
+比如：
+</p>
+
+<ul>
+<li>数学题最终答案是否等于标准答案；</li>
+<li>代码是否通过单元测试；</li>
+<li>函数调用名称是否正确；</li>
+<li>函数参数是否完整；</li>
+<li>JSON 是否能被解析；</li>
+<li>SQL 是否能执行并返回正确结果；</li>
+<li>网页任务是否进入目标状态。</li>
+</ul>
+
+<p>
+这些任务和“回答是否优美”“语气是否舒服”不一样。
+它们有相对明确的成功标准。
+</p>
+
+<table>
+<tr>
+<th>主观偏好任务</th>
+<th>可验证任务</th>
+</tr>
+<tr>
+<td>回答是否优雅。</td>
+<td>答案是否正确。</td>
+</tr>
+<tr>
+<td>解释是否让人舒服。</td>
+<td>代码是否通过测试。</td>
+</tr>
+<tr>
+<td>语气是否足够礼貌。</td>
+<td>JSON 是否合法。</td>
+</tr>
+<tr>
+<td>内容是否有启发性。</td>
+<td>工具调用是否成功。</td>
+</tr>
+</table>
+
+<div class="box train">
+<strong>实践判断：</strong>
+一个任务能不能做 RLVR，先问一句：
+“我能不能写一个程序，自动判断这次输出是否成功？”
+如果能，就有 RLVR 潜力。
+</div>
+
+<h3>2.3 可验证奖励不一定只有 0 和 1</h3>
+
+<p>
+最简单的 reward 是二值奖励：
+</p>
+
+<pre>
+正确：1
+错误：0
+</pre>
+
+<p>
+但真实训练中，reward 通常可以更细。
+例如工具调用任务：
+</p>
+
+<pre>
+JSON 格式合法：+0.2
+工具名称正确：+0.5
+必要参数完整：+0.3
+参数值正确：+0.5
+工具执行成功：+1.0
+无意义调用工具：-0.5
+格式完全错误：-1.0
+</pre>
+
+<p>
+这类奖励比单纯的 0/1 更细，可以指导模型学会更稳定的行为。
+</p>
+
+<div class="box warn">
+<strong>注意：</strong>
+reward 越复杂，不一定越好。复杂 reward 如果设计不好，模型可能会钻漏洞。
+真正重要的是 reward 能稳定地区分“好行为”和“坏行为”。
+</div>
+
+<h2>3. RLVR 和 RLHF / DPO 有什么区别？</h2>
+
+<p>
+RLVR、RLHF、DPO 都属于后训练，但它们使用的训练信号不同。
+</p>
+
+<table>
+<tr>
+<th>方法</th>
+<th>训练信号</th>
+<th>是否需要人工偏好</th>
+<th>适合任务</th>
+</tr>
+<tr>
+<td>SFT</td>
+<td>标准答案</td>
+<td>通常需要人工或强模型写答案</td>
+<td>格式学习、基础指令遵循、冷启动。</td>
+</tr>
+<tr>
+<td>DPO</td>
+<td>chosen / rejected 偏好对</td>
+<td>需要偏好数据</td>
+<td>回答风格、偏好对齐、减少坏回答。</td>
+</tr>
+<tr>
+<td>RLHF</td>
+<td>Reward Model 分数</td>
+<td>需要人类偏好数据训练 Reward Model</td>
+<td>主观偏好、帮助性、安全性、表达质量。</td>
+</tr>
+<tr>
+<td>RLVR</td>
+<td>规则 / 测试器 / 验证器奖励</td>
+<td>不一定需要人工偏好</td>
+<td>数学、代码、工具调用、SQL、格式校验。</td>
+</tr>
+</table>
+
+<h3>3.1 RLHF：让模型符合人类偏好</h3>
+
+<p>
+RLHF 适合处理主观评价问题。
+比如：
+</p>
+
+<ul>
+<li>哪个回答更有帮助；</li>
+<li>哪个回答更礼貌；</li>
+<li>哪个回答更安全；</li>
+<li>哪个回答更符合用户意图。</li>
+</ul>
+
+<p>
+这些问题很难写成简单规则。
+所以 RLHF 通常需要人类偏好数据，再训练 Reward Model。
+</p>
+
+<h3>3.2 RLVR：让模型提高可验证成功率</h3>
+
+<p>
+RLVR 更适合客观任务。
+比如：
+</p>
+
+<ul>
+<li>答案是否正确；</li>
+<li>代码是否能跑；</li>
+<li>工具是否选对；</li>
+<li>参数是否完整；</li>
+<li>任务是否完成。</li>
+</ul>
+
+<p>
+这些问题可以用规则或程序判断。
+因此 RLVR 的成本可能更低，也更容易规模化。
+</p>
+
+<div class="box note">
+<strong>核心区别：</strong>
+RLHF 优化“人类觉得好不好”；RLVR 优化“任务是否被验证成功”。
+</div>
+
+<h2>4. GRPO：为什么这篇文章重点讲它？</h2>
+
+<p>
+GRPO 的全称是 <strong>Group Relative Policy Optimization</strong>，
+中文可以译为<strong>组相对策略优化</strong>。
+</p>
+
+<p>
+Fireworks AI 原文把 GRPO 放在重要位置，是因为它和 RLVR 很搭。
+可验证任务通常可以对同一个 prompt 生成多个答案，然后用 reward function 给每个答案打分。
+GRPO 正好利用这一组答案内部的相对分数来更新模型。
+</p>
+
+<h3>4.1 PPO 为什么重？</h3>
+
+<p>
+PPO，全称 <strong>Proximal Policy Optimization</strong>，中文是近端策略优化。
+它是经典 RLHF 中经常使用的算法。
+</p>
+
+<p>
+但 PPO 在大模型后训练中比较重，主要因为它通常需要：
+</p>
+
+<ul>
+<li>Policy Model：正在训练的模型；</li>
+<li>Reference Model：用于 KL 约束，防止模型偏离太远；</li>
+<li>Reward Model：给模型输出打分；</li>
+<li>Value Model：估计 baseline，用于计算 advantage；</li>
+<li>GAE：Generalized Advantage Estimation，广义优势估计。</li>
+</ul>
+
+<table>
+<tr>
+<th>PPO 组件</th>
+<th>中文解释</th>
+<th>为什么带来负担</th>
+</tr>
+<tr>
+<td>Value Model</td>
+<td>价值模型</td>
+<td>通常和 Policy Model 尺寸接近，显存和算力压力大。</td>
+</tr>
+<tr>
+<td>Token-level value</td>
+<td>逐 token 价值</td>
+<td>每个 token 都要估计 value，中间状态更多。</td>
+</tr>
+<tr>
+<td>GAE</td>
+<td>广义优势估计</td>
+<td>计算复杂，工程实现细节多。</td>
+</tr>
+<tr>
+<td>参数搜索</td>
+<td>训练超参调节</td>
+<td>组件越多，越难稳定训练。</td>
+</tr>
+</table>
+
+<h3>4.2 GRPO 做了什么简化？</h3>
+
+<p>
+GRPO 最关键的简化是：
+<strong>去掉 Value Model，用同一个 prompt 下多个生成结果的组内相对 reward 来估计 advantage。</strong>
+</p>
+
+<p>
+直观流程如下：
+</p>
+
+<pre>
+同一个 prompt
+  ↓
+模型生成多个回答
+  ↓
+reward function 给每个回答打分
+  ↓
+计算这一组回答的平均分
+  ↓
+高于平均分的回答被鼓励
+  ↓
+低于平均分的回答被削弱
+</pre>
+
+<h3>4.3 一个简单例子</h3>
+
+<pre>
+问题：
+1497 × 63 = ?
+
+模型生成 4 个回答：
+
+回答 A：94311 → reward = 1
+回答 B：94211 → reward = 0
+回答 C：94301 → reward = 0
+回答 D：94311 → reward = 1
+
+组内平均 reward = 0.5
+
+回答 A advantage = 1 - 0.5 = 0.5
+回答 B advantage = 0 - 0.5 = -0.5
+回答 C advantage = 0 - 0.5 = -0.5
+回答 D advantage = 1 - 0.5 = 0.5
+</pre>
+
+<p>
+这样模型就会提高生成 A、D 这类正确答案的概率，降低生成 B、C 这类错误答案的概率。
+</p>
+
+<div class="box note">
+<strong>一句话理解 GRPO：</strong>
+同一道题让模型做多次，谁在同组里表现更好就鼓励谁，谁表现更差就压低谁。
+</div>
+
+<h3>4.4 PPO 和 GRPO 对比</h3>
+
+<table>
+<tr>
+<th>比较维度</th>
+<th>PPO</th>
+<th>GRPO</th>
+</tr>
+<tr>
+<td>是否需要 Value Model</td>
+<td>通常需要。</td>
+<td>通常不需要。</td>
+</tr>
+<tr>
+<td>Advantage 来源</td>
+<td>reward + value baseline + GAE。</td>
+<td>同一 prompt 下多个回答的相对 reward。</td>
+</tr>
+<tr>
+<td>奖励粒度</td>
+<td>可以 token-level，也可以 sequence-level。</td>
+<td>常见为 sequence-level。</td>
+</tr>
+<tr>
+<td>工程复杂度</td>
+<td>较高。</td>
+<td>相对较低。</td>
+</tr>
+<tr>
+<td>适合场景</td>
+<td>通用 RLHF、复杂偏好优化。</td>
+<td>数学、代码、reasoning、可验证任务。</td>
+</tr>
+</table>
+
+<h2>5. PPO 与 GRPO 图解</h2>
+
+<p>
+Fireworks AI 原文引用了一张 PPO 与 GRPO 的对比图。
+这张图很重要，因为它把两者的工程差别讲得很直观。
+</p>
+
+<div class="figure">
+<img
+src="https://fireworks.ai/_next/image?q=75&amp;url=https%3A%2F%2Fcdn.sanity.io%2Fimages%2Fpv37i0yn%2Fproduction%2F5694a061fd6187c53abc9810383f89a7d45020d1-2236x942.png%3Fauto%3Dformat&amp;w=3840"
+alt="PPO 与 GRPO 对比图">
+<div class="caption">
+图 1：PPO 与 GRPO 的结构对比。来源：Fireworks AI 博客《Reinforcement Learning With Verifiable Reward》。
+上半部分是 PPO，需要 Value Model 参与 advantage 估计；下半部分是 GRPO，同一个 prompt 生成多个回答，
+用组内 reward 的相对关系估计 advantage。
+如果图片不显示，可以打开原文：
+<a href="https://fireworks.ai/blog/reinforcement-learning-with-verifiable-reward" target="_blank">
+https://fireworks.ai/blog/reinforcement-learning-with-verifiable-reward
+</a>
+</div>
+</div>
+
+<h3>5.1 这张图上半部分：PPO</h3>
+
+<p>
+PPO 的流程可以理解成：
+</p>
+
+<pre>
+Prompt
+  ↓
+Policy Model 生成回答
+  ↓
+Reward Model 给回答打分
+  ↓
+Value Model 估计 baseline
+  ↓
+GAE 计算 advantage
+  ↓
+通过 PPO loss 更新 Policy Model
+</pre>
+
+<p>
+PPO 的优点是成熟、通用、理论和实践都比较丰富。
+但它的缺点是重：多一个 Value Model，就多一套训练、显存、同步、调参负担。
+</p>
+
+<h3>5.2 这张图下半部分：GRPO</h3>
+
+<p>
+GRPO 的流程可以理解成：
+</p>
+
+<pre>
+Prompt
+  ↓
+Policy Model 生成多个回答
+  ↓
+Reward Function / Reward Model 给每个回答打分
+  ↓
+Group Computation 计算组内相对 advantage
+  ↓
+更新 Policy Model
+</pre>
+
+<p>
+GRPO 不再依赖单独的 Value Model，而是把同一 prompt 下多个回答放在一起比较。
+如果一个回答比同组其他回答得分更高，就说明它相对更好。
+</p>
+
+<div class="box train">
+<strong>这一节你要记住：</strong>
+GRPO 的核心不是“没有 reward”，而是“没有单独的 Value Model”。
+它仍然需要 reward，只是 advantage 的 baseline 来自组内比较。
+</div>
+
+<h2>6. RLVR：强化学习中的 reward 可以不是神经网络</h2>
+
+<p>
+Fireworks AI 原文中有一个很关键的判断：
+强化学习算法本身只要求有一个东西能给生成结果打分，
+它并没有规定这个打分器必须是一个深度学习模型。
+</p>
+
+<p>
+因此 reward 可以来自：
+</p>
+
+<table>
+<tr>
+<th>Reward 来源</th>
+<th>说明</th>
+<th>例子</th>
+</tr>
+<tr>
+<td>深度学习模型</td>
+<td>用一个 Reward Model 给回答打分。</td>
+<td>RLHF 中的偏好模型。</td>
+</tr>
+<tr>
+<td>硬编码函数</td>
+<td>用规则直接判断输出。</td>
+<td>答案是否正确、格式是否合规。</td>
+</tr>
+<tr>
+<td>两者结合</td>
+<td>主观任务用模型，客观任务用规则。</td>
+<td>reasoning 用 rule reward，通用对话用 RM。</td>
+</tr>
+</table>
+
+<h3>6.1 为什么这很重要？</h3>
+
+<p>
+因为如果 reward 必须来自一个大 Reward Model，那么 RLHF 的成本会很高。
+你需要：
+</p>
+
+<ul>
+<li>收集偏好数据；</li>
+<li>训练 Reward Model；</li>
+<li>维护 Reward Model；</li>
+<li>防止模型攻击 Reward Model；</li>
+<li>处理 Reward Model 的偏差。</li>
+</ul>
+
+<p>
+但如果任务可以由规则验证，就可以直接写 reward function。
+例如：
+</p>
+
+<pre>
+数学题：
+最终答案正确 → reward = 1
+最终答案错误 → reward = 0
+
+代码题：
+单元测试通过 → reward = 1
+运行报错 → reward = -1
+
+工具调用：
+工具名正确 → reward += 0.5
+参数完整 → reward += 0.3
+执行成功 → reward += 1
+</pre>
+
+<div class="box note">
+<strong>核心转变：</strong>
+从“训练一个模型来判断回答好不好”，转向“用规则直接判断任务有没有完成”。
+</div>
+
+<h3>6.2 DeepSeek-R1-Zero 和 rule-based reward</h3>
+
+<p>
+Fireworks AI 原文把 DeepSeek-R1-Zero 作为背景来讲。
+它强调 DeepSeek-R1-Zero 没有先经过传统 SFT，而是直接通过大规模 RL 训练，
+并使用规则化奖励来推动 reasoning 能力出现。
+</p>
+
+<p>
+这给后训练学习一个非常重要的启发：
+</p>
+
+<div class="box train">
+<strong>启发：</strong>
+对数学、代码、逻辑推理这类可验证任务来说，
+模型不一定只能通过模仿人类写好的推理链变强。
+它也可能通过“生成 → 验证 → 奖励 → 更新”的循环逐渐提升推理能力。
+</div>
+
+<h2>7. 实验一：四位数乘两位数</h2>
+
+<p>
+Fireworks AI 的第一个实验非常简单：训练模型做四位数乘两位数。
+它看起来像小学数学题，但非常适合说明 RLVR 的基本逻辑。
+</p>
+
+<h3>7.1 任务格式</h3>
+
+<p>
+原文中的任务大致是：
+</p>
+
+<pre>
+Please answer the following question.
+You may write out your argument before stating your final answer X in a new line,
+following the format:
+
+"Final Answer: the final answer is X. I hope it is correct."
+
+1497 * 63
+</pre>
+
+<p>
+模型需要最终输出：
+</p>
+
+<pre>
+Final Answer: the final answer is 94311. I hope it is correct.
+</pre>
+
+<h3>7.2 为什么这个任务适合 RLVR？</h3>
+
+<table>
+<tr>
+<th>条件</th>
+<th>说明</th>
+</tr>
+<tr>
+<td>答案明确</td>
+<td>1497 × 63 的答案是确定的。</td>
+</tr>
+<tr>
+<td>容易抽取</td>
+<td>可以用正则表达式抽取 final answer。</td>
+</tr>
+<tr>
+<td>容易验证</td>
+<td>抽取出的数字和标准答案比较即可。</td>
+</tr>
+<tr>
+<td>不需要人类偏好</td>
+<td>不需要人判断“哪个回答更好”，只要看是否正确。</td>
+</tr>
+</table>
+
+<h3>7.3 Reward Function 示例</h3>
+
+<pre>
+import re
+
+def extract_answer(model_output):
+    pattern = r"Final Answer: the final answer is (\d+). I hope it is correct."
+    match = re.search(pattern, model_output)
+
+    if match is None:
+        return None
+
+    return int(match.group(1))
+
+def reward_fn(model_output, reference_answer):
+    pred = extract_answer(model_output)
+
+    if pred is None:
+        return 0.0
+
+    if pred == reference_answer:
+        return 1.0
+
+    return 0.0
+</pre>
+
+<p>
+这个 reward function 同时检查了两个东西：
+</p>
+
+<ul>
+<li>模型有没有按照指定格式输出；</li>
+<li>模型最终答案是否正确。</li>
+</ul>
+
+<h3>7.4 实验结果怎么理解？</h3>
+
+<p>
+原文中，模型一开始在这个任务上的正确率大约是 25%，训练后逐渐提升到大约 70%。
+这个实验的意义不是说“四位数乘法本身多重要”，而是说明：
+</p>
+
+<div class="box note">
+<strong>实验意义：</strong>
+只要任务结果可以被自动验证，即使 reward 很简单，也可以通过 RL 让模型提高成功率。
+</div>
+
+<p>
+这对 reasoning 后训练很关键。
+因为很多时候我们并不想人工写每道题的完整 CoT。
+我们真正需要的是：模型最终能不能做对。
+如果最终结果可验证，reward 就可以来自验证器。
+</p>
+
+<h2>8. 实验二：Function Picking，函数选择</h2>
+
+<p>
+第二个实验更接近 Agent。
+Function Picking 的意思是：给模型一个用户请求和一组可用函数，
+让模型判断是否应该调用函数，以及应该调用哪个函数。
+</p>
+
+<p>
+这比普通数学题更接近真实工具调用场景。
+</p>
+
+<h3>8.1 原文中的任务例子</h3>
+
+<p>
+用户请求大致是：
+</p>
+
+<pre>
+Hi, I need to know the distance between New York and Los Angeles.
+Can you help me with that?
+</pre>
+
+<p>
+系统给了一个函数：
+</p>
+
+<pre>
+calculate_distance(start_coordinates, end_coordinates)
+</pre>
+
+<p>
+这个函数需要经纬度作为参数。
+但是用户只提供了城市名，没有提供经纬度。
+所以正确行为不是直接调用 <code>calculate_distance</code>，
+而是判断“信息不足，不能调用函数”。
+</p>
+
+<pre>
+正确输出：
+<no_functioncall>
+</pre>
+
+<h3>8.2 这个例子为什么重要？</h3>
+
+<p>
+因为很多工具调用错误不是“模型不会说话”，而是：
+</p>
+
+<ul>
+<li>看到关键词就乱调用工具；</li>
+<li>没有检查参数是否足够；</li>
+<li>工具名选对了，但参数不完整；</li>
+<li>以为自己能补全参数，实际上是在编造；</li>
+<li>应该追问用户，却直接执行工具。</li>
+</ul>
+
+<div class="box warn">
+<strong>Agent 常见错误：</strong>
+模型看到“distance”就想调用 calculate_distance，
+但没有意识到函数需要经纬度，而用户没有提供经纬度。
+这就是工具调用 Agent 很常见的错误。
+</div>
+
+<h3>8.3 Function Picking 的 Reward Function</h3>
+
+<p>
+这个任务的 reward 可以非常简单：
+只检查模型最后给出的标签是否正确。
+</p>
+
+<pre>
+def function_picking_reward(model_output, expected_label):
+    pred_label = extract_final_label(model_output)
+
+    if pred_label == expected_label:
+        return 1.0
+    else:
+        return 0.0
+</pre>
+
+<p>
+例如：
+</p>
+
+<pre>
+expected_label = "<no_functioncall>"
+
+模型输出：
+<no_functioncall>
+
+reward = 1.0
+</pre>
+
+<h3>8.4 实验结果怎么理解？</h3>
+
+<p>
+原文中，function picking 的准确率从大约 75% 提升到了 99%。
+更值得注意的是，训练过程中模型还学到了更简洁的推理和格式策略。
+</p>
+
+<table>
+<tr>
+<th>训练早期</th>
+<th>训练后期</th>
+</tr>
+<tr>
+<td>回答很长，甚至自己补纽约和洛杉矶经纬度，然后错误地尝试调用函数。</td>
+<td>回答变短，直接指出需要地理坐标，并输出 <code>&lt;no_functioncall&gt;</code>。</td>
+</tr>
+<tr>
+<td>看起来“努力推理”，但工具调用判断是错的。</td>
+<td>推理更简洁，工具调用判断更正确。</td>
+</tr>
+</table>
+
+<div class="box train">
+<strong>关键启发：</strong>
+即使 reward 只看最终标签，模型也可能在训练中逐渐学会更好的中间策略。
+这对 Agent 后训练很重要：不一定每一步都要人工标注，只要最终行为能验证，就可以提供训练信号。
+</div>
+
+<h2>9. RLVR 对 Agent 后训练的启发</h2>
+
+<p>
+RLVR 不只是数学推理模型的训练方法。
+它对 Agent 后训练更重要，因为 Agent 的很多行为天然可以被验证。
+</p>
+
+<table>
+<tr>
+<th>Agent 类型</th>
+<th>可验证信号</th>
+<th>Reward 示例</th>
+</tr>
+<tr>
+<td>Tool-use Agent</td>
+<td>工具名、参数、调用时机。</td>
+<td>工具正确 +0.5，参数缺失 -0.5。</td>
+</tr>
+<tr>
+<td>Code Agent</td>
+<td>代码是否运行，测试是否通过。</td>
+<td>测试通过 +1，运行报错 -1。</td>
+</tr>
+<tr>
+<td>SQL Agent</td>
+<td>SQL 是否能执行，结果是否正确。</td>
+<td>结果匹配 +1，语法错误 -1。</td>
+</tr>
+<tr>
+<td>RAG Agent</td>
+<td>回答是否引用证据，证据是否支持答案。</td>
+<td>引用命中 +0.3，编造引用 -1。</td>
+</tr>
+<tr>
+<td>Web Agent</td>
+<td>网页状态是否达到目标。</td>
+<td>成功提交表单 +1，误点页面 -0.5。</td>
+</tr>
+</table>
+
+<h3>9.1 Agent 后训练不是只训练最终回答</h3>
+
+<p>
+普通聊天模型主要优化最终回答。
+但 Agent 需要优化的是整条轨迹：
+</p>
+
+<pre>
+User Request 用户请求
+  ↓
+Thought / Plan 思考或计划
+  ↓
+Action 工具调用 / 代码执行 / SQL 查询
+  ↓
+Observation 工具返回 / 环境反馈
+  ↓
+Next Action 下一步动作
+  ↓
+Final Answer 最终回答
+</pre>
+
+<p>
+所以 Agent 的 reward 不应该只看最终文字，还应该看：
+</p>
+
+<ul>
+<li>有没有选对工具；</li>
+<li>参数有没有填对；</li>
+<li>工具调用格式是否合法；</li>
+<li>有没有根据工具返回结果继续推理；</li>
+<li>有没有在该停止的时候停止；</li>
+<li>有没有无意义地反复调用工具。</li>
+</ul>
+
+<h3>9.2 一个 Agent Reward 模板</h3>
+
+<pre>
+def agent_reward(output, ground_truth, execution_result):
+    reward = 0.0
+
+    # 1. 格式是否可解析
+    if is_valid_schema(output):
+        reward += 0.2
+    else:
+        reward -= 0.5
+
+    # 2. 工具名称是否正确
+    if tool_name(output) == ground_truth.tool_name:
+        reward += 0.5
+    else:
+        reward -= 0.5
+
+    # 3. 参数是否完整
+    if required_args_complete(output):
+        reward += 0.3
+    else:
+        reward -= 0.3
+
+    # 4. 参数值是否正确
+    if args_match(output, ground_truth.args):
+        reward += 0.5
+
+    # 5. 工具执行是否成功
+    if execution_result.success:
+        reward += 1.0
+
+    # 6. 是否过度调用工具
+    if unnecessary_tool_call(output):
+        reward -= 0.4
+
+    return reward
+</pre>
+
+<div class="box note">
+<strong>Agent 后训练核心：</strong>
+普通后训练优化的是回答；Agent 后训练优化的是轨迹。
+RLVR 的价值就在于，它可以把轨迹中的很多环节转化为可验证奖励。
+</div>
+
+<h2>10. 实践路线：怎么做一个最小 RLVR / GRPO 小实验？</h2>
+
+<p>
+如果你想真正动手，不要一开始就做复杂 Agent。
+建议从最简单的可验证任务开始。
+</p>
+
+<h3>10.1 第一步：选择可验证任务</h3>
+
+<table>
+<tr>
+<th>任务</th>
+<th>难度</th>
+<th>为什么适合入门</th>
+</tr>
+<tr>
+<td>数学答案抽取</td>
+<td>低</td>
+<td>答案容易比较，reward 容易写。</td>
+</tr>
+<tr>
+<td>JSON 格式校验</td>
+<td>低</td>
+<td>能否解析非常明确。</td>
+</tr>
+<tr>
+<td>Function Picking</td>
+<td>中</td>
+<td>接近工具调用 Agent，但还不需要真实执行工具。</td>
+</tr>
+<tr>
+<td>代码单元测试</td>
+<td>中高</td>
+<td>reward 清楚，但执行环境更复杂。</td>
+</tr>
+<tr>
+<td>多步 Agent</td>
+<td>高</td>
+<td>轨迹长、reward 稀疏、工程复杂。</td>
+</tr>
+</table>
+
+<h3>10.2 第二步：写 Reward Function</h3>
+
+<p>
+先不要追求复杂，先保证 reward 稳定。
+例如数学任务：
+</p>
+
+<pre>
+def reward(output, answer):
+    pred = extract_answer(output)
+
+    if pred is None:
+        return -0.2
+
+    if pred == answer:
+        return 1.0
+
+    return 0.0
+</pre>
+
+<p>
+再比如 JSON 任务：
+</p>
+
+<pre>
+def json_reward(output):
+    try:
+        obj = json.loads(output)
+    except:
+        return -1.0
+
+    if "action" not in obj:
+        return -0.5
+
+    if "arguments" not in obj:
+        return -0.5
+
+    return 1.0
+</pre>
+
+<h3>10.3 第三步：同一个 prompt 多采样</h3>
+
+<p>
+GRPO 需要 group。
+所以每个 prompt 不要只生成一个回答，而要生成多个回答：
+</p>
+
+<pre>
+prompt_1 → response_1, response_2, response_3, response_4
+prompt_2 → response_1, response_2, response_3, response_4
+prompt_3 → response_1, response_2, response_3, response_4
+</pre>
+
+<p>
+然后分别计算 reward，再做组内比较。
+</p>
+
+<h3>10.4 第四步：计算组内 advantage</h3>
+
+<pre>
+rewards = [1, 0, 0, 1]
+
+mean_reward = sum(rewards) / len(rewards)
+
+advantages = [
+    r - mean_reward
+    for r in rewards
+]
+</pre>
+
+<p>
+得到：
+</p>
+
+<pre>
+advantages = [0.5, -0.5, -0.5, 0.5]
+</pre>
+
+<p>
+高 advantage 的回答被强化，低 advantage 的回答被削弱。
+</p>
+
+<div class="box train">
+<strong>实践建议：</strong>
+你可以先做一个 toy 版本，不必马上跑大模型训练。
+先用 Python 模拟：
+prompt → 多个 response → reward → group advantage。
+把这个逻辑跑通，再去看 verl、OpenRLHF、TRL 等工程框架。
+</div>
+
+<h2>11. 常见坑：RLVR 不是万能药</h2>
+
+<h3>11.1 Reward Function 太表面</h3>
+
+<p>
+如果只奖励格式，模型可能只学会套格式。
+</p>
+
+<pre>
+错误 reward：
+只要输出 JSON 就给 1 分。
+
+模型可能学到：
+输出格式正确但内容胡写的 JSON。
+</pre>
+
+<div class="box warn">
+<strong>解决办法：</strong>
+reward 不要只检查格式，还要检查内容、参数、执行结果。
+</div>
+
+<h3>11.2 只看最终答案，忽略过程质量</h3>
+
+<p>
+数学题只看最终答案很方便，但复杂任务中可能不够。
+模型可能碰巧猜对答案，却没有形成可靠推理。
+</p>
+
+<p>
+对 Agent 来说，如果只看最终任务是否完成，模型可能学会：
+</p>
+
+<ul>
+<li>疯狂调用工具；</li>
+<li>反复尝试直到成功；</li>
+<li>忽略成本；</li>
+<li>使用不安全路径。</li>
+</ul>
+
+<div class="box warn">
+<strong>解决办法：</strong>
+对 Agent 任务，reward 最好同时包含任务成功、工具成本、步骤数量、安全约束。
+</div>
+
+<h3>11.3 任务太简单或太难</h3>
+
+<p>
+如果任务太简单，所有回答都得 1 分，组内没有差异。
+如果任务太难，所有回答都得 0 分，也没有差异。
+</p>
+
+<table>
+<tr>
+<th>任务难度</th>
+<th>训练信号</th>
+<th>问题</th>
+</tr>
+<tr>
+<td>太简单</td>
+<td>reward 全是 1</td>
+<td>模型没有进一步学习信号。</td>
+</tr>
+<tr>
+<td>太难</td>
+<td>reward 全是 0</td>
+<td>模型不知道什么行为更好。</td>
+</tr>
+<tr>
+<td>适中</td>
+<td>有对有错</td>
+<td>最适合 GRPO 组内比较。</td>
+</tr>
+</table>
+
+<h3>11.4 Reward Hacking</h3>
+
+<p>
+模型会优化 reward，但不一定优化你的真实目标。
+如果 reward 有漏洞，模型会利用漏洞。
+</p>
+
+<table>
+<tr>
+<th>真实目标</th>
+<th>错误 reward</th>
+<th>模型可能学到什么</th>
+</tr>
+<tr>
+<td>写出正确代码</td>
+<td>只要通过少量测试就给满分。</td>
+<td>硬编码测试样例。</td>
+</tr>
+<tr>
+<td>准确调用工具</td>
+<td>只奖励最终成功。</td>
+<td>反复乱调用工具直到成功。</td>
+</tr>
+<tr>
+<td>简洁推理</td>
+<td>回答越长分越高。</td>
+<td>输出冗长无用推理。</td>
+</tr>
+<tr>
+<td>格式稳定</td>
+<td>只奖励标签出现。</td>
+<td>标签正确但内容错误。</td>
+</tr>
+</table>
+
+<div class="box warn">
+<strong>重要警告：</strong>
+RLVR 的难点不是“写一个 reward function”，而是写一个不会轻易被模型钻空子的 reward function。
+</div>
+
+<h2>12. 本篇术语表</h2>
+
+<table>
+<tr>
+<th>英文术语</th>
+<th>中文翻译</th>
+<th>解释</th>
+</tr>
+<tr>
+<td>RLVR</td>
+<td>基于可验证奖励的强化学习</td>
+<td>用规则、测试器、执行结果等可验证信号作为 reward 来训练模型。</td>
+</tr>
+<tr>
+<td>Verifiable Reward</td>
+<td>可验证奖励</td>
+<td>可以由程序自动判断的奖励，比如答案正确、测试通过、格式合法。</td>
+</tr>
+<tr>
+<td>Verifiable Reward Function</td>
+<td>可验证奖励函数</td>
+<td>接收模型输出并返回 reward 的函数，通常由规则或验证器实现。</td>
+</tr>
+<tr>
+<td>GRPO</td>
+<td>组相对策略优化</td>
+<td>同一 prompt 生成多个回答，用组内相对 reward 估计 advantage。</td>
+</tr>
+<tr>
+<td>PPO</td>
+<td>近端策略优化</td>
+<td>经典强化学习算法，RLHF 中常用，但通常需要 Value Model。</td>
+</tr>
+<tr>
+<td>Value Model</td>
+<td>价值模型</td>
+<td>估计当前状态或 token 的预期价值，用于计算 advantage。</td>
+</tr>
+<tr>
+<td>Advantage</td>
+<td>优势值</td>
+<td>表示某个回答比 baseline 好多少。</td>
+</tr>
+<tr>
+<td>Reward Model</td>
+<td>奖励模型</td>
+<td>用模型给回答打分，常见于 RLHF。</td>
+</tr>
+<tr>
+<td>Outcome Reward</td>
+<td>结果奖励</td>
+<td>只根据最终结果给奖励，例如最终答案是否正确。</td>
+</tr>
+<tr>
+<td>Process Reward</td>
+<td>过程奖励</td>
+<td>根据中间步骤或推理过程给奖励。</td>
+</tr>
+<tr>
+<td>Function Picking</td>
+<td>函数选择</td>
+<td>Agent 判断是否需要调用工具，以及应该调用哪个函数。</td>
+</tr>
+<tr>
+<td>Reward Hacking</td>
+<td>奖励投机 / 奖励黑客</td>
+<td>模型利用 reward 漏洞拿高分，但没有真正完成任务。</td>
+</tr>
+</table>
+
+<h2>13. 最终总结</h2>
+
+<h3>13.1 本篇建立的主线</h3>
+
+<pre>
+SFT：
+让模型模仿高质量答案
+  ↓
+DPO / RLHF：
+让模型更符合偏好
+  ↓
+RLVR：
+当任务可以验证时，用规则或测试器提供 reward
+  ↓
+GRPO：
+同一个 prompt 多采样，用组内相对 reward 更新模型
+  ↓
+Reasoning / Agent：
+把数学、代码、工具调用、SQL、RAG 等任务转成可验证训练任务
+</pre>
+
+<h3>13.2 你应该记住的 5 个核心理解</h3>
+
+<table>
+<tr>
+<th>核心理解</th>
+<th>解释</th>
+</tr>
+<tr>
+<td>第一，RLVR 的核心是“可验证”。</td>
+<td>不是所有任务都适合 RLVR，只有能自动判断成功与失败的任务最适合。</td>
+</tr>
+<tr>
+<td>第二，GRPO 的核心是“组内比较”。</td>
+<td>它不依赖单独 Value Model，而是比较同一 prompt 下多个回答的 reward。</td>
+</tr>
+<tr>
+<td>第三，reward function 比算法名字更重要。</td>
+<td>reward 设计错了，模型就会优化错误目标。</td>
+</tr>
+<tr>
+<td>第四，RLVR 很适合 reasoning。</td>
+<td>数学、代码、逻辑题都有可验证结果，可以用结果奖励训练模型。</td>
+</tr>
+<tr>
+<td>第五，RLVR 很适合 Agent。</td>
+<td>工具调用、参数填写、执行结果、环境状态都可以转化为 reward。</td>
+</tr>
+</table>
+
+<h3>13.3 对你的学习建议</h3>
+
+<div class="box train">
+<strong>建议下一步按这个顺序继续：</strong>
+<ol>
+<li>先用 Python 写一个最小 reward function，比如数学答案抽取；</li>
+<li>模拟同一 prompt 多采样，手动计算 group reward 和 advantage；</li>
+<li>再看 DeepSeek-R1 Technical Report，重点看 R1-Zero、rule-based reward、GRPO；</li>
+<li>然后看 verl 或 OpenRLHF，理解 rollout、reward、trainer、KL、advantage 的工程实现；</li>
+<li>最后做一个 Mini Tool-use Agent，把 function picking、JSON 校验、工具执行结果都转成 reward。</li>
+</ol>
+</div>
+
+<h3>13.4 一句话收束</h3>
+
+<div class="box note">
+<strong>一句话总结：</strong>
+RLVR 的意义在于：当任务可以被验证时，模型不必只靠模仿人类答案，
+而可以通过“生成、验证、奖励、更新”的循环，在数学、代码、工具调用和 Agent 任务中逐渐提高成功率。
+GRPO 则是这条路线中更轻量、更适合组内比较的策略优化方法。
+</div>
+
+
+
+```html
+<!-- ===================================================== -->
+<!-- 第 14 部分：DeepSeek-R1：RLVR / GRPO 的代表案例 -->
+<!-- 插入位置：接在第 13 部分最终总结后面，放在说明和 script 前 -->
+<!-- ===================================================== -->
+
+<h2 id="route14">14. DeepSeek-R1：为什么它是 RLVR / GRPO 的代表案例？</h2>
+
+<p>
+学完 Fireworks AI 这篇文章之后，下一步最自然要读的是 DeepSeek-R1 Technical Report。
+因为 DeepSeek-R1 系列基本把前面这些关键词都串起来了：
+</p>
+
+<pre>
+Reasoning Model 推理模型
+  ↓
+Rule-based Reward 规则奖励
+  ↓
+GRPO 组相对策略优化
+  ↓
+RLVR 可验证奖励强化学习
+  ↓
+Cold-start Data 冷启动数据
+  ↓
+Multi-stage Training 多阶段训练
+</pre>
+
+<div class="box note">
+<strong>一句话理解：</strong>
+Fireworks AI 这篇文章是在解释“为什么 RLVR 可行”；DeepSeek-R1 报告则是一个更完整的案例，
+展示 reasoning model 如何通过规则奖励和强化学习获得推理能力。
+</div>
+
+<h3>14.1 DeepSeek-R1-Zero：不经过 SFT 的纯 RL 尝试</h3>
+
+<p>
+DeepSeek-R1-Zero 最值得关注的一点是：它没有先经过传统 SFT 冷启动，而是直接对 base model 做大规模强化学习。
+这说明一个很重要的趋势：
+<strong>在某些可验证 reasoning 任务中，模型可能不完全依赖人类写好的推理链，而是可以通过奖励反馈自己探索。</strong>
+</p>
+
+<table>
+<tr>
+<th>模型</th>
+<th>训练特点</th>
+<th>意义</th>
+</tr>
+<tr>
+<td>DeepSeek-R1-Zero</td>
+<td>直接使用大规模 RL，没有先做 SFT 冷启动。</td>
+<td>验证纯 RL 是否能激发 reasoning 能力。</td>
+</tr>
+<tr>
+<td>DeepSeek-R1</td>
+<td>加入 cold-start data 和多阶段训练。</td>
+<td>改善 R1-Zero 的可读性、语言混杂和格式问题。</td>
+</tr>
+<tr>
+<td>Distilled Models</td>
+<td>从 DeepSeek-R1 蒸馏到较小模型。</td>
+<td>把强模型推理能力迁移到更小模型。</td>
+</tr>
+</table>
+
+<h3>14.2 为什么 R1-Zero 会出现“可读性差”和“语言混杂”？</h3>
+
+<p>
+这和纯 RL 的特点有关。
+如果模型一开始没有经过 SFT 学习稳定的回答格式，那么它在 RL 过程中会主要追求 reward。
+只要答案能拿高分，它未必会主动保持清楚、整洁、统一语言的表达。
+</p>
+
+<p>
+所以 R1-Zero 虽然展示了推理能力的 emergence，但也暴露出一些问题：
+</p>
+
+<ul>
+<li>推理过程可读性不稳定；</li>
+<li>中英文或多语言混杂；</li>
+<li>回答格式不够统一；</li>
+<li>可能出现很长的自我反思过程；</li>
+<li>不一定符合普通用户的阅读习惯。</li>
+</ul>
+
+<div class="box warn">
+<strong>关键理解：</strong>
+RL 能提高任务 reward，但不一定自动带来好格式、好表达、好可读性。
+所以真实后训练通常不能只靠 RL，还要结合 SFT、格式数据、偏好优化和多阶段训练。
+</div>
+
+<h3>14.3 DeepSeek-R1 为什么加入 Cold-start Data？</h3>
+
+<p>
+Cold-start Data 可以理解为给模型一个比较好的起点。
+在 reasoning 后训练里，它通常包含一些高质量的推理样本，让模型先学会：
+</p>
+
+<ul>
+<li>如何展开推理；</li>
+<li>如何保持语言一致；</li>
+<li>如何输出最终答案；</li>
+<li>如何控制格式；</li>
+<li>如何避免混乱的中间过程。</li>
+</ul>
+
+<p>
+也就是说，Cold-start Data 不是最终能力的全部来源，而是给 RL 一个更稳定的起点。
+</p>
+
+<table>
+<tr>
+<th>没有 Cold-start Data</th>
+<th>加入 Cold-start Data</th>
+</tr>
+<tr>
+<td>模型可能从混乱格式开始探索。</td>
+<td>模型先学到基本推理格式。</td>
+</tr>
+<tr>
+<td>RL 过程更不稳定。</td>
+<td>RL 更容易在合理行为附近优化。</td>
+</tr>
+<tr>
+<td>容易出现语言混杂、可读性差。</td>
+<td>可读性和格式更好。</td>
+</tr>
+<tr>
+<td>更像纯粹探索实验。</td>
+<td>更适合实际可用模型训练。</td>
+</tr>
+</table>
+
+<div class="box note">
+<strong>一句话理解：</strong>
+R1-Zero 证明“纯 RL 可以激发推理”；R1 证明“纯 RL 之后还需要冷启动、多阶段和格式约束，才能变成更可用的模型”。
+</div>
+
+<h3>14.4 Rule-based Reward：准确性奖励与格式奖励</h3>
+
+<p>
+DeepSeek-R1 报告中最重要的一个点是 rule-based reward。
+它主要包括两类：
+</p>
+
+<table>
+<tr>
+<th>奖励类型</th>
+<th>中文解释</th>
+<th>作用</th>
+</tr>
+<tr>
+<td>Accuracy Reward</td>
+<td>准确性奖励</td>
+<td>检查最终答案是否正确，例如数学答案是否匹配、代码是否通过测试。</td>
+</tr>
+<tr>
+<td>Format Reward</td>
+<td>格式奖励</td>
+<td>检查模型是否按照要求格式输出，例如是否有特定标记、是否能抽取最终答案。</td>
+</tr>
+</table>
+
+<p>
+这和 Fireworks AI 文章中的 Verifiable Reward 是同一条逻辑：
+如果最终结果可以被验证，就不一定需要一个神经网络 Reward Model 来主观打分。
+</p>
+
+<pre>
+Accuracy Reward：
+答案正确 → reward = 1
+答案错误 → reward = 0
+
+Format Reward：
+格式符合要求 → reward += 0.2
+格式不符合要求 → reward -= 0.2
+</pre>
+
+<div class="box train">
+<strong>实践启发：</strong>
+如果你要做一个自己的 reasoning 小实验，不要一开始设计复杂 Reward Model。
+先从两类 rule reward 开始：
+<ol>
+<li>答案是否正确；</li>
+<li>格式是否符合要求。</li>
+</ol>
+这就是最小 RLVR 实验的基本骨架。
+</div>
+
+<hr>
+
+<!-- ===================================================== -->
+<!-- 第 15 部分：verl：从理论走向工程实现 -->
+<!-- ===================================================== -->
+
+<h2 id="route15">15. verl：从 RLVR / GRPO 理论走向工程实现</h2>
+
+<p>
+理解 RLVR 和 GRPO 之后，下一步要看工程框架。
+其中一个很重要的框架是 <strong>verl</strong>，全称可以理解为
+<strong>Volcano Engine Reinforcement Learning for LLMs</strong>。
+</p>
+
+<p>
+verl 的意义在于：它不是单纯讲理论，而是把大模型 RL 后训练中最麻烦的工程环节组织起来。
+比如 rollout、reward、advantage、PPO / GRPO、分布式训练、推理引擎对接等。
+</p>
+
+<div class="box note">
+<strong>一句话理解：</strong>
+Fireworks AI 和 DeepSeek-R1 帮你理解“为什么要做 RLVR / GRPO”；
+verl 帮你理解“这套东西工程上怎么跑起来”。
+</div>
+
+<h3>15.1 为什么 RL 后训练需要专门框架？</h3>
+
+<p>
+SFT 很像普通微调，只要准备数据、算 loss、反向传播就可以。
+但 Online RL / GRPO 要复杂得多。
+</p>
+
+<pre>
+SFT 训练循环：
+读取固定数据
+  ↓
+模型 forward
+  ↓
+计算 next-token loss
+  ↓
+反向传播更新
+
+RL / GRPO 训练循环：
+当前模型生成回答
+  ↓
+reward function 打分
+  ↓
+计算 advantage
+  ↓
+加入 KL 约束
+  ↓
+更新模型
+  ↓
+再用新模型生成新回答
+</pre>
+
+<table>
+<tr>
+<th>工程环节</th>
+<th>为什么麻烦</th>
+</tr>
+<tr>
+<td>Rollout</td>
+<td>模型需要不断生成新回答，自回归生成速度慢。</td>
+</tr>
+<tr>
+<td>Reward</td>
+<td>每个回答都要计算 reward，可能涉及代码执行、工具调用、格式检查。</td>
+</tr>
+<tr>
+<td>Advantage</td>
+<td>需要把 reward 转成策略更新信号。</td>
+</tr>
+<tr>
+<td>KL 控制</td>
+<td>防止模型偏离原始模型太远。</td>
+</tr>
+<tr>
+<td>分布式调度</td>
+<td>训练模型、推理模型、reward 计算可能在不同设备上。</td>
+</tr>
+<tr>
+<td>推理引擎对接</td>
+<td>常常要对接 vLLM、SGLang、FSDP、Megatron 等组件。</td>
+</tr>
+</table>
+
+<h3>15.2 verl 里你应该重点看什么？</h3>
+
+<p>
+初学者不要一上来就改框架源码。
+更好的方式是先看它的几个核心概念：
+</p>
+
+<table>
+<tr>
+<th>模块</th>
+<th>你要理解什么</th>
+</tr>
+<tr>
+<td>Rollout Worker</td>
+<td>当前 policy 如何生成回答或轨迹。</td>
+</tr>
+<tr>
+<td>Reward Function</td>
+<td>reward 是如何计算的，是规则、模型还是执行环境。</td>
+</tr>
+<tr>
+<td>Advantage Estimator</td>
+<td>PPO / GRPO 如何把 reward 转成 advantage。</td>
+</tr>
+<tr>
+<td>Trainer</td>
+<td>训练循环如何组织 rollout、reward、update。</td>
+</tr>
+<tr>
+<td>Reference Policy</td>
+<td>KL 约束如何防止模型漂移。</td>
+</tr>
+<tr>
+<td>Config</td>
+<td>batch size、rollout 数量、采样温度、KL 系数等参数如何设置。</td>
+</tr>
+</table>
+
+<div class="box train">
+<strong>学习 verl 的正确顺序：</strong>
+<ol>
+<li>先看官方 README，知道它支持哪些算法；</li>
+<li>再看 GRPO / PPO 的 example 配置；</li>
+<li>然后看 reward function 怎么接入；</li>
+<li>最后再看 trainer 和 rollout worker 的实现。</li>
+</ol>
+不要一上来就从底层分布式代码看起。
+</div>
+
+<h3>15.3 verl 和你前面学的概念如何对应？</h3>
+
+<table>
+<tr>
+<th>前面学的概念</th>
+<th>在 verl 工程里对应什么</th>
+</tr>
+<tr>
+<td>Prompt</td>
+<td>训练任务输入。</td>
+</tr>
+<tr>
+<td>Response / Rollout</td>
+<td>模型生成的回答或轨迹。</td>
+</tr>
+<tr>
+<td>Reward Function</td>
+<td>规则函数、奖励模型或环境反馈。</td>
+</tr>
+<tr>
+<td>Group Reward</td>
+<td>同一 prompt 下多个 response 的 reward 列表。</td>
+</tr>
+<tr>
+<td>Advantage</td>
+<td>策略更新的权重信号。</td>
+</tr>
+<tr>
+<td>Policy Model</td>
+<td>正在训练的 LLM。</td>
+</tr>
+<tr>
+<td>Reference Model</td>
+<td>用于 KL 约束的参考模型。</td>
+</tr>
+<tr>
+<td>Trainer</td>
+<td>整体训练循环。</td>
+</tr>
+</table>
+
+<div class="box note">
+<strong>一句话理解：</strong>
+verl 不是一个新的理论概念，而是把你学过的 RL 后训练概念工程化。
+你要把代码里的 rollout、reward、advantage、trainer 和前面的理论一一对应起来。
+</div>
+
+<hr>
+
+<!-- ===================================================== -->
+<!-- 第 16 部分：OpenRLHF / TRL：另外两个实践入口 -->
+<!-- ===================================================== -->
+
+<h2 id="route16">16. OpenRLHF / TRL：另外两个实践入口</h2>
+
+<p>
+除了 verl，后训练实践里还经常见到两个入口：
+<strong>OpenRLHF</strong> 和 <strong>Hugging Face TRL</strong>。
+它们的定位不完全一样，但都适合作为学习 RLHF / DPO / PPO / GRPO 的工程参考。
+</p>
+
+<h3>16.1 OpenRLHF：偏大规模 RLHF / RL 训练框架</h3>
+
+<p>
+OpenRLHF 的重点是易用、可扩展、高性能。
+它支持 PPO、DPO、Rejection Sampling、GRPO、REINFORCE++ 等多种后训练方法。
+</p>
+
+<table>
+<tr>
+<th>特点</th>
+<th>解释</th>
+</tr>
+<tr>
+<td>支持算法多</td>
+<td>PPO、DPO、GRPO、RLOO、REINFORCE++ 等。</td>
+</tr>
+<tr>
+<td>面向大模型</td>
+<td>关注大规模训练中的调度和效率。</td>
+</tr>
+<tr>
+<td>工程组件丰富</td>
+<td>可对接 Ray、vLLM、DeepSpeed 等。</td>
+</tr>
+<tr>
+<td>适合研究复现</td>
+<td>可以对比不同后训练算法的效果。</td>
+</tr>
+</table>
+
+<h3>16.2 TRL：Hugging Face 生态里的后训练工具</h3>
+
+<p>
+TRL 是 Hugging Face 生态中的 Transformers Reinforcement Learning 工具库。
+它适合从小规模实验开始学习。
+</p>
+
+<table>
+<tr>
+<th>TRL 适合做什么</th>
+<th>说明</th>
+</tr>
+<tr>
+<td>SFTTrainer</td>
+<td>做监督微调。</td>
+</tr>
+<tr>
+<td>DPOTrainer</td>
+<td>做偏好优化。</td>
+</tr>
+<tr>
+<td>PPOTrainer</td>
+<td>做 PPO 类 RLHF 实验。</td>
+</tr>
+<tr>
+<td>GRPOTrainer</td>
+<td>做 GRPO 类可验证奖励训练。</td>
+</tr>
+</table>
+
+<div class="box note">
+<strong>学习建议：</strong>
+如果你是初学者，可以先看 TRL，因为它和 Hugging Face Transformers 联系紧密；
+如果你想看更大规模 RLHF / GRPO 工程，可以再看 OpenRLHF 或 verl。
+</div>
+
+<h3>16.3 三个框架怎么选？</h3>
+
+<table>
+<tr>
+<th>框架</th>
+<th>适合阶段</th>
+<th>学习价值</th>
+</tr>
+<tr>
+<td>TRL</td>
+<td>入门、小实验。</td>
+<td>容易上手，适合理解 SFT / DPO / GRPO 的基本流程。</td>
+</tr>
+<tr>
+<td>OpenRLHF</td>
+<td>中等到大规模实验。</td>
+<td>适合学习 RLHF / PPO / GRPO 的工程调度。</td>
+</tr>
+<tr>
+<td>verl</td>
+<td>大规模 RL 后训练。</td>
+<td>适合理解 rollout、reward、trainer、分布式执行。</td>
+</tr>
+</table>
+
+<div class="box train">
+<strong>建议路线：</strong>
+不要三个框架同时看。
+先用 TRL 跑通一个小实验；
+再看 OpenRLHF 理解更多算法；
+最后看 verl 理解大规模 RL 数据流。
+</div>
+
+<hr>
+
+<!-- ===================================================== -->
+<!-- 第 17 部分：最小 RLVR 实验设计 -->
+<!-- ===================================================== -->
+
+<h2 id="route17">17. 最小 RLVR 实验：从数学答案抽取开始</h2>
+
+<p>
+学 RLVR 最怕一直停留在概念。
+最小实验不需要复杂框架，你可以先用 Python 模拟一个完整流程：
+</p>
+
+<pre>
+准备 prompt
+  ↓
+生成多个 response
+  ↓
+抽取最终答案
+  ↓
+计算 reward
+  ↓
+做 group reward normalization
+  ↓
+得到 advantage
+</pre>
+
+<h3>17.1 准备数据</h3>
+
+<p>
+先准备几道简单数学题：
+</p>
+
+<pre>
+dataset = [
+    {
+        "prompt": "1497 * 63 = ?",
+        "answer": 94311
+    },
+    {
+        "prompt": "2356 * 42 = ?",
+        "answer": 98952
+    },
+    {
+        "prompt": "8765 * 18 = ?",
+        "answer": 157770
+    }
+]
+</pre>
+
+<h3>17.2 规定输出格式</h3>
+
+<p>
+为了方便抽取答案，需要规定模型输出格式：
+</p>
+
+<pre>
+Final Answer: the final answer is X. I hope it is correct.
+</pre>
+
+<p>
+如果模型没有按这个格式输出，reward 可以直接给 0 或负分。
+</p>
+
+<h3>17.3 写答案抽取器</h3>
+
+<pre>
+import re
+
+def extract_answer(output):
+    pattern = r"Final Answer: the final answer is (-?\d+). I hope it is correct."
+    match = re.search(pattern, output)
+
+    if match is None:
+        return None
+
+    return int(match.group(1))
+</pre>
+
+<h3>17.4 写 Reward Function</h3>
+
+<pre>
+def reward_fn(output, reference_answer):
+    pred = extract_answer(output)
+
+    if pred is None:
+        return -0.2
+
+    if pred == reference_answer:
+        return 1.0
+
+    return 0.0
+</pre>
+
+<h3>17.5 模拟同一 prompt 多采样</h3>
+
+<pre>
+responses = [
+    "Final Answer: the final answer is 94311. I hope it is correct.",
+    "Final Answer: the final answer is 94211. I hope it is correct.",
+    "I think the answer is 94311.",
+    "Final Answer: the final answer is 94301. I hope it is correct."
+]
+
+rewards = [
+    reward_fn(r, 94311)
+    for r in responses
+]
+
+print(rewards)
+</pre>
+
+<p>
+可能得到：
+</p>
+
+<pre>
+[1.0, 0.0, -0.2, 0.0]
+</pre>
+
+<h3>17.6 计算组内 advantage</h3>
+
+<pre>
+def compute_group_advantages(rewards):
+    mean_reward = sum(rewards) / len(rewards)
+    return [
+        r - mean_reward
+        for r in rewards
+    ]
+
+advantages = compute_group_advantages(rewards)
+
+print(advantages)
+</pre>
+
+<p>
+这一步就是 GRPO 直觉的最小版本。
+你先不用训练模型，只要理解：
+</p>
+
+<ul>
+<li>reward 高于组内平均值 → 正 advantage；</li>
+<li>reward 低于组内平均值 → 负 advantage；</li>
+<li>模型会被训练成更倾向于生成正 advantage 的回答。</li>
+</ul>
+
+<div class="box train">
+<strong>最小实验目标：</strong>
+先不要急着跑大模型训练。
+你先把 prompt、response、reward、advantage 这个链条用 Python 跑通。
+这一步跑通后，再看 GRPO Trainer 或 verl 代码就不会迷路。
+</div>
+
+<hr>
+
+<!-- ===================================================== -->
+<!-- 第 18 部分：Agent RLVR 数据设计 -->
+<!-- ===================================================== -->
+
+<h2 id="route18">18. Agent RLVR 数据设计：从 Function Picking 到 Tool-use</h2>
+
+<p>
+Function Picking 是 Agent RLVR 的入门任务。
+它不要求模型真的执行工具，只要求模型判断：
+</p>
+
+<ul>
+<li>需不需要调用工具；</li>
+<li>应该调用哪个工具；</li>
+<li>参数是否足够；</li>
+<li>如果不能调用，是否应该拒绝或追问。</li>
+</ul>
+
+<h3>18.1 一个 Function Picking 样本</h3>
+
+<pre>
+{
+  "user": "请帮我查一下明天柏林的天气。",
+  "tools": [
+    {
+      "name": "get_weather",
+      "arguments": {
+        "location": "string",
+        "date": "string"
+      }
+    }
+  ],
+  "expected": "&lt;functioncall&gt; get_weather"
+}
+</pre>
+
+<p>
+这个样本中，用户给出了地点“柏林”和时间“明天”，所以可以调用天气工具。
+</p>
+
+<h3>18.2 一个不应该调用工具的样本</h3>
+
+<pre>
+{
+  "user": "请计算纽约到洛杉矶的距离。",
+  "tools": [
+    {
+      "name": "calculate_distance",
+      "arguments": {
+        "start_coordinates": "string",
+        "end_coordinates": "string"
+      }
+    }
+  ],
+  "expected": "&lt;no_functioncall&gt;"
+}
+</pre>
+
+<p>
+虽然用户问的是距离，但工具需要坐标。
+用户只给了城市名，没有提供经纬度。
+所以模型不应该直接调用工具。
+</p>
+
+<div class="box warn">
+<strong>关键点：</strong>
+工具名看起来相关，不代表可以调用。
+Agent 必须判断参数是否足够。
+这正是 Function Picking 任务的价值。
+</div>
+
+<h3>18.3 Function Picking 的 reward</h3>
+
+<pre>
+def function_picking_reward(output, expected_label):
+    pred = extract_label(output)
+
+    if pred == expected_label:
+        return 1.0
+
+    return 0.0
+</pre>
+
+<p>
+更细一点可以这样写：
+</p>
+
+<pre>
+def function_picking_reward(output, expected):
+    reward = 0.0
+
+    if format_valid(output):
+        reward += 0.2
+    else:
+        reward -= 0.5
+
+    if label_correct(output, expected):
+        reward += 1.0
+
+    if calls_tool_when_should_not(output, expected):
+        reward -= 0.5
+
+    if refuses_when_should_call(output, expected):
+        reward -= 0.5
+
+    return reward
+</pre>
+
+<h3>18.4 从 Function Picking 扩展到 Tool-use</h3>
+
+<p>
+Function Picking 只判断是否调用工具。
+真正的 Tool-use 还要判断参数和执行结果。
+</p>
+
+<table>
+<tr>
+<th>阶段</th>
+<th>模型要学什么</th>
+<th>reward 怎么给</th>
+</tr>
+<tr>
+<td>Function Picking</td>
+<td>是否调用工具、调用哪个工具。</td>
+<td>标签正确给分。</td>
+</tr>
+<tr>
+<td>Argument Filling</td>
+<td>参数字段和值是否正确。</td>
+<td>字段完整、值正确给分。</td>
+</tr>
+<td>Tool Execution</td>
+<td>工具调用是否能执行成功。</td>
+<td>执行成功给分，报错扣分。</td>
+</tr>
+<td>Observation Use</td>
+<td>是否根据工具结果回答。</td>
+<td>引用工具结果给分，忽略结果扣分。</td>
+</tr>
+<td>Multi-step Agent</td>
+<td>多步调用是否合理。</td>
+<td>任务完成、步骤少、安全合规给分。</td>
+</tr>
+</table>
+
+<div class="box train">
+<strong>Agent 实践路线：</strong>
+不要一开始做完整多步 Agent。
+建议按这个顺序：
+<ol>
+<li>Function Picking：判断是否调用工具；</li>
+<li>Argument Filling：填对参数；</li>
+<li>Tool Execution：让工具能跑通；</li>
+<li>Observation Use：根据工具返回回答；</li>
+<li>Multi-step Agent：多步任务轨迹优化。</li>
+</ol>
+</div>
+
+<hr>
+
+<!-- ===================================================== -->
+<!-- 第 19 部分：从 RLVR 到完整后训练学习路线 -->
+<!-- ===================================================== -->
+
+<h2 id="route19">19. 从 RLVR 到完整后训练学习路线</h2>
+
+<p>
+到这里，你已经从 PyTorch Primer 的总路线，进入了 Fireworks AI 的 RLVR / GRPO，
+再连接到 DeepSeek-R1、verl、OpenRLHF、TRL 和 Agent Reward。
+现在可以把后训练学习路线重新整理成一张更清楚的图。
+</p>
+
+<pre>
+第一阶段：理解后训练总路线
+PyTorch《A Primer on LLM Post-Training》
+  ↓
+第二阶段：理解可验证奖励
+Fireworks AI《Reinforcement Learning With Verifiable Reward》
+  ↓
+第三阶段：理解 reasoning RL 案例
+DeepSeek-R1 Technical Report
+  ↓
+第四阶段：理解工程实现
+TRL / OpenRLHF / verl
+  ↓
+第五阶段：做最小实验
+数学答案抽取 / Function Picking / JSON Reward
+  ↓
+第六阶段：扩展到 Agent
+Tool-use / Code Agent / SQL Agent / RAG Agent
+</pre>
+
+<h3>19.1 每一阶段应该掌握什么？</h3>
+
+<table>
+<tr>
+<th>阶段</th>
+<th>学习目标</th>
+<th>不要纠结什么</th>
+</tr>
+<tr>
+<td>PyTorch Primer</td>
+<td>建立 SFT、DPO、PPO、GRPO 总地图。</td>
+<td>不要一开始死扣公式。</td>
+</tr>
+<tr>
+<td>Fireworks RLVR</td>
+<td>理解可验证奖励为什么能替代部分人工偏好。</td>
+<td>不要把 RLVR 当成万能方法。</td>
+</tr>
+<tr>
+<td>DeepSeek-R1</td>
+<td>理解 rule-based reward、GRPO、多阶段训练。</td>
+<td>不要只看 benchmark，要看训练流程。</td>
+</tr>
+<tr>
+<td>TRL / OpenRLHF / verl</td>
+<td>理解 rollout、reward、advantage、trainer。</td>
+<td>不要一上来改复杂源码。</td>
+</tr>
+<tr>
+<td>最小实验</td>
+<td>跑通 prompt → response → reward → advantage。</td>
+<td>不要一开始追求大模型效果。</td>
+</tr>
+<tr>
+<td>Agent 扩展</td>
+<td>把工具调用轨迹转化为 reward。</td>
+<td>不要只优化最终回答。</td>
+</tr>
+</table>
+
+<h3>19.2 推荐你的下一篇 HTML 主题</h3>
+
+<div class="box note">
+<strong>下一篇最适合写：</strong>
+DeepSeek-R1 Technical Report 中文精读：从 R1-Zero 到 R1 的 reasoning 后训练路线。
+</div>
+
+<p>
+这一篇可以重点写：
+</p>
+
+<ul>
+<li>R1-Zero 为什么不做 SFT；</li>
+<li>纯 RL 如何激发 reasoning；</li>
+<li>rule-based reward 的设计；</li>
+<li>accuracy reward 和 format reward；</li>
+<li>为什么 R1-Zero 有可读性差、语言混杂问题；</li>
+<li>DeepSeek-R1 如何用 cold-start data 改善；</li>
+<li>多阶段训练路线；</li>
+<li>蒸馏模型为什么重要；</li>
+<li>它和 Fireworks AI RLVR 这篇文章的关系。</li>
+</ul>
+
+<div class="box train">
+<strong>继续学习建议：</strong>
+这篇 Fireworks AI 精读主要负责把 RLVR / GRPO 讲清楚；
+下一篇 DeepSeek-R1 精读就可以负责把“真实 reasoning model 是怎么训练出来的”讲清楚。
+这样你的后训练学习路线会越来越完整。
+</div>
+```
+
+  
+```html
+<!-- ===================================================== -->
+<!-- 第 20 部分：DeepSeek-R1 精读开篇 -->
+<!-- 插入位置：接在第 19 部分后面，放在说明和 script 前 -->
+<!-- ===================================================== -->
+
+<h2 id="route20">20. DeepSeek-R1 精读开篇：从 RLVR 走向 reasoning model</h2>
+
+<p>
+学完 Fireworks AI 这篇 RLVR / GRPO 之后，下一篇最适合进入
+<strong>DeepSeek-R1 Technical Report</strong>。
+因为 DeepSeek-R1 报告不是孤立讲一个模型，而是把 reasoning 后训练路线展示得非常清楚：
+</p>
+
+<pre>
+DeepSeek-V3-Base
+  ↓
+DeepSeek-R1-Zero：直接做大规模 RL
+  ↓
+出现 reasoning emergence
+  ↓
+但有可读性差、语言混杂等问题
+  ↓
+DeepSeek-R1：加入 cold-start data
+  ↓
+再做多阶段 RL / SFT / rejection sampling
+  ↓
+得到更可用的 reasoning model
+  ↓
+蒸馏到 Qwen / Llama 等小模型
+</pre>
+
+<div class="box note">
+<strong>一句话理解：</strong>
+Fireworks AI 这篇文章讲“为什么可验证奖励可以训练模型”；
+DeepSeek-R1 报告则展示“可验证奖励 + GRPO + 多阶段训练，如何真正训练出 reasoning model”。
+</div>
+
+<h3>20.1 为什么 DeepSeek-R1 是后训练学习的关键材料？</h3>
+
+<p>
+因为它把几个重要问题放在了一起：
+</p>
+
+<table>
+<tr>
+<th>问题</th>
+<th>DeepSeek-R1 报告给出的启发</th>
+</tr>
+<tr>
+<td>纯 RL 能不能激发推理？</td>
+<td>R1-Zero 说明，在可验证奖励下，模型可以出现推理能力提升。</td>
+</tr>
+<tr>
+<td>纯 RL 有没有问题？</td>
+<td>有。可读性、语言混杂、格式稳定性都会出问题。</td>
+</tr>
+<tr>
+<td>为什么还需要 cold-start data？</td>
+<td>让模型先拥有较好的推理格式和表达习惯，再进入 RL。</td>
+</tr>
+<tr>
+<td>为什么要多阶段训练？</td>
+<td>单一阶段很难同时解决正确率、可读性、安全性、通用能力。</td>
+</tr>
+<tr>
+<td>为什么要蒸馏？</td>
+<td>把大 reasoning model 的推理轨迹迁移给小模型，降低部署成本。</td>
+</tr>
+</table>
+
+<h3>20.2 这篇报告和 RLVR 的关系</h3>
+
+<p>
+RLVR 关注的是 reward 来源。
+DeepSeek-R1 报告中的 rule-based reward，本质上就是 RLVR 的一种具体实现。
+</p>
+
+<table>
+<tr>
+<th>Fireworks AI RLVR</th>
+<th>DeepSeek-R1</th>
+</tr>
+<tr>
+<td>讲 Verifiable Reward 的概念。</td>
+<td>用 rule-based reward 训练 reasoning model。</td>
+</tr>
+<tr>
+<td>讲 GRPO 为什么比 PPO 更轻。</td>
+<td>实际使用 GRPO 路线做大规模 RL。</td>
+</tr>
+<tr>
+<td>用乘法和 Function Picking 做小实验。</td>
+<td>用数学、代码、推理任务做大规模训练。</td>
+</tr>
+<tr>
+<td>强调 reward function 可以是硬编码函数。</td>
+<td>使用 accuracy reward 和 format reward 等规则奖励。</td>
+</tr>
+</table>
+
+<div class="box train">
+<strong>学习建议：</strong>
+读 DeepSeek-R1 报告时，不要一上来只看 benchmark。
+更重要的是看训练路线：R1-Zero 怎么做，为什么有问题，R1 怎么修正，蒸馏怎么做。
+</div>
+
+<hr>
+
+<!-- ===================================================== -->
+<!-- 第 21 部分：R1-Zero 的纯 RL 路线 -->
+<!-- ===================================================== -->
+
+<h2 id="route21">21. DeepSeek-R1-Zero：纯 RL 路线到底说明了什么？</h2>
+
+<p>
+DeepSeek-R1-Zero 是报告中最值得关注的部分。
+它的关键特征是：没有先经过传统 SFT 冷启动，而是直接在 base model 上进行大规模强化学习。
+</p>
+
+<p>
+这和传统后训练路线不太一样。
+传统路线通常是：
+</p>
+
+<pre>
+Base Model
+  ↓
+SFT
+  ↓
+DPO / RLHF
+  ↓
+Online RL
+</pre>
+
+<p>
+而 R1-Zero 的尝试更接近：
+</p>
+
+<pre>
+Base Model
+  ↓
+Rule-based Reward
+  ↓
+GRPO / RL
+  ↓
+Reasoning Ability Emergence
+</pre>
+
+<div class="box note">
+<strong>一句话理解：</strong>
+R1-Zero 想验证的是：如果任务奖励足够清楚，模型能不能不先模仿人类推理样本，而是直接通过 RL 学出推理能力。
+</div>
+
+<h3>21.1 为什么这件事重要？</h3>
+
+<p>
+因为过去很多人默认：模型要会推理，必须先看大量人类写好的 CoT 数据。
+但 R1-Zero 提供了另一种思路：
+</p>
+
+<pre>
+不一定先给模型完整推理过程
+  ↓
+只要最终答案可以验证
+  ↓
+模型就可以通过生成、验证、奖励、更新
+  ↓
+逐渐提高推理成功率
+</pre>
+
+<p>
+这意味着，reasoning 后训练不只是“模仿人类推理链”，也可以是“通过奖励反馈搜索更好的推理策略”。
+</p>
+
+<h3>21.2 R1-Zero 可能学到了什么？</h3>
+
+<p>
+从训练现象看，R1-Zero 可能逐渐学到几类行为：
+</p>
+
+<table>
+<tr>
+<th>行为</th>
+<th>解释</th>
+</tr>
+<tr>
+<td>更长的思考</td>
+<td>模型为了提高正确率，会生成更长的推理过程。</td>
+</tr>
+<tr>
+<td>自我检查</td>
+<td>模型会重新检查前面的推理是否有错。</td>
+</tr>
+<tr>
+<td>反思与修正</td>
+<td>模型可能意识到前一步错误，然后换一种方法。</td>
+</tr>
+<tr>
+<td>答案格式意识</td>
+<td>为了拿到 format reward，模型会学会输出可抽取的最终答案。</td>
+</tr>
+<tr>
+<td>探索多种路径</td>
+<td>模型可能尝试不同解法，只要最后答案正确即可。</td>
+</tr>
+</table>
+
+<div class="box train">
+<strong>实践启发：</strong>
+在 reasoning 任务中，不一定要人工标注每一步。
+如果最终答案可靠可验证，模型可能通过 outcome reward 学到部分中间策略。
+</div>
+
+<h3>21.3 纯 RL 的问题</h3>
+
+<p>
+但是 R1-Zero 也说明：纯 RL 不是万能的。
+如果只靠 reward，模型可能会优先追求“拿分”，而不是追求“用户容易阅读”。
+</p>
+
+<table>
+<tr>
+<th>问题</th>
+<th>原因</th>
+<th>后果</th>
+</tr>
+<tr>
+<td>可读性差</td>
+<td>reward 主要奖励正确性，不一定奖励表达清楚。</td>
+<td>推理过程可能很乱。</td>
+</tr>
+<tr>
+<td>语言混杂</td>
+<td>模型没有被强约束使用统一语言。</td>
+<td>中英文或多语言混在一起。</td>
+</tr>
+<tr>
+<td>格式不稳定</td>
+<td>格式 reward 不足以覆盖所有表达细节。</td>
+<td>最终答案抽取可能不稳定。</td>
+</tr>
+<tr>
+<td>过长推理</td>
+<td>模型发现长推理有时更容易拿高分。</td>
+<td>输出成本上升，用户体验下降。</td>
+</tr>
+</table>
+
+<div class="box warn">
+<strong>关键警告：</strong>
+RL 会优化 reward，但 reward 没有写进去的东西，模型不一定会自动学好。
+如果 reward 只奖励正确率，它不一定会自动学会清晰表达。
+</div>
+
+<h3>21.4 这对我们做小实验有什么启发？</h3>
+
+<p>
+如果你要做自己的 R1-Zero-like 小实验，不能只看最终答案 reward。
+至少要同时设计：
+</p>
+
+<pre>
+Accuracy Reward：答案是否正确
+Format Reward：格式是否符合要求
+Length Penalty：是否过度冗长
+Language Constraint：是否保持目标语言
+Safety / Validity：是否出现非法输出
+</pre>
+
+<p>
+也就是说，一个看似简单的 reward function，背后其实决定了模型会往哪里发展。
+</p>
+
+<hr>
+
+<!-- ===================================================== -->
+<!-- 第 22 部分：DeepSeek-R1 的多阶段训练 -->
+<!-- ===================================================== -->
+
+<h2 id="route22">22. DeepSeek-R1：为什么需要多阶段训练？</h2>
+
+<p>
+DeepSeek-R1 相比 R1-Zero，更接近实际可用的 reasoning model。
+它不是简单地“纯 RL 到底”，而是引入了 cold-start data 和多阶段训练。
+</p>
+
+<p>
+这说明一个重要事实：
+</p>
+
+<div class="box note">
+<strong>一句话理解：</strong>
+R1-Zero 证明了纯 RL 可以激发推理；DeepSeek-R1 则说明，要做成真正可用的模型，还需要 SFT、RL、数据筛选、通用能力对齐等多阶段组合。
+</div>
+
+<h3>22.1 为什么要 Cold-start？</h3>
+
+<p>
+Cold-start data 可以理解为“给模型一个比较好的初始推理状态”。
+它不是为了替代 RL，而是为了让 RL 不要从完全混乱的状态开始。
+</p>
+
+<table>
+<tr>
+<th>没有 Cold-start</th>
+<th>加入 Cold-start</th>
+</tr>
+<tr>
+<td>模型可能不知道怎么组织推理。</td>
+<td>模型先学到基本推理格式。</td>
+</tr>
+<tr>
+<td>语言风格不稳定。</td>
+<td>语言更统一，可读性更好。</td>
+</tr>
+<tr>
+<td>最终答案格式可能混乱。</td>
+<td>最终答案更容易被抽取。</td>
+</tr>
+<tr>
+<td>RL 初期探索成本高。</td>
+<td>RL 从更合理的行为区域开始。</td>
+</tr>
+</table>
+
+<p>
+这和我们前面学的 SFT 并不矛盾。
+SFT 的作用是让模型先学会基础行为；RL 的作用是进一步用 reward 提高能力上限。
+</p>
+
+<h3>22.2 多阶段训练大致解决哪些问题？</h3>
+
+<table>
+<tr>
+<th>阶段</th>
+<th>主要目标</th>
+<th>解决什么问题</th>
+</tr>
+<tr>
+<td>Cold-start SFT</td>
+<td>建立较好的推理格式和表达方式。</td>
+<td>可读性差、格式混乱。</td>
+</tr>
+<tr>
+<td>Reasoning RL</td>
+<td>提升数学、代码、逻辑推理能力。</td>
+<td>正确率和复杂推理能力。</td>
+</tr>
+<tr>
+<td>Rejection Sampling</td>
+<td>筛选高质量推理样本。</td>
+<td>构造更好的后续训练数据。</td>
+</tr>
+<tr>
+<td>General SFT</td>
+<td>恢复或增强通用能力。</td>
+<td>避免模型只会做推理题。</td>
+</tr>
+<tr>
+<td>Final RL / Alignment</td>
+<td>进一步对齐帮助性和安全性。</td>
+<td>提升实际助手体验。</td>
+</tr>
+</table>
+
+<div class="box train">
+<strong>学习重点：</strong>
+DeepSeek-R1 的价值不只是“用了 GRPO”，而是展示了一个多阶段 recipe：
+先给格式，再用 RL 提高推理，再用数据筛选和通用训练修复可用性。
+</div>
+
+<h3>22.3 为什么不能只做 reasoning RL？</h3>
+
+<p>
+如果只做 reasoning RL，模型可能在数学和代码题上变强，但在普通对话、写作、安全回答、信息组织上退化。
+这就是所谓能力分布偏移。
+</p>
+
+<table>
+<tr>
+<th>只做 reasoning RL 可能带来的问题</th>
+<th>解释</th>
+</tr>
+<tr>
+<td>通用对话能力下降</td>
+<td>训练过度集中在数学和代码题。</td>
+</tr>
+<tr>
+<td>回答风格变奇怪</td>
+<td>模型习惯输出很长推理过程。</td>
+</tr>
+<tr>
+<td>安全性不足</td>
+<td>reward 主要关注正确率，未必覆盖安全边界。</td>
+</tr>
+<tr>
+<td>用户体验下降</td>
+<td>所有问题都进入长思考模式，效率低。</td>
+</tr>
+</table>
+
+<div class="box warn">
+<strong>重要理解：</strong>
+Reasoning 后训练不是让模型只会“长推理”。
+真正好的 reasoning model 应该知道什么时候需要深度推理，什么时候应该直接回答。
+</div>
+
+<hr>
+
+<!-- ===================================================== -->
+<!-- 第 23 部分：蒸馏：为什么小模型也能学 reasoning -->
+<!-- ===================================================== -->
+
+<h2 id="route23">23. 蒸馏：为什么小模型也能学 reasoning？</h2>
+
+<p>
+DeepSeek-R1 报告还有一个重要部分：蒸馏。
+它把 DeepSeek-R1 的推理能力蒸馏到一些较小的 dense models 上，例如基于 Qwen 和 Llama 的模型。
+</p>
+
+<p>
+蒸馏的基本思想是：
+</p>
+
+<pre>
+大 reasoning model 作为 teacher
+  ↓
+生成高质量 reasoning traces
+  ↓
+小模型作为 student
+  ↓
+用这些数据做 SFT
+  ↓
+小模型学习大模型的推理模式
+</pre>
+
+<div class="box note">
+<strong>一句话理解：</strong>
+RL 训练大模型很贵；但一旦有了强 reasoning model，就可以用它生成数据，再通过 SFT 把能力迁移给小模型。
+</div>
+
+<h3>23.1 蒸馏和 RL 的区别</h3>
+
+<table>
+<tr>
+<th>比较项</th>
+<th>RL 训练</th>
+<th>蒸馏训练</th>
+</tr>
+<tr>
+<td>训练信号</td>
+<td>reward。</td>
+<td>teacher model 生成的高质量回答。</td>
+</tr>
+<tr>
+<td>训练方式</td>
+<td>强化学习，成本高。</td>
+<td>SFT，成本相对低。</td>
+</tr>
+<tr>
+<td>是否需要 rollout</td>
+<td>需要。</td>
+<td>通常不需要在线 rollout。</td>
+</tr>
+<tr>
+<td>目标</td>
+<td>让模型通过奖励探索能力。</td>
+<td>让小模型模仿强模型能力。</td>
+</tr>
+<tr>
+<td>适合对象</td>
+<td>大模型或需要进一步突破的模型。</td>
+<td>中小模型、部署模型。</td>
+</tr>
+</table>
+
+<h3>23.2 蒸馏数据长什么样？</h3>
+
+<p>
+一个 reasoning distillation 样本大致是：
+</p>
+
+<pre>
+Prompt:
+Solve the problem: ...
+
+Teacher Response:
+We need to reason step by step.
+...
+Therefore, the final answer is X.
+
+Final Answer:
+X
+</pre>
+
+<p>
+小模型训练时不是直接得到 reward，而是学习 teacher response 的 token。
+因此它本质上仍然是 SFT。
+</p>
+
+<div class="box train">
+<strong>实践启发：</strong>
+如果你暂时跑不起 RL，可以先做 distillation。
+比如用强 reasoning model 生成高质量数学 / 代码 / 工具调用样本，
+再用这些样本 SFT 一个小模型。
+这比直接从零做 RL 更适合入门。
+</div>
+
+<h3>23.3 蒸馏适合哪些任务？</h3>
+
+<table>
+<tr>
+<th>任务</th>
+<th>是否适合蒸馏</th>
+<th>原因</th>
+</tr>
+<tr>
+<td>数学推理</td>
+<td>适合</td>
+<td>强模型能生成清楚的解题过程。</td>
+</tr>
+<tr>
+<td>代码生成</td>
+<td>适合</td>
+<td>强模型可生成代码和解释，测试器可筛选正确样本。</td>
+</tr>
+<tr>
+<td>工具调用</td>
+<td>适合</td>
+<td>强模型可生成规范 tool-use 轨迹。</td>
+</tr>
+<tr>
+<td>复杂主观写作</td>
+<td>部分适合</td>
+<td>可以模仿风格，但质量评价仍较主观。</td>
+</tr>
+<tr>
+<td>网页操作 Agent</td>
+<td>较难</td>
+<td>环境交互复杂，轨迹质量难自动保证。</td>
+</tr>
+</table>
+
+<h3>23.4 蒸馏的风险</h3>
+
+<p>
+蒸馏不是万能的。
+如果 teacher 的输出有错误，小模型会照着学。
+如果 teacher 的推理很啰嗦，小模型也可能变啰嗦。
+</p>
+
+<table>
+<tr>
+<th>风险</th>
+<th>表现</th>
+<th>解决办法</th>
+</tr>
+<tr>
+<td>错误蒸馏</td>
+<td>teacher 答错，小模型也学错。</td>
+<td>用验证器筛掉错误样本。</td>
+</tr>
+<tr>
+<td>风格污染</td>
+<td>teacher 过度冗长，小模型也冗长。</td>
+<td>筛选更简洁的 reasoning traces。</td>
+</tr>
+<tr>
+<td>能力上限受限</td>
+<td>小模型只能模仿已有数据。</td>
+<td>后续再结合 DPO 或 RL。</td>
+</tr>
+<tr>
+<td>数据分布偏</td>
+<td>只会某类题，不会泛化。</td>
+<td>增加任务类型和难度层次。</td>
+</tr>
+</table>
+
+<div class="box warn">
+<strong>注意：</strong>
+蒸馏不是“把大模型能力完整复制给小模型”。
+它更像是把大模型的一部分行为模式迁移给小模型，效果仍受模型容量和数据质量限制。
+</div>
+
+<hr>
+
+<!-- ===================================================== -->
+<!-- 第 24 部分：玩具版 R1-Zero 复现思路 -->
+<!-- ===================================================== -->
+
+<h2 id="route24">24. 玩具版 R1-Zero：如何复现一个最小 reasoning RL 流程？</h2>
+
+<p>
+真正复现 DeepSeek-R1 不现实，因为它需要巨大算力、数据和工程系统。
+但我们可以复现一个玩具版 R1-Zero-like 流程，用来理解它的核心思想。
+</p>
+
+<div class="box note">
+<strong>目标不是复现性能，而是复现机制：</strong>
+Base model 生成多个答案 → rule reward 打分 → GRPO 组内比较 → 更新模型。
+</div>
+
+<h3>24.1 任务选择</h3>
+
+<p>
+最小任务建议选择数学题或格式任务。
+不要一开始做复杂代码 Agent。
+</p>
+
+<table>
+<tr>
+<th>任务</th>
+<th>推荐程度</th>
+<th>原因</th>
+</tr>
+<tr>
+<td>两位数加减乘除</td>
+<td>高</td>
+<td>答案容易验证，任务简单。</td>
+</tr>
+<tr>
+<td>四位数乘两位数</td>
+<td>高</td>
+<td>和 Fireworks AI 实验接近。</td>
+</tr>
+<tr>
+<td>JSON 格式输出</td>
+<td>高</td>
+<td>格式是否正确容易判断。</td>
+</tr>
+<tr>
+<td>Function Picking</td>
+<td>中</td>
+<td>更接近 Agent，但数据设计稍复杂。</td>
+</tr>
+<tr>
+<td>代码生成</td>
+<td>中高</td>
+<td>reward 清楚，但执行环境更复杂。</td>
+</tr>
+</table>
+
+<h3>24.2 数据格式</h3>
+
+<pre>
+{
+  "prompt": "请计算 1497 * 63，并按照指定格式输出最终答案。",
+  "answer": "94311"
+}
+</pre>
+
+<p>
+模型需要输出：
+</p>
+
+<pre>
+思考过程可以写在前面。
+
+Final Answer: 94311
+</pre>
+
+<h3>24.3 Reward 设计</h3>
+
+<pre>
+def reward(output, answer):
+    reward = 0.0
+
+    # 格式奖励
+    if "Final Answer:" in output:
+        reward += 0.2
+    else:
+        reward -= 0.2
+
+    # 答案抽取
+    pred = extract_final_answer(output)
+
+    # 准确性奖励
+    if pred == answer:
+        reward += 1.0
+
+    # 长度惩罚
+    if len(output) > 1000:
+        reward -= 0.1
+
+    return reward
+</pre>
+
+<h3>24.4 GRPO 训练直觉</h3>
+
+<pre>
+for prompt in batch:
+    responses = model.generate(prompt, num_return_sequences=8)
+
+    rewards = [
+        reward(response, answer)
+        for response in responses
+    ]
+
+    advantages = normalize_within_group(rewards)
+
+    update_model_with_grpo(prompt, responses, advantages)
+</pre>
+
+<p>
+这里最重要的是：
+<strong>每个 prompt 生成多个 response。</strong>
+如果只有一个 response，就没有 group comparison。
+</p>
+
+<h3>24.5 观察什么指标？</h3>
+
+<table>
+<tr>
+<th>指标</th>
+<th>说明</th>
+</tr>
+<tr>
+<td>Accuracy</td>
+<td>最终答案正确率是否提升。</td>
+</tr>
+<tr>
+<td>Format Pass Rate</td>
+<td>最终答案格式是否越来越稳定。</td>
+</tr>
+<tr>
+<td>Average Length</td>
+<td>推理是否越来越冗长。</td>
+</tr>
+<tr>
+<td>Reward Mean</td>
+<td>平均 reward 是否上升。</td>
+</tr>
+<tr>
+<td>Reward Variance</td>
+<td>组内是否还有区分度。</td>
+</tr>
+<tr>
+<td>Error Type</td>
+<td>错误是算错、格式错，还是抽取失败。</td>
+</tr>
+</table>
+
+<div class="box train">
+<strong>实践建议：</strong>
+玩具实验中不要只画 reward 曲线。
+还要保存训练前后模型的真实输出，观察模型行为是否变化：
+有没有更会检查？
+有没有更稳定输出 Final Answer？
+有没有变得过度啰嗦？
+</div>
+
+<h3>24.6 最小实验报告可以怎么写？</h3>
+
+<p>
+如果你以后要写组会汇报，可以按这个结构：
+</p>
+
+<pre>
+1. 实验目的：
+验证 rule-based reward + group relative advantage 是否能提升简单数学任务正确率。
+
+2. 任务设置：
+四位数乘两位数，要求输出 Final Answer。
+
+3. Reward 设计：
+accuracy reward + format reward + length penalty。
+
+4. 训练方法：
+同一 prompt 采样 8 个 response，组内归一化 reward，使用 GRPO 更新。
+
+5. 评价指标：
+accuracy、format pass rate、average length、error type。
+
+6. 初步现象：
+观察模型是否从乱答变为稳定输出格式，是否正确率提升。
+</pre>
+
+<hr>
+
+<!-- ===================================================== -->
+<!-- 第 25 部分：下一篇 HTML 的正式目录建议 -->
+<!-- ===================================================== -->
+
+<h2 id="route25">25. 下一篇 HTML 建议：DeepSeek-R1 Technical Report 中文精读</h2>
+
+<p>
+这篇 Fireworks AI 的 RLVR / GRPO 精读到这里已经可以作为第二篇完整文档。
+下一篇建议正式写成：
+</p>
+
+<div class="box note">
+<strong>标题建议：</strong>
+DeepSeek-R1 Technical Report 中文精读笔记：从 R1-Zero 到 R1 的 reasoning 后训练路线
+</div>
+
+<h3>25.1 下一篇建议目录</h3>
+
+<pre>
+0. 这篇报告应该怎么读？
+1. DeepSeek-R1 解决了什么问题？
+2. R1-Zero：不经过 SFT 的纯 RL 尝试
+3. Rule-based Reward：accuracy reward 与 format reward
+4. GRPO：为什么适合 reasoning RL
+5. R1-Zero 的能力涌现：自我反思、长推理、探索
+6. R1-Zero 的问题：可读性差、语言混杂、格式不稳
+7. DeepSeek-R1：为什么加入 cold-start data
+8. DeepSeek-R1 的多阶段训练流程
+9. Rejection Sampling 在 R1 中的作用
+10. Reasoning Data 与 General Data 的混合
+11. 蒸馏：把 R1 能力迁移到 Qwen / Llama 小模型
+12. DeepSeek-R1 和 Fireworks RLVR 的关系
+13. DeepSeek-R1 对 Agent 后训练的启发
+14. 最小 R1-Zero-like 小实验设计
+15. 常见误解
+16. 术语表
+17. 最终总结
+</pre>
+
+<h3>25.2 下一篇的学习目标</h3>
+
+<table>
+<tr>
+<th>学习目标</th>
+<th>具体内容</th>
+</tr>
+<tr>
+<td>理解 R1-Zero</td>
+<td>知道纯 RL 为什么能激发 reasoning，也知道它的问题。</td>
+</tr>
+<tr>
+<td>理解 rule reward</td>
+<td>知道 accuracy reward 和 format reward 如何工作。</td>
+</tr>
+<tr>
+<td>理解多阶段训练</td>
+<td>知道为什么真正可用的模型不能只靠纯 RL。</td>
+</tr>
+<tr>
+<td>理解蒸馏</td>
+<td>知道小模型为什么可以通过 SFT 学到 reasoning 行为。</td>
+</tr>
+<tr>
+<td>理解工程迁移</td>
+<td>知道如何把 R1 的思路迁移到数学、代码、工具调用和 Agent。</td>
+</tr>
+</table>
+
+<h3>25.3 和当前这篇的衔接关系</h3>
+
+<table>
+<tr>
+<th>当前 Fireworks AI 精读</th>
+<th>下一篇 DeepSeek-R1 精读</th>
+</tr>
+<tr>
+<td>解释 RLVR 是什么。</td>
+<td>展示 RLVR 如何训练 reasoning model。</td>
+</tr>
+<tr>
+<td>解释 GRPO 为什么比 PPO 轻。</td>
+<td>展示 GRPO 在大规模 reasoning RL 中的位置。</td>
+</tr>
+<tr>
+<td>用乘法和 Function Picking 做小实验。</td>
+<td>用 R1-Zero / R1 作为完整案例。</td>
+</tr>
+<tr>
+<td>偏概念和实践入门。</td>
+<td>偏论文路线和训练 recipe。</td>
+</tr>
+</table>
+
+<div class="box train">
+<strong>收尾建议：</strong>
+当前这篇 HTML 到第 25 节就可以收束了。
+再继续写就会变成 DeepSeek-R1 的独立精读。
+所以建议下一步新开第三篇，而不是无限往这篇里塞。
+</div>
+
+<h3>25.4 当前这篇的最终收束句</h3>
+
+<div class="box note">
+<strong>最终收束：</strong>
+Fireworks AI 这篇文章让我们明白：
+后训练不只是 SFT 和偏好对齐，还包括一种非常关键的路线——当任务可以被验证时，
+用规则或环境反馈构造 reward，再通过 GRPO 这样的策略优化方法，让模型在生成、验证、奖励、更新的循环中变强。
+这条路线正是 DeepSeek-R1、代码模型和 Agent 后训练共同走向的方向。
+</div>
+```
+
+<p class="small">
+说明：本文为 Fireworks AI 官方博客《Beyond Supervised Fine Tuning: How Reinforcement Learning Empowers AI with Minimal Labels》
+的中文学习笔记与后训练路线整理。原文图片通过 Fireworks AI 博客链接引用，版权归原作者与 Fireworks AI 所有。
+</p>
+
+
+
+<p class="small">
+参考来源：
+<br>
+1. Fireworks AI Blog: Beyond Supervised Fine Tuning: How Reinforcement Learning Empowers AI with Minimal Labels
+<br>
+https://fireworks.ai/blog/reinforcement-learning-with-verifiable-reward
+<br>
+2. DeepSeek-R1 Technical Report: DeepSeek-R1: Incentivizing Reasoning Capability in LLMs via Reinforcement Learning
+<br>
+https://arxiv.org/abs/2501.12948
+</p>
+
+<script>
+(function () {
+  const toc = document.querySelector(".page-toc");
+  const tocList = document.getElementById("page-toc-list");
+
+  if (!toc || !tocList) {
+    return;
+  }
+
+  const toggle = document.createElement("button");
+  toggle.className = "page-toc-toggle";
+  toggle.type = "button";
+  toggle.textContent = "☰ 目录";
+
+  const panel = document.createElement("div");
+  panel.className = "page-toc-panel";
+
+  const title = toc.querySelector(".page-toc-title");
+  const list = toc.querySelector(".page-toc-list");
+
+  panel.appendChild(title);
+  panel.appendChild(list);
+
+  toc.innerHTML = "";
+  toc.appendChild(toggle);
+  toc.appendChild(panel);
+
+  const headings = Array.from(document.querySelectorAll("h2, h3"));
+  let currentH2Item = null;
+  let currentSubList = null;
+
+  headings.forEach((heading, index) => {
+    if (!heading.id) {
+      heading.id = "section-" + index;
+    }
+
+    const link = document.createElement("a");
+    link.className = "page-toc-link";
+    link.href = "#" + heading.id;
+    link.textContent = heading.textContent;
+
+    if (heading.tagName.toLowerCase() === "h2") {
+      const item = document.createElement("li");
+      item.className = "page-toc-item";
+      item.appendChild(link);
+
+      const subList = document.createElement("ol");
+      subList.className = "page-toc-sublist";
+      item.appendChild(subList);
+
+      tocList.appendChild(item);
+      currentH2Item = item;
+      currentSubList = subList;
+    } else if (heading.tagName.toLowerCase() === "h3") {
+      const subItem = document.createElement("li");
+      subItem.className = "page-toc-subitem";
+      subItem.appendChild(link);
+
+      if (currentSubList) {
+        currentSubList.appendChild(subItem);
+      } else {
+        tocList.appendChild(subItem);
+      }
+    }
+
+    link.addEventListener("click", function () {
+      toc.classList.remove("is-open");
+    });
+  });
+
+  toggle.addEventListener("click", function () {
+    toc.classList.toggle("is-open");
+  });
+
+  document.addEventListener("click", function (event) {
+    if (!toc.contains(event.target)) {
+      toc.classList.remove("is-open");
+    }
+  });
+
+  document.addEventListener("keydown", function (event) {
+    if (event.key === "Escape") {
+      toc.classList.remove("is-open");
+    }
+  });
+})();
+</script>
+
+</body>
+</html>
+```

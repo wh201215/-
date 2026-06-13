@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>PyTorch《A Primer on LLM Post-Training》中文精读：后训练路线版</title>
+<style>
+body {
+  font-family: "Microsoft YaHei", Arial, sans-serif;
+  line-height: 1.85;
+  max-width: 1080px;
+  margin: 40px auto;
+  padding: 0 28px 100px;
+  background: #f7f8fb;
+  color: #1f2937;
+}
+h1 {
+  font-size: 34px;
+  line-height: 1.35;
+  border-bottom: 5px solid #2563eb;
+  padding-bottom: 14px;
+}
+h2 {
+  margin-top: 48px;
+  padding: 12px 16px;
+  font-size: 27px;
+  background: #eef4ff;
+  border-left: 7px solid #2563eb;
+}
+h3 {
+  margin-top: 28px;
+  font-size: 21px;
+}
+.box {
+  background: #ffffff;
+  border: 1px solid #d9e2ef;
+  border-radius: 12px;
+  padding: 18px 22px;
+  margin: 18px 0;
+}
+.note {
+  background: #fff7d6;
+  border-left: 6px solid #d6a800;
+}
+.train {
+  background: #ecfdf3;
+  border-left: 6px solid #16a34a;
+}
+.warn {
+  background: #fff1f1;
+  border-left: 6px solid #dc2626;
+}
+.figure {
+  background: #ffffff;
+  border: 1px solid #d9e2ef;
+  border-radius: 14px;
+  padding: 16px;
+  margin: 22px 0;
+}
+.figure img {
+  width: 100%;
+  max-height: 680px;
+  object-fit: contain;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+}
+.caption {
+  color: #667085;
+  font-size: 14px;
+  margin-top: 10px;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 18px 0;
+  background: #ffffff;
+}
+th, td {
+  border: 1px solid #d9e2ef;
+  padding: 11px 13px;
+  vertical-align: top;
+}
+th {
+  background: #f1f5f9;
+}
+pre {
+  background: #111827;
+  color: #e5e7eb;
+  padding: 18px;
+  border-radius: 10px;
+  overflow-x: auto;
+  line-height: 1.55;
+}
+</style>
+</head>
+
+<body>
+
+<h1>PyTorch《A Primer on LLM Post-Training》中文精读笔记<br>后训练路线学习版</h1>
+
+<div class="box note">
+<p><strong>原文标题：</strong>A Primer on LLM Post-Training</p>
+<p><strong>来源：</strong>PyTorch 官方博客</p>
+<p><strong>原文链接：</strong>
+<a href="https://pytorch.org/blog/a-primer-on-llm-post-training/" target="_blank">
+https://pytorch.org/blog/a-primer-on-llm-post-training/
+</a>
+</p>
+<p><strong>学习定位：</strong>
+这篇文章适合作为“后训练路线”的第一篇。它不是讲 Agent 架构，也不是只讲某一个算法，
+而是从工程学习角度解释：模型为什么需要 post-training，post-training 数据是什么样，
+SFT、DPO、PPO、GRPO 各自在路线中解决什么问题。
+</p>
+</div>
+
+<h2>0. 这篇博客应该怎么读？</h2>
+
+<p>
+这篇 PyTorch 博客的重点不是让你立刻推公式，而是先建立一条后训练主线：
+</p>
+
+<pre>
+Base Model 基座模型
+  ↓
+Post-training Data Format 后训练数据格式
+  ↓
+SFT 监督微调
+  ↓
+Preference Data 偏好数据
+  ↓
+DPO / RLHF 偏好优化
+  ↓
+Online RL / PPO 在线强化学习
+  ↓
+Reward Pipeline 奖励管线
+  ↓
+Reasoning / GRPO 推理后训练
+</pre>
+
+<div class="box note">
+<strong>一句话理解：</strong>
+预训练让模型“会补全文本”；后训练让模型“会按照人的任务方式做事”。
+</div>
+
+<h3>0.1 为什么这篇适合做后训练路线第一篇？</h3>
+
+<table>
+<tr>
+<th>学习问题</th>
+<th>这篇博客能解决什么</th>
+</tr>
+<tr>
+<td>Post-training 到底是什么？</td>
+<td>它把后训练解释为预训练之后，让模型学会对话、推理、规划和交互的阶段。</td>
+</tr>
+<tr>
+<td>SFT 和预训练有什么区别？</td>
+<td>它解释了 SFT 仍然是 next-token prediction，但只对 assistant response 计算 loss。</td>
+</tr>
+<tr>
+<td>DPO 和 RLHF 是什么关系？</td>
+<td>它把 DPO 放在偏好优化路线中讲，说明为什么它比 PPO 更容易上手。</td>
+</tr>
+<tr>
+<td>PPO 为什么复杂？</td>
+<td>它从基础 policy gradient 讲到 advantage、ratio、clip 和 trust region。</td>
+</tr>
+<tr>
+<td>GRPO 为什么火？</td>
+<td>它解释了 GRPO 如何用组内相对奖励替代 critic。</td>
+</tr>
+<tr>
+<td>怎么接 Agent 后训练？</td>
+<td>它的 reward pipeline 思路可以直接迁移到工具调用、代码 Agent 和多步任务轨迹。</td>
+</tr>
+</table>
+
+<h2>1. 后训练数据格式：模型到底看到了什么？</h2>
+
+<p>
+很多人学后训练会直接跳到 SFT、DPO、PPO，但其实第一步应该先理解数据格式。
+因为 LLM 的底层接口没有变：模型接收一串 token，然后预测下一个 token。
+所谓“聊天模型”，本质上是通过特殊格式把 system、user、assistant 等角色写进同一段 token 序列中。
+</p>
+
+<div class="figure">
+<img src="https://pytorch.org/wp-content/uploads/2025/08/1-3.png" alt="Chat interface example">
+<div class="caption">
+图 1：聊天界面示例。来源：PyTorch 官方博客《A Primer on LLM Post-Training》。
+如果图片不显示，请打开原图：
+<a href="https://pytorch.org/wp-content/uploads/2025/08/1-3.png" target="_blank">
+https://pytorch.org/wp-content/uploads/2025/08/1-3.png
+</a>
+</div>
+</div>
+
+<h3>1.1 这张图表面上在讲什么？</h3>
+
+<p>
+图中是一个普通聊天界面：用户问问题，助手回答；用户继续追问，助手继续回答。
+但原文真正想说明的是：聊天界面只是人看到的 UI，模型实际看到的是一段被特殊 token 包装过的文本。
+</p>
+
+<table>
+<tr>
+<th>你在界面中看到的</th>
+<th>模型实际需要看到的</th>
+<th>为什么重要</th>
+</tr>
+<tr>
+<td>用户说：“What is the capital of France?”</td>
+<td>一段带有 user role 标记的 token。</td>
+<td>模型必须知道这是用户输入，不是助手要生成的内容。</td>
+</tr>
+<tr>
+<td>助手回答：“Paris.”</td>
+<td>一段带有 assistant role 标记的 token。</td>
+<td>模型只应该学习生成 assistant 部分。</td>
+</tr>
+<tr>
+<td>多轮对话</td>
+<td>system + user + assistant + user + assistant 的完整序列。</td>
+<td>模型根据历史上下文继续生成，而不是孤立回答。</td>
+</tr>
+<tr>
+<td>助手停止回答</td>
+<td>end-of-turn token。</td>
+<td>模型必须学会在合适的位置停止。</td>
+</tr>
+</table>
+
+<h3>1.2 Llama 3 风格的格式示意</h3>
+
+<pre>
+&lt;|begin_of_text|&gt;
+
+&lt;|start_header_id|&gt;system&lt;|end_header_id|&gt;
+你是一个有帮助的助手。
+&lt;|eot_id|&gt;
+
+&lt;|start_header_id|&gt;user&lt;|end_header_id|&gt;
+法国首都是哪里？
+&lt;|eot_id|&gt;
+
+&lt;|start_header_id|&gt;assistant&lt;|end_header_id|&gt;
+法国首都是巴黎。
+&lt;|eot_id|&gt;
+
+&lt;|start_header_id|&gt;user&lt;|end_header_id|&gt;
+那里有多少人口？只告诉我数字。
+&lt;|eot_id|&gt;
+
+&lt;|start_header_id|&gt;assistant&lt;|end_header_id|&gt;
+从这里开始生成
+</pre>
+
+<h3>1.3 这一节和后训练的关系</h3>
+
+<p>
+后训练第一步不是算法，而是格式。如果格式不稳定，后面 SFT、DPO、RL 都会乱。
+对于普通聊天模型，格式决定谁是 system、谁是 user、谁是 assistant；
+对于 Agent 模型，格式还要决定谁是 tool、谁是 environment、谁是 observation。
+</p>
+
+<table>
+<tr>
+<th>普通聊天后训练</th>
+<th>Agent 后训练</th>
+</tr>
+<tr>
+<td>system / user / assistant</td>
+<td>system / user / assistant / tool / environment</td>
+</tr>
+<tr>
+<td>训练 assistant 回答</td>
+<td>训练 assistant 的 Thought、Action、Final Answer</td>
+</tr>
+<tr>
+<td>用户消息不计算 loss</td>
+<td>工具返回 Observation 也不应该计算 loss</td>
+</tr>
+<tr>
+<td>模型学习什么时候停止</td>
+<td>模型学习什么时候继续调用工具、什么时候 finish</td>
+</tr>
+</table>
+
+<div class="box train">
+<strong>这一节你要记住：</strong>
+后训练不是直接把问答扔给模型。你必须先设计数据格式。
+格式设计得清楚，模型才知道“谁说了什么”“自己应该生成什么”“什么时候停止”“什么时候调用工具”。
+</div>
+
+</body>
+</html>

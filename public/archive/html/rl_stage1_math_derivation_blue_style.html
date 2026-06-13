@@ -1,0 +1,2175 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>强化学习大模型路线｜第一阶段：RL 数学基础逐步推导｜旧版蓝色风格</title>
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['\\(', '\\)'], ['$', '$']],
+        displayMath: [['\\[', '\\]']],
+        processEscapes: true
+      },
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+  <style>
+html {
+  scroll-behavior: smooth;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  font-family: "Microsoft YaHei", Arial, sans-serif;
+  line-height: 1.85;
+  max-width: 1080px;
+  margin: 40px auto;
+  padding: 0 28px 100px;
+  background: #f7f8fb;
+  color: #1f2937;
+  font-size: 17px;
+}
+h1 {
+  font-size: 34px;
+  line-height: 1.35;
+  border-bottom: 5px solid #2563eb;
+  padding-bottom: 14px;
+  margin: 0 0 18px;
+  color: #0f172a;
+}
+h2 {
+  margin-top: 48px;
+  margin-bottom: 22px;
+  padding: 12px 16px;
+  font-size: 27px;
+  line-height: 1.35;
+  background: #eef4ff;
+  border-left: 7px solid #2563eb;
+  color: #0f172a;
+  border-bottom: none;
+}
+h3 {
+  margin-top: 28px;
+  margin-bottom: 12px;
+  font-size: 21px;
+  color: #111827;
+}
+h4 {
+  margin-top: 24px;
+  margin-bottom: 10px;
+  font-size: 18px;
+  color: #1f2937;
+}
+h2, h3 {
+  scroll-margin-top: 24px;
+}
+p {
+  margin: 12px 0;
+}
+a {
+  color: #2563eb;
+}
+strong {
+  color: #0f172a;
+}
+ul, ol {
+  padding-left: 1.45em;
+}
+li {
+  margin: 6px 0;
+}
+
+/* 顶部目录按钮：沿用旧版蓝色胶囊按钮风格 */
+.topbar {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+}
+.theme-btn {
+  display: none;
+}
+.toc-btn {
+  border: 0;
+  border-radius: 999px;
+  padding: 10px 16px;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.24);
+}
+.toc-btn:hover {
+  background: #1d4ed8;
+}
+
+/* 目录面板：旧版右上角下拉卡片，而不是棕色侧边栏 */
+.drawer {
+  display: none;
+  position: fixed;
+  top: 64px;
+  right: 20px;
+  width: 320px;
+  max-height: calc(100vh - 90px);
+  overflow: auto;
+  z-index: 1001;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid #d9e2ef;
+  border-radius: 14px;
+  padding: 16px 18px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+  backdrop-filter: blur(8px);
+}
+.drawer.open {
+  display: block;
+}
+.drawer h3 {
+  margin: 0 0 12px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+}
+.drawer .close {
+  float: right;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  font-size: 20px;
+  color: #64748b;
+}
+.drawer a {
+  display: block;
+  color: #334155;
+  text-decoration: none;
+  font-size: 14px;
+  line-height: 1.55;
+  padding: 7px 0;
+  border-bottom: 1px dashed #e5e7eb;
+}
+.drawer a:hover {
+  color: #2563eb;
+}
+
+/* 主体排版：回到旧版“白底文档流”，不再使用暖色大卡片 */
+.wrap {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+header.hero {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  box-shadow: none;
+  margin-bottom: 22px;
+}
+.eyebrow {
+  color: #2563eb;
+  font-weight: 700;
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+.subtitle {
+  color: #475569;
+  font-size: 17px;
+  margin: 12px 0 18px;
+  max-width: 100%;
+}
+.meta {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 18px;
+}
+.pill {
+  border: 1px solid #d9e2ef;
+  background: #ffffff;
+  color: #334155;
+  border-radius: 999px;
+  padding: 6px 11px;
+  font-size: 14px;
+}
+
+section {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  margin: 0;
+  box-shadow: none;
+}
+
+/* 旧版 box / note / train / warn 视觉 */
+.box {
+  background: #ffffff;
+  border: 1px solid #d9e2ef;
+  border-radius: 12px;
+  padding: 18px 22px;
+  margin: 18px 0;
+}
+.box-title {
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 8px;
+}
+.box.blue {
+  background: #fff7d6;
+  border-left: 6px solid #d6a800;
+}
+.box.green {
+  background: #ecfdf3;
+  border-left: 6px solid #16a34a;
+}
+.box.warn {
+  background: #fff1f1;
+  border-left: 6px solid #dc2626;
+}
+
+/* 公式卡片：旧版白色卡片风格 */
+.formula {
+  background: #ffffff;
+  border: 1px solid #d9e2ef;
+  border-radius: 12px;
+  padding: 16px 18px;
+  margin: 18px 0;
+  overflow-x: auto;
+}
+
+/* 推导步骤：保留清晰编号，但换成蓝色系统 */
+.steps {
+  counter-reset: step;
+}
+.step {
+  counter-increment: step;
+  position: relative;
+  padding: 18px 22px 18px 70px;
+  margin: 16px 0;
+  background: #ffffff;
+  border: 1px solid #d9e2ef;
+  border-radius: 12px;
+}
+.step::before {
+  content: counter(step);
+  position: absolute;
+  left: 22px;
+  top: 22px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #2563eb;
+  color: white;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 18px 0;
+  background: #ffffff;
+}
+th, td {
+  border: 1px solid #d9e2ef;
+  padding: 11px 13px;
+  vertical-align: top;
+  text-align: left;
+}
+th {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+pre {
+  background: #111827;
+  color: #e5e7eb;
+  padding: 18px;
+  border-radius: 10px;
+  overflow-x: auto;
+  line-height: 1.55;
+  font-size: 14px;
+}
+code {
+  font-family: Consolas, Monaco, "Courier New", monospace;
+}
+.small {
+  color: #667085;
+  font-size: 14px;
+}
+.footer {
+  color: #667085;
+  text-align: center;
+  padding: 28px 0 0;
+  font-size: 14px;
+}
+
+@media (max-width: 1100px) {
+  .topbar {
+    top: 12px;
+    right: 12px;
+  }
+  .drawer {
+    top: 56px;
+    right: 12px;
+    width: min(320px, calc(100vw - 24px));
+    max-height: calc(100vh - 72px);
+  }
+}
+@media (max-width: 700px) {
+  body {
+    font-size: 16px;
+    margin: 28px auto;
+    padding: 0 18px 80px;
+  }
+  h1 {
+    font-size: 28px;
+  }
+  h2 {
+    font-size: 23px;
+  }
+  .step {
+    padding-left: 58px;
+  }
+  .step::before {
+    left: 16px;
+  }
+}
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <button class="theme-btn" onclick="toggleTheme()">明暗</button>
+    <button class="toc-btn" onclick="toggleToc()">☰ 目录</button>
+  </div>
+
+  <nav id="drawer" class="drawer">
+    <button class="close" onclick="toggleToc()">×</button>
+    <h3>目录</h3>
+    <a href="#goal">0. 本阶段学习目标</a>
+    <a href="#notation">1. 记号系统：先统一语言</a>
+    <a href="#agent-env">2. Agent 与 Environment</a>
+    <a href="#mdp">3. MDP：强化学习的数学模型</a>
+    <a href="#trajectory">4. 轨迹、概率与期望</a>
+    <a href="#return">5. Return：为什么要折扣回报</a>
+    <a href="#value">6. Value Function：价值函数从哪里来</a>
+    <a href="#bellman-v">7. Bellman 期望方程：逐步推导</a>
+    <a href="#q">8. Q 函数：动作价值函数</a>
+    <a href="#bellman-q">9. Bellman 方程的 Q 形式</a>
+    <a href="#optimal">10. 最优价值与 Bellman 最优方程</a>
+    <a href="#policy-eval">11. Policy Evaluation：策略评估</a>
+    <a href="#policy-improve">12. Policy Improvement：策略改进</a>
+    <a href="#value-iteration">13. Value Iteration：价值迭代</a>
+    <a href="#mc-td">14. Monte Carlo 与 TD</a>
+    <a href="#qlearning">15. Q-learning 从 Bellman 推导</a>
+    <a href="#llm-map">16. 和大模型 RL 的对应关系</a>
+    <a href="#tasks">17. 本阶段作业</a>
+    <a href="#summary">18. 一页总结</a>
+  </nav>
+
+  <main class="wrap">
+    <header class="hero">
+      <div class="eyebrow">Stage 1 · Reinforcement Learning Mathematical Foundations</div>
+      <h1>强化学习大模型路线｜第一阶段：强化学习数学基础详细推导</h1>
+      <p class="subtitle">
+        面向零基础学习者。目标不是背公式，而是一步一步理解：为什么强化学习要用 MDP，为什么会出现 Bellman 方程，为什么 Q-learning 可以这样更新，以及这些数学对象如何迁移到大模型后训练。
+      </p>
+      <div class="meta">
+        <span class="pill">适合：数学研究生入门</span>
+        <span class="pill">重点：公式来源与推导</span>
+        <span class="pill">建议学习周期：7—14 天</span>
+        <span class="pill">后续衔接：Policy Gradient / PPO / RLHF / DPO / GRPO</span>
+      </div>
+    </header>
+
+    <section id="goal">
+      <h2>0. 本阶段学习目标</h2>
+      <p>
+        第一阶段只解决一个核心问题：
+      </p>
+      <div class="box blue">
+        <div class="box-title">核心问题</div>
+        <p>
+          一个智能体在不确定环境中行动，怎样用数学语言描述它的决策过程，并计算“某个状态或动作到底有多好”？
+        </p>
+      </div>
+      <p>
+        你学完这一阶段，应该能独立写出并解释以下公式：
+      </p>
+      <div class="formula">
+        \[
+        G_t = R_{t+1}+\gamma R_{t+2}+\gamma^2R_{t+3}+\cdots
+        \]
+        \[
+        v_\pi(s)=\mathbb{E}_\pi[G_t\mid S_t=s]
+        \]
+        \[
+        v_\pi(s)=\sum_a \pi(a\mid s)\sum_{s',r}p(s',r\mid s,a)
+        \left[r+\gamma v_\pi(s')\right]
+        \]
+        \[
+        q_\pi(s,a)=\sum_{s',r}p(s',r\mid s,a)
+        \left[r+\gamma \sum_{a'}\pi(a'\mid s')q_\pi(s',a')\right]
+        \]
+        \[
+        q_{k+1}(s,a)=q_k(s,a)+\alpha
+        \left[r+\gamma\max_{a'}q_k(s',a')-q_k(s,a)\right]
+        \]
+      </div>
+      <p>
+        先不要急着理解 PPO、DPO、GRPO。那些算法本质上都绕不开这几个问题：状态是什么，动作是什么，奖励是什么，价值是什么，策略怎样更新。
+      </p>
+    </section>
+
+    <section id="notation">
+      <h2>1. 记号系统：先统一语言</h2>
+      <p>
+        强化学习的公式看起来多，主要原因是它同时描述“时间”“随机性”“决策”和“奖励”。我们先把记号统一。
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>符号</th>
+            <th>含义</th>
+            <th>直观解释</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>\(S_t\)</td>
+            <td>time step \(t\) 的状态</td>
+            <td>智能体当前看到的局面</td>
+          </tr>
+          <tr>
+            <td>\(A_t\)</td>
+            <td>time step \(t\) 的动作</td>
+            <td>智能体当前做出的选择</td>
+          </tr>
+          <tr>
+            <td>\(R_{t+1}\)</td>
+            <td>执行 \(A_t\) 后获得的奖励</td>
+            <td>动作之后环境给出的分数</td>
+          </tr>
+          <tr>
+            <td>\(S_{t+1}\)</td>
+            <td>下一个状态</td>
+            <td>执行动作后进入的新局面</td>
+          </tr>
+          <tr>
+            <td>\(\pi(a\mid s)\)</td>
+            <td>策略</td>
+            <td>在状态 \(s\) 下选择动作 \(a\) 的概率</td>
+          </tr>
+          <tr>
+            <td>\(p(s',r\mid s,a)\)</td>
+            <td>环境转移概率</td>
+            <td>在 \(s\) 做 \(a\) 后，到 \(s'\) 并得到 \(r\) 的概率</td>
+          </tr>
+          <tr>
+            <td>\(\gamma\)</td>
+            <td>折扣因子</td>
+            <td>未来奖励的重要程度，通常 \(0\le \gamma \le 1\)</td>
+          </tr>
+          <tr>
+            <td>\(\alpha\)</td>
+            <td>学习率</td>
+            <td>每次更新时相信新信息的程度</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="box warn">
+        <div class="box-title">小白最容易混淆的一点</div>
+        <p>
+          \(R_{t+1}\) 不是 \(R_t\)。因为奖励通常发生在动作之后：在状态 \(S_t\) 选择动作 \(A_t\)，环境跳到 \(S_{t+1}\)，同时给你奖励 \(R_{t+1}\)。
+        </p>
+      </div>
+
+      <p>因此一个最基本的交互链条是：</p>
+      <div class="formula">
+        \[
+        S_t \xrightarrow{A_t} (R_{t+1},S_{t+1})
+        \]
+      </div>
+    </section>
+
+    <section id="agent-env">
+      <h2>2. Agent 与 Environment：先从交互过程开始</h2>
+      <p>
+        强化学习的对象不是单次预测，而是连续决策。智能体每一步都要根据当前状态选择动作，动作会影响未来状态，未来状态又影响之后的奖励。
+      </p>
+
+      <div class="steps">
+        <div class="step">
+          <h3>第 1 步：环境给出状态</h3>
+          <p>
+            在时间 \(t\)，环境给智能体一个状态：
+          </p>
+          <div class="formula">
+            \[
+            S_t=s
+            \]
+          </div>
+          <p>
+            例如走迷宫时，\(s\) 可以表示当前位置。玩游戏时，\(s\) 可以表示屏幕画面。大模型里，\(s\) 可以理解为 prompt 加上已经生成的上下文。
+          </p>
+        </div>
+
+        <div class="step">
+          <h3>第 2 步：智能体根据策略选择动作</h3>
+          <p>
+            智能体不是随便选动作，而是根据策略 \(\pi\) 选动作：
+          </p>
+          <div class="formula">
+            \[
+            A_t \sim \pi(\cdot\mid S_t)
+            \]
+          </div>
+          <p>
+            这句话的意思是：动作 \(A_t\) 是从条件概率分布 \(\pi(a\mid S_t)\) 中采样出来的。
+          </p>
+        </div>
+
+        <div class="step">
+          <h3>第 3 步：环境根据转移概率返回新状态和奖励</h3>
+          <p>
+            智能体执行动作后，环境返回：
+          </p>
+          <div class="formula">
+            \[
+            (S_{t+1},R_{t+1})\sim p(\cdot,\cdot\mid S_t,A_t)
+            \]
+          </div>
+          <p>
+            这里 \(p(s',r\mid s,a)\) 是环境本身的规律。智能体通常不知道它，只能通过和环境交互慢慢学习。
+          </p>
+        </div>
+      </div>
+
+      <div class="box green">
+        <div class="box-title">一句话理解强化学习</div>
+        <p>
+          强化学习研究的是：当动作会影响未来时，智能体怎样通过奖励信号学会长期更优的行为策略。
+        </p>
+      </div>
+    </section>
+
+    <section id="mdp">
+      <h2>3. MDP：强化学习的数学模型</h2>
+      <p>
+        MDP 全称是 Markov Decision Process，中文常译为马尔可夫决策过程。它是强化学习的基本数学模型。
+      </p>
+
+      <h3>3.1 MDP 的五元组</h3>
+      <p>
+        一个 MDP 通常写作：
+      </p>
+      <div class="formula">
+        \[
+        \mathcal{M}=(\mathcal{S},\mathcal{A},p,r,\gamma)
+        \]
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>组成</th>
+            <th>含义</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>\(\mathcal{S}\)</td>
+            <td>状态空间，所有可能状态的集合</td>
+          </tr>
+          <tr>
+            <td>\(\mathcal{A}\)</td>
+            <td>动作空间，所有可能动作的集合</td>
+          </tr>
+          <tr>
+            <td>\(p(s',r\mid s,a)\)</td>
+            <td>转移概率，描述环境如何从当前状态动作转到下一个状态奖励</td>
+          </tr>
+          <tr>
+            <td>\(r\)</td>
+            <td>奖励函数，有时写成 \(r(s,a)\) 或 \(r(s,a,s')\)</td>
+          </tr>
+          <tr>
+            <td>\(\gamma\)</td>
+            <td>折扣因子，控制未来奖励的重要性</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>3.2 什么是 Markov 性质</h3>
+      <p>
+        Markov 性质的意思是：未来只依赖当前状态和当前动作，不需要依赖更早的历史。
+      </p>
+      <p>
+        严格写成：
+      </p>
+      <div class="formula">
+        \[
+        \Pr(S_{t+1}=s',R_{t+1}=r\mid S_0,A_0,R_1,\ldots,S_t=s,A_t=a)
+        =
+        \Pr(S_{t+1}=s',R_{t+1}=r\mid S_t=s,A_t=a)
+        \]
+      </div>
+      <p>
+        这条公式很长，我们拆开看。
+      </p>
+      <div class="steps">
+        <div class="step">
+          <h3>左边表示完整历史条件下的未来概率</h3>
+          <div class="formula">
+            \[
+            \Pr(S_{t+1}=s',R_{t+1}=r\mid S_0,A_0,R_1,\ldots,S_t=s,A_t=a)
+            \]
+          </div>
+          <p>
+            它的意思是：如果我知道从最开始到现在的全部历史，那么下一步到 \(s'\) 并得到奖励 \(r\) 的概率是多少？
+          </p>
+        </div>
+
+        <div class="step">
+          <h3>右边表示只知道当前状态动作时的未来概率</h3>
+          <div class="formula">
+            \[
+            \Pr(S_{t+1}=s',R_{t+1}=r\mid S_t=s,A_t=a)
+            \]
+          </div>
+          <p>
+            它的意思是：如果我只知道现在状态是 \(s\)，当前动作是 \(a\)，下一步到 \(s'\) 并得到奖励 \(r\) 的概率是多少？
+          </p>
+        </div>
+
+        <div class="step">
+          <h3>Markov 性质说这两者相等</h3>
+          <p>
+            也就是说，当前状态 \(S_t\) 已经压缩了所有对未来有用的信息。更早的历史不会额外改变未来概率。
+          </p>
+        </div>
+      </div>
+
+      <div class="box warn">
+        <div class="box-title">为什么这个假设重要</div>
+        <p>
+          如果没有 Markov 性质，我们就必须把全部历史都当成状态，数学会非常复杂。MDP 用“当前状态足够描述未来”这个假设，把连续决策问题变成可分析、可计算的问题。
+        </p>
+      </div>
+    </section>
+
+    <section id="trajectory">
+      <h2>4. 轨迹、概率与期望：为什么公式里总有 \(\mathbb{E}\)</h2>
+      <p>
+        强化学习中，智能体走出的整条路径叫 trajectory，中文可以叫轨迹。
+      </p>
+      <div class="formula">
+        \[
+        \tau=(S_0,A_0,R_1,S_1,A_1,R_2,S_2,\ldots)
+        \]
+      </div>
+
+      <h3>4.1 一条轨迹的概率怎么写</h3>
+      <p>
+        假设初始状态分布是 \(\rho_0(s_0)\)，策略是 \(\pi(a\mid s)\)，环境转移是 \(p(s',r\mid s,a)\)。那么一条长度为 \(T\) 的轨迹概率为：
+      </p>
+      <div class="formula">
+        \[
+        \Pr(\tau)
+        =
+        \rho_0(s_0)
+        \prod_{t=0}^{T-1}
+        \pi(a_t\mid s_t)
+        p(s_{t+1},r_{t+1}\mid s_t,a_t)
+        \]
+      </div>
+
+      <p>我们逐步推导这条公式。</p>
+      <div class="steps">
+        <div class="step">
+          <h3>先看初始状态</h3>
+          <p>
+            一条轨迹从 \(S_0=s_0\) 开始，它出现的概率是：
+          </p>
+          <div class="formula">
+            \[
+            \Pr(S_0=s_0)=\rho_0(s_0)
+            \]
+          </div>
+        </div>
+
+        <div class="step">
+          <h3>第 0 步选择动作</h3>
+          <p>
+            在状态 \(s_0\) 下选择动作 \(a_0\)，概率是：
+          </p>
+          <div class="formula">
+            \[
+            \Pr(A_0=a_0\mid S_0=s_0)=\pi(a_0\mid s_0)
+            \]
+          </div>
+        </div>
+
+        <div class="step">
+          <h3>环境转移到下一状态并给奖励</h3>
+          <p>
+            执行动作 \(a_0\) 后，环境给出 \(s_1,r_1\)，概率是：
+          </p>
+          <div class="formula">
+            \[
+            \Pr(S_1=s_1,R_1=r_1\mid S_0=s_0,A_0=a_0)
+            =
+            p(s_1,r_1\mid s_0,a_0)
+            \]
+          </div>
+        </div>
+
+        <div class="step">
+          <h3>一直乘下去</h3>
+          <p>
+            因为每一步都由“策略选择动作”和“环境返回状态奖励”组成，所以整条轨迹概率就是这些条件概率连乘。
+          </p>
+        </div>
+      </div>
+
+      <h3>4.2 为什么要取期望</h3>
+      <p>
+        同一个策略可能走出很多条轨迹。奖励也是随机的。因此我们不能只看某一次结果，而要看平均意义上的结果。这个平均就是期望。
+      </p>
+      <div class="formula">
+        \[
+        \mathbb{E}_\pi[\cdot]
+        \]
+      </div>
+      <p>
+        下标 \(\pi\) 表示：这个期望是在策略 \(\pi\) 诱导出来的轨迹分布下计算的。
+      </p>
+    </section>
+
+    <section id="return">
+      <h2>5. Return：为什么要折扣回报</h2>
+      <p>
+        强化学习关心的不是当前一步奖励，而是从当前时刻开始，未来所有奖励的总和。这个总和叫 return，记作 \(G_t\)。
+      </p>
+
+      <h3>5.1 不折扣的总回报</h3>
+      <p>
+        最直接的想法是把未来奖励全部加起来：
+      </p>
+      <div class="formula">
+        \[
+        G_t = R_{t+1}+R_{t+2}+R_{t+3}+\cdots
+        \]
+      </div>
+      <p>
+        但如果任务很长，甚至无限长，这个和可能发散。例如每一步奖励都是 1：
+      </p>
+      <div class="formula">
+        \[
+        G_t=1+1+1+\cdots=\infty
+        \]
+      </div>
+
+      <h3>5.2 引入折扣因子</h3>
+      <p>
+        为了让未来奖励逐渐变小，我们引入折扣因子 \(\gamma\)，得到：
+      </p>
+      <div class="formula">
+        \[
+        G_t = R_{t+1}+\gamma R_{t+2}+\gamma^2R_{t+3}+\gamma^3R_{t+4}+\cdots
+        \]
+      </div>
+      <p>
+        其中：
+      </p>
+      <div class="formula">
+        \[
+        0\le \gamma \le 1
+        \]
+      </div>
+
+      <h3>5.3 为什么这样可以防止发散</h3>
+      <p>
+        如果每一步奖励都是 1，则：
+      </p>
+      <div class="formula">
+        \[
+        G_t = 1+\gamma+\gamma^2+\gamma^3+\cdots
+        \]
+      </div>
+      <p>
+        这是一个等比级数。当 \(0\le \gamma <1\) 时：
+      </p>
+      <div class="formula">
+        \[
+        1+\gamma+\gamma^2+\gamma^3+\cdots
+        =
+        \frac{1}{1-\gamma}
+        \]
+      </div>
+      <p>
+        所以只要 \(\gamma<1\)，无限长奖励也可以有有限总和。
+      </p>
+
+      <h3>5.4 Return 的递推形式</h3>
+      <p>
+        这是后面推导 Bellman 方程最关键的一步。我们从定义开始：
+      </p>
+      <div class="formula">
+        \[
+        G_t = R_{t+1}+\gamma R_{t+2}+\gamma^2R_{t+3}+\gamma^3R_{t+4}+\cdots
+        \]
+      </div>
+      <p>
+        再写出下一时刻的回报：
+      </p>
+      <div class="formula">
+        \[
+        G_{t+1}=R_{t+2}+\gamma R_{t+3}+\gamma^2R_{t+4}+\cdots
+        \]
+      </div>
+      <p>
+        把 \(G_{t+1}\) 乘上 \(\gamma\)：
+      </p>
+      <div class="formula">
+        \[
+        \gamma G_{t+1}
+        =
+        \gamma R_{t+2}+\gamma^2R_{t+3}+\gamma^3R_{t+4}+\cdots
+        \]
+      </div>
+      <p>
+        与 \(G_t\) 对比：
+      </p>
+      <div class="formula">
+        \[
+        G_t
+        =
+        R_{t+1}
+        +
+        \underbrace{\gamma R_{t+2}+\gamma^2R_{t+3}+\gamma^3R_{t+4}+\cdots}_{\gamma G_{t+1}}
+        \]
+      </div>
+      <p>
+        因此得到递推关系：
+      </p>
+      <div class="formula">
+        \[
+        \boxed{G_t=R_{t+1}+\gamma G_{t+1}}
+        \]
+      </div>
+
+      <div class="box green">
+        <div class="box-title">这一步非常重要</div>
+        <p>
+          Bellman 方程的本质就是把“从现在开始的长期价值”拆成“当前一步奖励”加上“下一状态的长期价值”。
+        </p>
+      </div>
+    </section>
+
+    <section id="value">
+      <h2>6. Value Function：价值函数从哪里来</h2>
+      <p>
+        Return \(G_t\) 是某一次真实轨迹上的未来奖励总和。可是强化学习需要判断“一个状态通常好不好”，不能只看一次运气。因此要取期望。
+      </p>
+
+      <h3>6.1 状态价值函数</h3>
+      <p>
+        在策略 \(\pi\) 下，状态 \(s\) 的价值定义为：
+      </p>
+      <div class="formula">
+        \[
+        \boxed{
+        v_\pi(s)=\mathbb{E}_\pi[G_t\mid S_t=s]
+        }
+        \]
+      </div>
+      <p>
+        逐字解释：
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>部分</th>
+            <th>含义</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>\(v_\pi(s)\)</td>
+            <td>策略 \(\pi\) 下状态 \(s\) 的价值</td>
+          </tr>
+          <tr>
+            <td>\(\mathbb{E}_\pi\)</td>
+            <td>对策略 \(\pi\) 产生的所有可能轨迹取期望</td>
+          </tr>
+          <tr>
+            <td>\(G_t\)</td>
+            <td>从时间 \(t\) 开始的折扣回报</td>
+          </tr>
+          <tr>
+            <td>\(\mid S_t=s\)</td>
+            <td>条件是当前状态固定为 \(s\)</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>6.2 为什么写成条件期望</h3>
+      <p>
+        因为我们想问的是：如果现在已经站在状态 \(s\)，未来平均能得到多少奖励？
+      </p>
+      <p>
+        这不是无条件期望：
+      </p>
+      <div class="formula">
+        \[
+        \mathbb{E}_\pi[G_t]
+        \]
+      </div>
+      <p>
+        而是条件期望：
+      </p>
+      <div class="formula">
+        \[
+        \mathbb{E}_\pi[G_t\mid S_t=s]
+        \]
+      </div>
+      <p>
+        区别是：前者平均了所有可能起点，后者固定当前状态为 \(s\)。
+      </p>
+
+      <h3>6.3 动作价值函数</h3>
+      <p>
+        有时我们不只想知道状态好不好，还想知道在状态 \(s\) 下先做动作 \(a\) 好不好。于是定义动作价值函数：
+      </p>
+      <div class="formula">
+        \[
+        \boxed{
+        q_\pi(s,a)=\mathbb{E}_\pi[G_t\mid S_t=s,A_t=a]
+        }
+        \]
+      </div>
+      <p>
+        它问的是：如果当前状态是 \(s\)，并且第一步强制选择动作 \(a\)，之后继续按照策略 \(\pi\) 行动，那么未来平均回报是多少？
+      </p>
+
+      <div class="box blue">
+        <div class="box-title">两个价值函数的区别</div>
+        <p>
+          \(v_\pi(s)\) 评价状态，默认动作由策略 \(\pi\) 选择；\(q_\pi(s,a)\) 评价状态动作对，第一步动作固定为 \(a\)，之后再按 \(\pi\) 行动。
+        </p>
+      </div>
+    </section>
+
+    <section id="bellman-v">
+      <h2>7. Bellman 期望方程：逐步推导</h2>
+      <p>
+        Bellman 方程是第一阶段最重要的公式。我们从状态价值函数的定义出发，一步一步推导。
+      </p>
+
+      <h3>7.1 从定义开始</h3>
+      <div class="formula">
+        \[
+        v_\pi(s)=\mathbb{E}_\pi[G_t\mid S_t=s]
+        \]
+      </div>
+
+      <h3>7.2 用 Return 的递推形式替换 \(G_t\)</h3>
+      <p>
+        前面已经推导出：
+      </p>
+      <div class="formula">
+        \[
+        G_t=R_{t+1}+\gamma G_{t+1}
+        \]
+      </div>
+      <p>
+        代入状态价值定义：
+      </p>
+      <div class="formula">
+        \[
+        v_\pi(s)
+        =
+        \mathbb{E}_\pi[R_{t+1}+\gamma G_{t+1}\mid S_t=s]
+        \]
+      </div>
+
+      <h3>7.3 利用期望的线性性</h3>
+      <p>
+        期望有线性性质：
+      </p>
+      <div class="formula">
+        \[
+        \mathbb{E}[X+Y]=\mathbb{E}[X]+\mathbb{E}[Y]
+        \]
+      </div>
+      <p>
+        所以：
+      </p>
+      <div class="formula">
+        \[
+        v_\pi(s)
+        =
+        \mathbb{E}_\pi[R_{t+1}\mid S_t=s]
+        +
+        \gamma \mathbb{E}_\pi[G_{t+1}\mid S_t=s]
+        \]
+      </div>
+      <p>
+        但这样还不够，因为下一步状态 \(S_{t+1}\) 是随机的。我们需要把“下一步可能发生什么”展开。
+      </p>
+
+      <h3>7.4 对动作展开</h3>
+      <p>
+        当前状态为 \(s\) 时，策略 \(\pi\) 会以概率 \(\pi(a\mid s)\) 选择动作 \(a\)。所以我们对所有动作求和：
+      </p>
+      <div class="formula">
+        \[
+        v_\pi(s)
+        =
+        \sum_a \pi(a\mid s)
+        \mathbb{E}_\pi[G_t\mid S_t=s,A_t=a]
+        \]
+      </div>
+      <p>
+        这里用的是全期望公式：
+      </p>
+      <div class="formula">
+        \[
+        \mathbb{E}[X\mid S=s]
+        =
+        \sum_a \Pr(A=a\mid S=s)\mathbb{E}[X\mid S=s,A=a]
+        \]
+      </div>
+
+      <h3>7.5 对环境转移展开</h3>
+      <p>
+        在状态 \(s\) 做动作 \(a\) 后，环境可能转移到不同的 \(s'\)，并给出不同奖励 \(r\)。其概率是：
+      </p>
+      <div class="formula">
+        \[
+        p(s',r\mid s,a)
+        \]
+      </div>
+      <p>
+        所以继续展开：
+      </p>
+      <div class="formula">
+        \[
+        v_\pi(s)
+        =
+        \sum_a \pi(a\mid s)
+        \sum_{s',r}
+        p(s',r\mid s,a)
+        \left[
+        r+\gamma \mathbb{E}_\pi[G_{t+1}\mid S_{t+1}=s']
+        \right]
+        \]
+      </div>
+
+      <h3>7.6 识别下一状态的价值</h3>
+      <p>
+        根据状态价值函数定义：
+      </p>
+      <div class="formula">
+        \[
+        v_\pi(s')=\mathbb{E}_\pi[G_{t+1}\mid S_{t+1}=s']
+        \]
+      </div>
+      <p>
+        代回上式：
+      </p>
+      <div class="formula">
+        \[
+        \boxed{
+        v_\pi(s)
+        =
+        \sum_a \pi(a\mid s)
+        \sum_{s',r}
+        p(s',r\mid s,a)
+        \left[
+        r+\gamma v_\pi(s')
+        \right]
+        }
+        \]
+      </div>
+
+      <div class="box green">
+        <div class="box-title">Bellman 期望方程的直观含义</div>
+        <p>
+          一个状态的价值，等于在这个状态下按策略选择动作后，所有可能下一步结果的“即时奖励 + 折扣后的下一状态价值”的加权平均。
+        </p>
+      </div>
+
+      <h3>7.7 用一句话压缩公式</h3>
+      <div class="formula">
+        \[
+        \text{当前状态价值}
+        =
+        \text{即时奖励的期望}
+        +
+        \gamma \times \text{下一状态价值的期望}
+        \]
+      </div>
+    </section>
+
+    <section id="q">
+      <h2>8. Q 函数：动作价值函数</h2>
+      <p>
+        只知道状态价值 \(v_\pi(s)\) 有时不够，因为决策时我们真正要比较的是：在同一个状态下，哪个动作更好。
+      </p>
+
+      <h3>8.1 Q 函数定义</h3>
+      <div class="formula">
+        \[
+        q_\pi(s,a)
+        =
+        \mathbb{E}_\pi[G_t\mid S_t=s,A_t=a]
+        \]
+      </div>
+
+      <h3>8.2 \(v_\pi\) 和 \(q_\pi\) 的关系</h3>
+      <p>
+        状态价值是策略对所有动作的平均：
+      </p>
+      <div class="formula">
+        \[
+        v_\pi(s)=\sum_a \pi(a\mid s)q_\pi(s,a)
+        \]
+      </div>
+      <p>推导如下：</p>
+      <div class="steps">
+        <div class="step">
+          <h3>从 \(v_\pi(s)\) 定义开始</h3>
+          <div class="formula">
+            \[
+            v_\pi(s)=\mathbb{E}_\pi[G_t\mid S_t=s]
+            \]
+          </div>
+        </div>
+        <div class="step">
+          <h3>按动作 \(A_t\) 分类</h3>
+          <div class="formula">
+            \[
+            \mathbb{E}_\pi[G_t\mid S_t=s]
+            =
+            \sum_a
+            \Pr(A_t=a\mid S_t=s)
+            \mathbb{E}_\pi[G_t\mid S_t=s,A_t=a]
+            \]
+          </div>
+        </div>
+        <div class="step">
+          <h3>代入策略与 Q 函数定义</h3>
+          <div class="formula">
+            \[
+            \Pr(A_t=a\mid S_t=s)=\pi(a\mid s)
+            \]
+            \[
+            \mathbb{E}_\pi[G_t\mid S_t=s,A_t=a]=q_\pi(s,a)
+            \]
+          </div>
+          <p>所以：</p>
+          <div class="formula">
+            \[
+            \boxed{
+            v_\pi(s)=\sum_a \pi(a\mid s)q_\pi(s,a)
+            }
+            \]
+          </div>
+        </div>
+      </div>
+
+      <h3>8.3 从 Q 函数反推策略</h3>
+      <p>
+        如果我们知道每个动作的 \(q(s,a)\)，最自然的决策就是选最大 Q 的动作：
+      </p>
+      <div class="formula">
+        \[
+        \pi(s)=\arg\max_a q(s,a)
+        \]
+      </div>
+      <p>
+        这也是后面 Q-learning 能做控制的原因：只要学会 Q 函数，就可以直接选动作。
+      </p>
+    </section>
+
+    <section id="bellman-q">
+      <h2>9. Bellman 方程的 Q 形式</h2>
+      <p>
+        现在我们推导 \(q_\pi(s,a)\) 的 Bellman 方程。
+      </p>
+
+      <h3>9.1 从 Q 函数定义开始</h3>
+      <div class="formula">
+        \[
+        q_\pi(s,a)=\mathbb{E}_\pi[G_t\mid S_t=s,A_t=a]
+        \]
+      </div>
+
+      <h3>9.2 代入 Return 递推</h3>
+      <div class="formula">
+        \[
+        G_t=R_{t+1}+\gamma G_{t+1}
+        \]
+      </div>
+      <p>因此：</p>
+      <div class="formula">
+        \[
+        q_\pi(s,a)
+        =
+        \mathbb{E}_\pi[R_{t+1}+\gamma G_{t+1}\mid S_t=s,A_t=a]
+        \]
+      </div>
+
+      <h3>9.3 对环境的下一状态和奖励展开</h3>
+      <p>
+        因为当前 \(s,a\) 已经固定，下一步随机性来自环境：
+      </p>
+      <div class="formula">
+        \[
+        q_\pi(s,a)
+        =
+        \sum_{s',r}
+        p(s',r\mid s,a)
+        \left[
+        r+\gamma \mathbb{E}_\pi[G_{t+1}\mid S_{t+1}=s']
+        \right]
+        \]
+      </div>
+
+      <h3>9.4 下一状态后还要按策略选择动作</h3>
+      <p>
+        到达 \(s'\) 后，智能体会按照策略 \(\pi(a'\mid s')\) 选择下一动作 \(a'\)。所以：
+      </p>
+      <div class="formula">
+        \[
+        \mathbb{E}_\pi[G_{t+1}\mid S_{t+1}=s']
+        =
+        v_\pi(s')
+        =
+        \sum_{a'}\pi(a'\mid s')q_\pi(s',a')
+        \]
+      </div>
+
+      <h3>9.5 代入得到 Q 的 Bellman 期望方程</h3>
+      <div class="formula">
+        \[
+        \boxed{
+        q_\pi(s,a)
+        =
+        \sum_{s',r}
+        p(s',r\mid s,a)
+        \left[
+        r+\gamma
+        \sum_{a'}\pi(a'\mid s')q_\pi(s',a')
+        \right]
+        }
+        \]
+      </div>
+
+      <div class="box blue">
+        <div class="box-title">注意</div>
+        <p>
+          \(v_\pi(s)\) 的 Bellman 方程先对当前动作 \(a\) 求平均；\(q_\pi(s,a)\) 的 Bellman 方程当前动作已经固定，所以先对环境转移求平均，然后再对下一状态的动作 \(a'\) 求平均。
+        </p>
+      </div>
+    </section>
+
+    <section id="optimal">
+      <h2>10. 最优价值与 Bellman 最优方程</h2>
+      <p>
+        前面的 \(v_\pi\) 和 \(q_\pi\) 都依赖某个给定策略 \(\pi\)。但强化学习的目标通常不是评价一个固定策略，而是找到最优策略。
+      </p>
+
+      <h3>10.1 最优状态价值函数</h3>
+      <div class="formula">
+        \[
+        v_*(s)=\max_\pi v_\pi(s)
+        \]
+      </div>
+      <p>
+        它表示：在所有可能策略里，从状态 \(s\) 出发能获得的最大期望回报。
+      </p>
+
+      <h3>10.2 最优动作价值函数</h3>
+      <div class="formula">
+        \[
+        q_*(s,a)=\max_\pi q_\pi(s,a)
+        \]
+      </div>
+      <p>
+        它表示：在状态 \(s\) 先做动作 \(a\)，之后采用最优策略时，能得到的最大期望回报。
+      </p>
+
+      <h3>10.3 最优策略与 \(q_*\)</h3>
+      <p>
+        如果知道 \(q_*(s,a)\)，最优动作直接由最大值给出：
+      </p>
+      <div class="formula">
+        \[
+        \pi_*(s)=\arg\max_a q_*(s,a)
+        \]
+      </div>
+
+      <h3>10.4 Bellman 最优方程：状态价值形式</h3>
+      <p>
+        由于最优策略会选择使未来价值最大的动作，所以：
+      </p>
+      <div class="formula">
+        \[
+        \boxed{
+        v_*(s)
+        =
+        \max_a
+        \sum_{s',r}
+        p(s',r\mid s,a)
+        \left[
+        r+\gamma v_*(s')
+        \right]
+        }
+        \]
+      </div>
+      <p>
+        和 Bellman 期望方程相比，最大的变化是：
+      </p>
+      <div class="formula">
+        \[
+        \sum_a \pi(a\mid s)(\cdot)
+        \quad\Longrightarrow\quad
+        \max_a(\cdot)
+        \]
+      </div>
+      <p>
+        也就是说，不再按照某个策略加权平均，而是直接选择最好的动作。
+      </p>
+
+      <h3>10.5 Bellman 最优方程：动作价值形式</h3>
+      <p>
+        对 \(q_*(s,a)\)，当前动作 \(a\) 已经固定。执行它后到达 \(s'\)，下一步开始选择最优动作：
+      </p>
+      <div class="formula">
+        \[
+        \boxed{
+        q_*(s,a)
+        =
+        \sum_{s',r}
+        p(s',r\mid s,a)
+        \left[
+        r+\gamma\max_{a'}q_*(s',a')
+        \right]
+        }
+        \]
+      </div>
+
+      <div class="box green">
+        <div class="box-title">最重要的一句话</div>
+        <p>
+          Q-learning 的更新公式，本质上就是在用样本近似这个 \(q_*\) 的 Bellman 最优方程。
+        </p>
+      </div>
+    </section>
+
+    <section id="policy-eval">
+      <h2>11. Policy Evaluation：策略评估</h2>
+      <p>
+        策略评估的任务是：给定一个策略 \(\pi\)，计算它的价值函数 \(v_\pi\)。
+      </p>
+
+      <h3>11.1 从 Bellman 期望方程出发</h3>
+      <div class="formula">
+        \[
+        v_\pi(s)
+        =
+        \sum_a \pi(a\mid s)
+        \sum_{s',r}
+        p(s',r\mid s,a)
+        \left[
+        r+\gamma v_\pi(s')
+        \right]
+        \]
+      </div>
+
+      <h3>11.2 把它看成一个方程组</h3>
+      <p>
+        如果状态空间有限，比如：
+      </p>
+      <div class="formula">
+        \[
+        \mathcal{S}=\{s_1,s_2,\ldots,s_n\}
+        \]
+      </div>
+      <p>
+        那么每个状态都有一个方程：
+      </p>
+      <div class="formula">
+        \[
+        v_\pi(s_1)=\cdots
+        \]
+        \[
+        v_\pi(s_2)=\cdots
+        \]
+        \[
+        \vdots
+        \]
+        \[
+        v_\pi(s_n)=\cdots
+        \]
+      </div>
+      <p>
+        未知数就是：
+      </p>
+      <div class="formula">
+        \[
+        v_\pi(s_1),v_\pi(s_2),\ldots,v_\pi(s_n)
+        \]
+      </div>
+
+      <h3>11.3 迭代求解</h3>
+      <p>
+        直接解线性方程组有时很贵。强化学习常用迭代形式：
+      </p>
+      <div class="formula">
+        \[
+        v_{k+1}(s)
+        =
+        \sum_a \pi(a\mid s)
+        \sum_{s',r}
+        p(s',r\mid s,a)
+        \left[
+        r+\gamma v_k(s')
+        \right]
+        \]
+      </div>
+      <p>
+        其中 \(v_k\) 是第 \(k\) 次估计，\(v_{k+1}\) 是下一次估计。
+      </p>
+
+      <h3>11.4 为什么这个迭代合理</h3>
+      <p>
+        Bellman 方程要求：
+      </p>
+      <div class="formula">
+        \[
+        v = T_\pi v
+        \]
+      </div>
+      <p>
+        其中 \(T_\pi\) 是 Bellman 期望算子：
+      </p>
+      <div class="formula">
+        \[
+        (T_\pi v)(s)
+        =
+        \sum_a \pi(a\mid s)
+        \sum_{s',r}p(s',r\mid s,a)
+        \left[r+\gamma v(s')\right]
+        \]
+      </div>
+      <p>
+        迭代就是不断做：
+      </p>
+      <div class="formula">
+        \[
+        v_{k+1}=T_\pi v_k
+        \]
+      </div>
+      <p>
+        当 \(0\le \gamma<1\) 且状态动作有限时，这个迭代会逐渐收敛到 \(v_\pi\)。
+      </p>
+    </section>
+
+    <section id="policy-improve">
+      <h2>12. Policy Improvement：策略改进</h2>
+      <p>
+        策略评估告诉我们当前策略有多好。策略改进要回答：怎样基于当前价值函数得到更好的策略？
+      </p>
+
+      <h3>12.1 用 \(q_\pi(s,a)\) 比较动作</h3>
+      <p>
+        在状态 \(s\) 下，如果某个动作 \(a\) 满足：
+      </p>
+      <div class="formula">
+        \[
+        q_\pi(s,a)>v_\pi(s)
+        \]
+      </div>
+      <p>
+        这说明：先做动作 \(a\)，再按照原策略 \(\pi\) 走，比直接按原策略平均选择动作更好。
+      </p>
+
+      <h3>12.2 贪心改进</h3>
+      <p>
+        于是定义新策略：
+      </p>
+      <div class="formula">
+        \[
+        \pi'(s)=\arg\max_a q_\pi(s,a)
+        \]
+      </div>
+      <p>
+        这叫 greedy policy improvement，贪心策略改进。
+      </p>
+
+      <h3>12.3 策略迭代</h3>
+      <p>
+        策略迭代就是反复做两步：
+      </p>
+      <div class="formula">
+        \[
+        \pi_0
+        \xrightarrow{\text{policy evaluation}}
+        v_{\pi_0}
+        \xrightarrow{\text{policy improvement}}
+        \pi_1
+        \xrightarrow{\text{policy evaluation}}
+        v_{\pi_1}
+        \xrightarrow{\text{policy improvement}}
+        \pi_2
+        \rightarrow \cdots
+        \]
+      </div>
+      <p>
+        直到策略不再变化，就得到最优策略。
+      </p>
+
+      <div class="box blue">
+        <div class="box-title">策略迭代的思想</div>
+        <p>
+          先评价当前策略，再根据评价结果改进策略。这个“评价—改进”的循环，是许多强化学习算法的基本骨架。
+        </p>
+      </div>
+    </section>
+
+    <section id="value-iteration">
+      <h2>13. Value Iteration：价值迭代</h2>
+      <p>
+        价值迭代可以看成把策略评估和策略改进合并在一起。它直接使用 Bellman 最优方程。
+      </p>
+
+      <h3>13.1 Bellman 最优方程</h3>
+      <div class="formula">
+        \[
+        v_*(s)
+        =
+        \max_a
+        \sum_{s',r}
+        p(s',r\mid s,a)
+        \left[
+        r+\gamma v_*(s')
+        \right]
+        \]
+      </div>
+
+      <h3>13.2 迭代形式</h3>
+      <p>
+        用当前估计 \(v_k\) 替代未知的 \(v_*\)，得到更新：
+      </p>
+      <div class="formula">
+        \[
+        \boxed{
+        v_{k+1}(s)
+        =
+        \max_a
+        \sum_{s',r}
+        p(s',r\mid s,a)
+        \left[
+        r+\gamma v_k(s')
+        \right]
+        }
+        \]
+      </div>
+
+      <h3>13.3 价值迭代的算法流程</h3>
+      <pre><code>初始化：对所有状态 s，设置 V(s)=0
+
+重复直到收敛：
+    对每个状态 s：
+        对每个动作 a：
+            计算执行 a 后的期望价值
+            value(a) = Σ_{s',r} p(s',r|s,a)[r + γV(s')]
+        更新：
+            V(s) = max_a value(a)
+
+最后得到策略：
+    π(s) = argmax_a Σ_{s',r} p(s',r|s,a)[r + γV(s')]</code></pre>
+
+      <h3>13.4 一个小例子</h3>
+      <p>
+        假设某状态 \(s\) 有两个动作 \(a_1,a_2\)。动作 \(a_1\) 后必定到 \(s_1\)，奖励 1；动作 \(a_2\) 后必定到 \(s_2\)，奖励 0。设 \(\gamma=0.9\)，当前估计：
+      </p>
+      <div class="formula">
+        \[
+        v_k(s_1)=10,\qquad v_k(s_2)=15
+        \]
+      </div>
+      <p>
+        那么动作 \(a_1\) 的价值估计为：
+      </p>
+      <div class="formula">
+        \[
+        1+0.9\times 10=10
+        \]
+      </div>
+      <p>
+        动作 \(a_2\) 的价值估计为：
+      </p>
+      <div class="formula">
+        \[
+        0+0.9\times 15=13.5
+        \]
+      </div>
+      <p>
+        取最大：
+      </p>
+      <div class="formula">
+        \[
+        v_{k+1}(s)=\max(10,13.5)=13.5
+        \]
+      </div>
+      <p>
+        虽然 \(a_2\) 眼前奖励为 0，但它通往更有价值的未来，所以更优。
+      </p>
+    </section>
+
+    <section id="mc-td">
+      <h2>14. Monte Carlo 与 TD：不知道环境模型怎么办</h2>
+      <p>
+        前面的 policy evaluation 和 value iteration 都用了 \(p(s',r\mid s,a)\)。但现实中我们往往不知道环境转移概率。
+      </p>
+      <p>
+        这时我们不再用完整期望，而是用样本估计。
+      </p>
+
+      <h3>14.1 Monte Carlo 方法</h3>
+      <p>
+        Monte Carlo 的思想是：等一整条轨迹结束后，直接用真实回报 \(G_t\) 作为目标。
+      </p>
+      <div class="formula">
+        \[
+        V(S_t)\leftarrow V(S_t)+\alpha\left[G_t-V(S_t)\right]
+        \]
+      </div>
+      <p>
+        这条公式来自均值更新。假设当前估计是 \(V(S_t)\)，新观察到的样本目标是 \(G_t\)，那么：
+      </p>
+      <div class="formula">
+        \[
+        \text{新估计}
+        =
+        \text{旧估计}
+        +
+        \alpha(\text{目标}-\text{旧估计})
+        \]
+      </div>
+
+      <h3>14.2 TD 方法</h3>
+      <p>
+        TD 全称 Temporal Difference，中文常译为时序差分。它不等整条轨迹结束，而是只看一步：
+      </p>
+      <div class="formula">
+        \[
+        G_t=R_{t+1}+\gamma G_{t+1}
+        \]
+      </div>
+      <p>
+        但是 \(G_{t+1}\) 不知道，于是用当前估计 \(V(S_{t+1})\) 近似：
+      </p>
+      <div class="formula">
+        \[
+        G_t \approx R_{t+1}+\gamma V(S_{t+1})
+        \]
+      </div>
+      <p>
+        于是 TD 目标是：
+      </p>
+      <div class="formula">
+        \[
+        \text{TD target}=R_{t+1}+\gamma V(S_{t+1})
+        \]
+      </div>
+      <p>
+        TD 误差是：
+      </p>
+      <div class="formula">
+        \[
+        \delta_t=R_{t+1}+\gamma V(S_{t+1})-V(S_t)
+        \]
+      </div>
+      <p>
+        更新公式是：
+      </p>
+      <div class="formula">
+        \[
+        \boxed{
+        V(S_t)\leftarrow V(S_t)+\alpha\delta_t
+        }
+        \]
+      </div>
+      <p>
+        即：
+      </p>
+      <div class="formula">
+        \[
+        \boxed{
+        V(S_t)\leftarrow V(S_t)+\alpha
+        \left[
+        R_{t+1}+\gamma V(S_{t+1})-V(S_t)
+        \right]
+        }
+        \]
+      </div>
+
+      <h3>14.3 MC 与 TD 的区别</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>方法</th>
+            <th>目标</th>
+            <th>是否等轨迹结束</th>
+            <th>特点</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Monte Carlo</td>
+            <td>\(G_t\)</td>
+            <td>需要</td>
+            <td>目标真实，但方差大</td>
+          </tr>
+          <tr>
+            <td>TD</td>
+            <td>\(R_{t+1}+\gamma V(S_{t+1})\)</td>
+            <td>不需要</td>
+            <td>更新快，但目标使用了估计</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="qlearning">
+      <h2>15. Q-learning 从 Bellman 最优方程推导</h2>
+      <p>
+        Q-learning 是第一个你必须真正吃透的控制算法。它的核心是学习最优动作价值函数 \(q_*(s,a)\)。
+      </p>
+
+      <h3>15.1 从 Bellman 最优方程开始</h3>
+      <div class="formula">
+        \[
+        q_*(s,a)
+        =
+        \sum_{s',r}
+        p(s',r\mid s,a)
+        \left[
+        r+\gamma\max_{a'}q_*(s',a')
+        \right]
+        \]
+      </div>
+
+      <h3>15.2 现实中没有完整转移概率</h3>
+      <p>
+        如果不知道 \(p(s',r\mid s,a)\)，就没法对所有 \(s',r\) 求和。我们只能从环境中采样一条经验：
+      </p>
+      <div class="formula">
+        \[
+        (s,a,r,s')
+        \]
+      </div>
+      <p>
+        这表示：在状态 \(s\) 做动作 \(a\)，得到奖励 \(r\)，进入下一状态 \(s'\)。
+      </p>
+
+      <h3>15.3 用单个样本近似期望</h3>
+      <p>
+        Bellman 最优方程右边的期望目标：
+      </p>
+      <div class="formula">
+        \[
+        \mathbb{E}\left[
+        R_{t+1}+\gamma\max_{a'}q_*(S_{t+1},a')
+        \mid S_t=s,A_t=a
+        \right]
+        \]
+      </div>
+      <p>
+        用一次采样近似为：
+      </p>
+      <div class="formula">
+        \[
+        r+\gamma\max_{a'}Q(s',a')
+        \]
+      </div>
+
+      <h3>15.4 构造 TD 误差</h3>
+      <p>
+        当前估计是：
+      </p>
+      <div class="formula">
+        \[
+        Q(s,a)
+        \]
+      </div>
+      <p>
+        新目标是：
+      </p>
+      <div class="formula">
+        \[
+        r+\gamma\max_{a'}Q(s',a')
+        \]
+      </div>
+      <p>
+        所以误差是：
+      </p>
+      <div class="formula">
+        \[
+        \delta
+        =
+        r+\gamma\max_{a'}Q(s',a')-Q(s,a)
+        \]
+      </div>
+
+      <h3>15.5 得到 Q-learning 更新公式</h3>
+      <p>
+        用“旧估计 + 学习率 × 误差”的形式更新：
+      </p>
+      <div class="formula">
+        \[
+        Q(s,a)\leftarrow Q(s,a)+\alpha\delta
+        \]
+      </div>
+      <p>
+        代入 \(\delta\)：
+      </p>
+      <div class="formula">
+        \[
+        \boxed{
+        Q(s,a)
+        \leftarrow
+        Q(s,a)
+        +
+        \alpha
+        \left[
+        r+\gamma\max_{a'}Q(s',a')-Q(s,a)
+        \right]
+        }
+        \]
+      </div>
+
+      <h3>15.6 为什么叫 off-policy</h3>
+      <p>
+        Q-learning 更新目标中使用的是：
+      </p>
+      <div class="formula">
+        \[
+        \max_{a'}Q(s',a')
+        \]
+      </div>
+      <p>
+        这表示它假设下一步采用贪心最优动作。但实际采样时，智能体可能为了探索而选择了随机动作。例如用 \(\epsilon\)-greedy：
+      </p>
+      <div class="formula">
+        \[
+        A_t=
+        \begin{cases}
+        \text{随机动作}, & \text{概率 } \epsilon \\
+        \arg\max_a Q(S_t,a), & \text{概率 } 1-\epsilon
+        \end{cases}
+        \]
+      </div>
+      <p>
+        行为策略用于探索，更新目标却朝最优贪心策略学习，因此称为 off-policy。
+      </p>
+
+      <h3>15.7 Q-learning 伪代码</h3>
+      <pre><code>初始化 Q(s,a)=0
+
+for episode in episodes:
+    初始化状态 s
+    while s 不是终止状态:
+        用 ε-greedy 根据 Q 选择动作 a
+        执行动作 a，得到奖励 r 和下一状态 s'
+        target = r + γ * max_{a'} Q(s', a')
+        error = target - Q(s, a)
+        Q(s, a) = Q(s, a) + α * error
+        s = s'</code></pre>
+
+      <div class="box warn">
+        <div class="box-title">小白要特别记住</div>
+        <p>
+          Q-learning 的公式不是凭空来的。它来自 Bellman 最优方程，只是把完整期望换成了一次环境采样，把未知的 \(q_*\) 换成当前估计 \(Q\)。
+        </p>
+      </div>
+    </section>
+
+    <section id="llm-map">
+      <h2>16. 和大模型强化学习的对应关系</h2>
+      <p>
+        现在把第一阶段的数学对象映射到大模型里。后面你学 RLHF、PPO、DPO、GRPO 时会反复用到这些对应关系。
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>传统 RL</th>
+            <th>大模型后训练中的对应物</th>
+            <th>解释</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>状态 \(S_t\)</td>
+            <td>prompt + 已生成 token</td>
+            <td>模型当前看到的上下文</td>
+          </tr>
+          <tr>
+            <td>动作 \(A_t\)</td>
+            <td>下一个 token，或一整段 response</td>
+            <td>语言模型的输出选择</td>
+          </tr>
+          <tr>
+            <td>策略 \(\pi(a\mid s)\)</td>
+            <td>语言模型的 token 概率分布</td>
+            <td>模型在上下文下生成各 token 的概率</td>
+          </tr>
+          <tr>
+            <td>奖励 \(R\)</td>
+            <td>人类偏好、规则奖励、答案正确性、测试通过率</td>
+            <td>评价回答好坏的信号</td>
+          </tr>
+          <tr>
+            <td>价值函数 \(V\)</td>
+            <td>Value Head / Critic</td>
+            <td>PPO 中估计当前生成轨迹的未来收益</td>
+          </tr>
+          <tr>
+            <td>Q 函数 \(Q(s,a)\)</td>
+            <td>某个 token 或动作选择后的长期收益</td>
+            <td>在 LLM 中显式 Q-learning 不常见，但思想存在</td>
+          </tr>
+          <tr>
+            <td>轨迹 \(\tau\)</td>
+            <td>完整生成过程 / 多轮工具调用过程</td>
+            <td>从 prompt 到最终答案的行为序列</td>
+          </tr>
+          <tr>
+            <td>Return \(G_t\)</td>
+            <td>最终奖励或过程奖励的折扣累计</td>
+            <td>回答质量、推理正确性、工具调用成功率等</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="box blue">
+        <div class="box-title">关键理解</div>
+        <p>
+          大模型不是“套了一层强化学习名词”。语言模型本身就是一个策略分布：给定上下文 \(s\)，输出下一个 token \(a\) 的概率 \(\pi_\theta(a\mid s)\)。后训练中的 RL，就是在奖励信号下调整这个策略分布。
+        </p>
+      </div>
+
+      <h3>16.1 为什么这个阶段对 PPO 很重要</h3>
+      <p>
+        PPO 本质上仍然在优化策略：
+      </p>
+      <div class="formula">
+        \[
+        \pi_\theta(a\mid s)
+        \]
+      </div>
+      <p>
+        只是它会限制新策略不要离旧策略太远。后面你会看到 KL 惩罚：
+      </p>
+      <div class="formula">
+        \[
+        \mathrm{KL}(\pi_\theta \,\|\, \pi_{\mathrm{ref}})
+        \]
+      </div>
+      <p>
+        这可以理解为：模型可以为了更高奖励而改变输出分布，但不能改得太离谱。
+      </p>
+    </section>
+
+    <section id="tasks">
+      <h2>17. 本阶段作业</h2>
+      <p>
+        你现在不要急着跑大模型。先完成下面几组小作业。
+      </p>
+
+      <h3>作业 1：手推 Return 递推</h3>
+      <p>从下面定义出发：</p>
+      <div class="formula">
+        \[
+        G_t=R_{t+1}+\gamma R_{t+2}+\gamma^2R_{t+3}+\cdots
+        \]
+      </div>
+      <p>独立推导：</p>
+      <div class="formula">
+        \[
+        G_t=R_{t+1}+\gamma G_{t+1}
+        \]
+      </div>
+
+      <h3>作业 2：手推 Bellman 期望方程</h3>
+      <p>从定义出发：</p>
+      <div class="formula">
+        \[
+        v_\pi(s)=\mathbb{E}_\pi[G_t\mid S_t=s]
+        \]
+      </div>
+      <p>推导到：</p>
+      <div class="formula">
+        \[
+        v_\pi(s)
+        =
+        \sum_a \pi(a\mid s)
+        \sum_{s',r}
+        p(s',r\mid s,a)
+        \left[
+        r+\gamma v_\pi(s')
+        \right]
+        \]
+      </div>
+
+      <h3>作业 3：手推 Q-learning 更新</h3>
+      <p>从 Bellman 最优方程：</p>
+      <div class="formula">
+        \[
+        q_*(s,a)
+        =
+        \sum_{s',r}
+        p(s',r\mid s,a)
+        \left[
+        r+\gamma\max_{a'}q_*(s',a')
+        \right]
+        \]
+      </div>
+      <p>推导到：</p>
+      <div class="formula">
+        \[
+        Q(s,a)
+        \leftarrow
+        Q(s,a)
+        +
+        \alpha
+        \left[
+        r+\gamma\max_{a'}Q(s',a')-Q(s,a)
+        \right]
+        \]
+      </div>
+
+      <h3>作业 4：写一个最小 GridWorld</h3>
+      <p>
+        用 Python 写一个 \(4\times 4\) 网格世界。动作有上下左右，终点奖励为 1，其他步奖励为 0。先用 value iteration 求 \(V(s)\)，再用 Q-learning 学 \(Q(s,a)\)。
+      </p>
+
+      <h3>作业 5：把 LLM 映射成 MDP</h3>
+      <p>
+        对一个数学题回答任务，写出：
+      </p>
+      <ul class="checklist">
+        <li>状态 \(s\) 是什么？</li>
+        <li>动作 \(a\) 是什么？</li>
+        <li>策略 \(\pi_\theta(a\mid s)\) 是什么？</li>
+        <li>奖励 \(r\) 怎么设计？</li>
+        <li>轨迹 \(\tau\) 是什么？</li>
+      </ul>
+    </section>
+
+    <section id="summary">
+      <h2>18. 一页总结</h2>
+      <p>
+        第一阶段你只需要抓住一条主线：
+      </p>
+      <div class="formula">
+        \[
+        \text{交互}
+        \Rightarrow
+        \text{轨迹}
+        \Rightarrow
+        \text{回报}
+        \Rightarrow
+        \text{价值函数}
+        \Rightarrow
+        \text{Bellman 方程}
+        \Rightarrow
+        \text{动态规划 / TD / Q-learning}
+        \]
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>核心公式</th>
+            <th>你要理解的含义</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>\(G_t=R_{t+1}+\gamma G_{t+1}\)</td>
+            <td>长期回报可以拆成当前奖励和未来回报</td>
+          </tr>
+          <tr>
+            <td>\(v_\pi(s)=\mathbb{E}_\pi[G_t\mid S_t=s]\)</td>
+            <td>状态价值是从该状态出发的期望长期回报</td>
+          </tr>
+          <tr>
+            <td>\(q_\pi(s,a)=\mathbb{E}_\pi[G_t\mid S_t=s,A_t=a]\)</td>
+            <td>动作价值是先做某动作后的期望长期回报</td>
+          </tr>
+          <tr>
+            <td>\(v_\pi(s)=\sum_a\pi(a\mid s)\sum_{s',r}p(s',r\mid s,a)[r+\gamma v_\pi(s')]\)</td>
+            <td>Bellman 期望方程，评价固定策略</td>
+          </tr>
+          <tr>
+            <td>\(q_*(s,a)=\sum_{s',r}p(s',r\mid s,a)[r+\gamma\max_{a'}q_*(s',a')]\)</td>
+            <td>Bellman 最优方程，寻找最优动作价值</td>
+          </tr>
+          <tr>
+            <td>\(Q(s,a)\leftarrow Q(s,a)+\alpha[r+\gamma\max_{a'}Q(s',a')-Q(s,a)]\)</td>
+            <td>Q-learning 用样本近似 Bellman 最优方程</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="box green">
+        <div class="box-title">进入第二阶段前的标准</div>
+        <p>
+          你不需要把所有公式背下来，但必须能从 Return 的递推式推导出 Bellman 方程，并能解释 Q-learning 的 target 为什么是 \(r+\gamma\max_{a'}Q(s',a')\)。达到这个标准，再学 Policy Gradient 和 PPO 就不会漂。
+        </p>
+      </div>
+    </section>
+
+    <section>
+      <h2>参考阅读顺序</h2>
+      <p>
+        建议先用本文打底，再按以下顺序补充阅读：
+      </p>
+      <ol>
+        <li>Sutton & Barto, <em>Reinforcement Learning: An Introduction</em>，第 1—6 章。</li>
+        <li>OpenAI Spinning Up，重点看 Key Concepts、Vanilla Policy Gradient、PPO。</li>
+        <li>Berkeley CS285，先看 MDP、Dynamic Programming、Policy Gradient 部分。</li>
+        <li>后续再进入 InstructGPT、DPO、DeepSeek-R1、GRPO。</li>
+      </ol>
+    </section>
+
+    <div class="footer">
+      强化学习大模型学习路线 · 第一阶段 · 数学基础详细推导
+    </div>
+  </main>
+
+  <script>
+    function toggleToc() {
+      document.getElementById('drawer').classList.toggle('open');
+    }
+    function toggleTheme() {
+      document.body.classList.toggle('dark');
+    }
+    document.querySelectorAll('.drawer a').forEach(a => {
+      a.addEventListener('click', () => {
+        document.getElementById('drawer').classList.remove('open');
+      });
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,5873 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>PyTorch《A Primer on LLM Post-Training》中文精读：后训练路线版</title>
+  
+  
+<style>
+html {
+  scroll-behavior: smooth;
+}
+body {
+  font-family: "Microsoft YaHei", Arial, sans-serif;
+  line-height: 1.85;
+  max-width: 1080px;
+  margin: 40px auto;
+  padding: 0 28px 100px;
+  background: #f7f8fb;
+  color: #1f2937;
+}
+h1 {
+  font-size: 34px;
+  line-height: 1.35;
+  border-bottom: 5px solid #2563eb;
+  padding-bottom: 14px;
+}
+h2 {
+  margin-top: 48px;
+  padding: 12px 16px;
+  font-size: 27px;
+  background: #eef4ff;
+  border-left: 7px solid #2563eb;
+}
+h3 {
+  margin-top: 28px;
+  font-size: 21px;
+}
+h2, h3 {
+  scroll-margin-top: 24px;
+}
+.box {
+  background: #ffffff;
+  border: 1px solid #d9e2ef;
+  border-radius: 12px;
+  padding: 18px 22px;
+  margin: 18px 0;
+}
+.note {
+  background: #fff7d6;
+  border-left: 6px solid #d6a800;
+}
+.train {
+  background: #ecfdf3;
+  border-left: 6px solid #16a34a;
+}
+.warn {
+  background: #fff1f1;
+  border-left: 6px solid #dc2626;
+}
+.figure {
+  background: #ffffff;
+  border: 1px solid #d9e2ef;
+  border-radius: 14px;
+  padding: 16px;
+  margin: 22px 0;
+}
+.figure img {
+  width: 100%;
+  max-height: 680px;
+  object-fit: contain;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+}
+.caption {
+  color: #667085;
+  font-size: 14px;
+  margin-top: 10px;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 18px 0;
+  background: #ffffff;
+}
+th, td {
+  border: 1px solid #d9e2ef;
+  padding: 11px 13px;
+  vertical-align: top;
+}
+th {
+  background: #f1f5f9;
+}
+pre {
+  background: #111827;
+  color: #e5e7eb;
+  padding: 18px;
+  border-radius: 10px;
+  overflow-x: auto;
+  line-height: 1.55;
+}
+.page-toc {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+}
+.page-toc-toggle {
+  border: 0;
+  border-radius: 999px;
+  padding: 10px 16px;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.24);
+}
+.page-toc-toggle:hover {
+  background: #1d4ed8;
+}
+.page-toc-panel {
+  display: none;
+  width: 300px;
+  max-height: calc(100vh - 90px);
+  overflow: auto;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid #d9e2ef;
+  border-radius: 14px;
+  padding: 16px 18px;
+  margin-top: 10px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+  backdrop-filter: blur(8px);
+}
+.page-toc.is-open .page-toc-panel {
+  display: block;
+}
+.page-toc > .page-toc-title,
+.page-toc > .page-toc-list {
+  display: none;
+}
+.page-toc-title {
+  margin-bottom: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+}
+.page-toc-list,
+.page-toc-sublist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.page-toc-item + .page-toc-item {
+  margin-top: 10px;
+}
+.page-toc-sublist {
+  margin-top: 8px;
+  padding-left: 14px;
+  border-left: 2px solid #e5e7eb;
+}
+.page-toc-subitem + .page-toc-subitem {
+  margin-top: 6px;
+}
+.page-toc-link {
+  display: block;
+  color: #334155;
+  text-decoration: none;
+  font-size: 14px;
+  line-height: 1.55;
+}
+.page-toc-link:hover {
+  color: #2563eb;
+}
+@media (max-width: 1100px) {
+  .page-toc {
+    top: 12px;
+    right: 12px;
+  }
+  .page-toc-panel {
+    width: min(300px, calc(100vw - 24px));
+    max-height: calc(100vh - 72px);
+  }
+}
+
+</style>
+</head>
+
+<body>
+
+<nav class="page-toc" aria-label="文章目录">
+  <div class="page-toc-title">目录导航</div>
+  <ol class="page-toc-list" id="page-toc-list"></ol>
+</nav>
+
+<h1>PyTorch《A Primer on LLM Post-Training》中文精读笔记<br>后训练路线学习版</h1>
+
+<div class="box note">
+<p><strong>原文标题：</strong>A Primer on LLM Post-Training</p>
+<p><strong>来源：</strong>PyTorch 官方博客</p>
+<p><strong>原文链接：</strong>
+<a href="https://pytorch.org/blog/a-primer-on-llm-post-training/" target="_blank">
+https://pytorch.org/blog/a-primer-on-llm-post-training/
+</a>
+</p>
+<p><strong>学习定位：</strong>
+这篇文章适合作为“后训练路线”的第一篇。它不是讲 Agent 架构，也不是只讲某一个算法，
+而是从工程学习角度解释：模型为什么需要 post-training，post-training 数据是什么样，
+SFT、DPO、PPO、GRPO 各自在路线中解决什么问题。
+</p>
+</div>
+
+<h2>0. 这篇博客应该怎么读？</h2>
+
+<p>
+这篇 PyTorch 博客的重点不是让你立刻推公式，而是先建立一条后训练主线：
+</p>
+
+<pre>
+Base Model 基座模型
+  ↓
+Post-training Data Format 后训练数据格式
+  ↓
+SFT 监督微调
+  ↓
+Preference Data 偏好数据
+  ↓
+DPO / RLHF 偏好优化
+  ↓
+Online RL / PPO 在线强化学习
+  ↓
+Reward Pipeline 奖励管线
+  ↓
+Reasoning / GRPO 推理后训练
+</pre>
+
+<div class="box note">
+<strong>一句话理解：</strong>
+预训练让模型“会补全文本”；后训练让模型“会按照人的任务方式做事”。
+</div>
+
+<h3>0.1 为什么这篇适合做后训练路线第一篇？</h3>
+
+<table>
+<tr>
+<th>学习问题</th>
+<th>这篇博客能解决什么</th>
+</tr>
+<tr>
+<td>Post-training 到底是什么？</td>
+<td>它把后训练解释为预训练之后，让模型学会对话、推理、规划和交互的阶段。</td>
+</tr>
+<tr>
+<td>SFT 和预训练有什么区别？</td>
+<td>它解释了 SFT 仍然是 next-token prediction，但只对 assistant response 计算 loss。</td>
+</tr>
+<tr>
+<td>DPO 和 RLHF 是什么关系？</td>
+<td>它把 DPO 放在偏好优化路线中讲，说明为什么它比 PPO 更容易上手。</td>
+</tr>
+<tr>
+<td>PPO 为什么复杂？</td>
+<td>它从基础 policy gradient 讲到 advantage、ratio、clip 和 trust region。</td>
+</tr>
+<tr>
+<td>GRPO 为什么火？</td>
+<td>它解释了 GRPO 如何用组内相对奖励替代 critic。</td>
+</tr>
+<tr>
+<td>怎么接 Agent 后训练？</td>
+<td>它的 reward pipeline 思路可以直接迁移到工具调用、代码 Agent 和多步任务轨迹。</td>
+</tr>
+</table>
+
+<h2>1. 后训练数据格式：模型到底看到了什么？</h2>
+
+<p>
+很多人学后训练会直接跳到 SFT、DPO、PPO，但其实第一步应该先理解数据格式。
+因为 LLM 的底层接口没有变：模型接收一串 token，然后预测下一个 token。
+所谓“聊天模型”，本质上是通过特殊格式把 system、user、assistant 等角色写进同一段 token 序列中。
+</p>
+
+<div class="figure">
+<img src="https://pytorch.org/wp-content/uploads/2025/08/1-3.png" alt="Chat interface example">
+<div class="caption">
+图 1：聊天界面示例。来源：PyTorch 官方博客《A Primer on LLM Post-Training》。
+如果图片不显示，请打开原图：
+<a href="https://pytorch.org/wp-content/uploads/2025/08/1-3.png" target="_blank">
+https://pytorch.org/wp-content/uploads/2025/08/1-3.png
+</a>
+</div>
+</div>
+
+<h3>1.1 这张图表面上在讲什么？</h3>
+
+<p>
+图中是一个普通聊天界面：用户问问题，助手回答；用户继续追问，助手继续回答。
+但原文真正想说明的是：聊天界面只是人看到的 UI，模型实际看到的是一段被特殊 token 包装过的文本。
+</p>
+
+<table>
+<tr>
+<th>你在界面中看到的</th>
+<th>模型实际需要看到的</th>
+<th>为什么重要</th>
+</tr>
+<tr>
+<td>用户说：“What is the capital of France?”</td>
+<td>一段带有 user role 标记的 token。</td>
+<td>模型必须知道这是用户输入，不是助手要生成的内容。</td>
+</tr>
+<tr>
+<td>助手回答：“Paris.”</td>
+<td>一段带有 assistant role 标记的 token。</td>
+<td>模型只应该学习生成 assistant 部分。</td>
+</tr>
+<tr>
+<td>多轮对话</td>
+<td>system + user + assistant + user + assistant 的完整序列。</td>
+<td>模型根据历史上下文继续生成，而不是孤立回答。</td>
+</tr>
+<tr>
+<td>助手停止回答</td>
+<td>end-of-turn token。</td>
+<td>模型必须学会在合适的位置停止。</td>
+</tr>
+</table>
+
+<h3>1.2 Llama 3 风格的格式示意</h3>
+
+<pre>
+&lt;|begin_of_text|&gt;
+
+&lt;|start_header_id|&gt;system&lt;|end_header_id|&gt;
+你是一个有帮助的助手。
+&lt;|eot_id|&gt;
+
+&lt;|start_header_id|&gt;user&lt;|end_header_id|&gt;
+法国首都是哪里？
+&lt;|eot_id|&gt;
+
+&lt;|start_header_id|&gt;assistant&lt;|end_header_id|&gt;
+法国首都是巴黎。
+&lt;|eot_id|&gt;
+
+&lt;|start_header_id|&gt;user&lt;|end_header_id|&gt;
+那里有多少人口？只告诉我数字。
+&lt;|eot_id|&gt;
+
+&lt;|start_header_id|&gt;assistant&lt;|end_header_id|&gt;
+从这里开始生成
+</pre>
+
+<h3>1.3 这一节和后训练的关系</h3>
+
+<p>
+后训练第一步不是算法，而是格式。如果格式不稳定，后面 SFT、DPO、RL 都会乱。
+对于普通聊天模型，格式决定谁是 system、谁是 user、谁是 assistant；
+对于 Agent 模型，格式还要决定谁是 tool、谁是 environment、谁是 observation。
+</p>
+
+<table>
+<tr>
+<th>普通聊天后训练</th>
+<th>Agent 后训练</th>
+</tr>
+<tr>
+<td>system / user / assistant</td>
+<td>system / user / assistant / tool / environment</td>
+</tr>
+<tr>
+<td>训练 assistant 回答</td>
+<td>训练 assistant 的 Thought、Action、Final Answer</td>
+</tr>
+<tr>
+<td>用户消息不计算 loss</td>
+<td>工具返回 Observation 也不应该计算 loss</td>
+</tr>
+<tr>
+<td>模型学习什么时候停止</td>
+<td>模型学习什么时候继续调用工具、什么时候 finish</td>
+</tr>
+</table>
+
+<div class="box train">
+<strong>这一节你要记住：</strong>
+后训练不是直接把问答扔给模型。你必须先设计数据格式。
+格式设计得清楚，模型才知道“谁说了什么”“自己应该生成什么”“什么时候停止”“什么时候调用工具”。
+</div>
+
+  
+<!-- ===================================================== -->
+<!-- 第 2 部分：后训练整体路线 SFT → DPO → Online RL -->
+<!-- 插入位置：放在上一篇 HTML 的 </body> 前面 -->
+<!-- ===================================================== -->
+
+<h2 id="route2">2. 后训练整体路线：SFT → DPO → Online RL</h2>
+
+<p>
+理解后训练，不能一上来就背 PPO、DPO、GRPO 的公式。更清楚的方式是先把它看成一条逐步升级的训练路线：
+</p>
+
+<pre>
+Base Model 基座模型
+  ↓
+SFT 监督微调：先让模型学会“像助手一样回答”
+  ↓
+Preference Optimization 偏好优化：让模型更偏向好回答
+  ↓
+Online RL 在线强化学习：让模型在奖励反馈中继续探索
+</pre>
+
+<p>
+PyTorch 这篇博客的核心价值就在这里：它不是孤立地介绍一个算法，而是把后训练看成一个完整流程。
+这个流程解决的问题是：预训练模型虽然会补全文本，但它不一定会对话、不一定会遵守指令、不一定符合人类偏好，也不一定会通过推理或工具调用完成复杂任务。
+</p>
+
+<div class="figure">
+<img src="https://pytorch.org/wp-content/uploads/2025/08/2-3.png" alt="Post-training pipeline: SFT to DPO to Online RL">
+<div class="caption">
+图 2：后训练管线示意图：SFT → DPO → Online RL。来源：PyTorch 官方博客。
+如果图片不显示，可以打开原图：
+<a href="https://pytorch.org/wp-content/uploads/2025/08/2-3.png" target="_blank">
+https://pytorch.org/wp-content/uploads/2025/08/2-3.png
+</a>
+</div>
+</div>
+
+<h3>2.1 这张图在讲什么？</h3>
+
+<p>
+这张图可以理解成一个后训练三阶段路线图。每个阶段解决的问题不同：
+</p>
+
+<table>
+<tr>
+<th>阶段</th>
+<th>英文</th>
+<th>中文</th>
+<th>解决的问题</th>
+<th>数据形式</th>
+</tr>
+<tr>
+<td>第一阶段</td>
+<td>SFT</td>
+<td>监督微调</td>
+<td>让模型学会基本对话、指令遵循、格式规范。</td>
+<td>prompt → ideal response</td>
+</tr>
+<tr>
+<td>第二阶段</td>
+<td>DPO</td>
+<td>直接偏好优化</td>
+<td>让模型更偏向人类喜欢的回答，远离较差回答。</td>
+<td>prompt + chosen + rejected</td>
+</tr>
+<tr>
+<td>第三阶段</td>
+<td>Online RL</td>
+<td>在线强化学习</td>
+<td>让当前模型自己生成回答或轨迹，再根据奖励继续优化。</td>
+<td>rollout + reward</td>
+</tr>
+</table>
+
+<h3>2.2 为什么不能直接上 RL？</h3>
+
+<p>
+因为刚从预训练出来的 base model 通常还没有稳定的对话格式。
+如果模型连 assistant 应该怎么说话、什么时候停止、怎么遵守 system prompt 都不稳定，直接做 RL 会很混乱。
+</p>
+
+<p>
+所以 SFT 的作用是先把模型拉到一个“能正常做事”的区域。之后再用 DPO 调整偏好，最后才用 Online RL 进一步提高能力上限。
+</p>
+
+<div class="box note">
+<strong>一句话理解：</strong>
+SFT 解决“会不会做”；DPO 解决“更喜欢哪种做法”；Online RL 解决“能不能通过试错发现更好的做法”。
+</div>
+
+<h3>2.3 这条路线和后训练 Agent 有什么关系？</h3>
+
+<p>
+如果你以后要学后训练 Agent，这条线可以直接迁移：
+</p>
+
+<table>
+<tr>
+<th>普通 LLM 后训练</th>
+<th>Agent 后训练对应版本</th>
+</tr>
+<tr>
+<td>SFT：学习高质量回答。</td>
+<td>SFT：学习高质量工具调用轨迹。</td>
+</tr>
+<tr>
+<td>DPO：偏好更好的回答。</td>
+<td>DPO：偏好更好的计划、更正确的工具、更短的轨迹。</td>
+</tr>
+<tr>
+<td>Online RL：根据 reward 优化回答。</td>
+<td>Online RL：Agent 在环境中执行动作，根据任务完成率、测试结果、工具反馈优化。</td>
+</tr>
+</table>
+
+<div class="box train">
+<strong>后训练 Agent 的核心迁移：</strong>
+普通后训练优化的是“回答”，Agent 后训练优化的是“轨迹”。
+轨迹包括：
+<pre>
+Observation 观察
+  ↓
+Thought 思考
+  ↓
+Action 动作 / 工具调用
+  ↓
+Tool Result 工具返回
+  ↓
+Next Action 下一步动作
+  ↓
+Final Answer 最终答案
+</pre>
+</div>
+
+<hr>
+
+<h2 id="route3">3. SFT：Supervised Fine-Tuning，监督微调</h2>
+
+<p>
+SFT 是后训练的第一步。它的中文是“监督微调”，但更直白地说，它就是让模型先学会模仿高质量示范。
+</p>
+
+<p>
+原文把 SFT 的核心理解成 imitation，也就是模仿。模型看到一个 prompt，然后学习理想回答中的每一个 token。
+</p>
+
+<h3>3.1 SFT 到底在训练什么？</h3>
+
+<p>
+在 SFT 中，模型输入通常包括三部分：
+</p>
+
+<pre>
+System Prompt 系统提示
+User Prompt 用户问题
+Assistant Response 助手回答
+</pre>
+
+<p>
+但训练时不是所有 token 都计算 loss。通常只对 assistant response 计算 loss。
+</p>
+
+<pre>
+输入：
+[system tokens] [user tokens] [assistant tokens]
+
+loss mask：
+[0 0 0 0 0] [0 0 0 0] [1 1 1 1 1]
+</pre>
+
+<table>
+<tr>
+<th>部分</th>
+<th>中文</th>
+<th>是否输入模型</th>
+<th>是否计算 loss</th>
+<th>原因</th>
+</tr>
+<tr>
+<td>System prompt</td>
+<td>系统提示词</td>
+<td>是</td>
+<td>否</td>
+<td>它提供规则，但不是模型要生成的内容。</td>
+</tr>
+<tr>
+<td>User prompt</td>
+<td>用户问题</td>
+<td>是</td>
+<td>否</td>
+<td>它提供任务条件，模型要根据它回答。</td>
+</tr>
+<tr>
+<td>Assistant response</td>
+<td>助手回答</td>
+<td>是</td>
+<td>是</td>
+<td>这是模型真正需要学习生成的目标。</td>
+</tr>
+</table>
+
+<h3>3.2 SFT 和预训练有什么区别？</h3>
+
+<table>
+<tr>
+<th>比较项</th>
+<th>Pre-training 预训练</th>
+<th>SFT 监督微调</th>
+</tr>
+<tr>
+<td>训练目标</td>
+<td>预测下一个 token，学习语言和世界知识。</td>
+<td>预测 assistant response，学习如何完成用户任务。</td>
+</tr>
+<tr>
+<td>数据类型</td>
+<td>网页、书籍、代码、论文等普通文本。</td>
+<td>指令数据、对话数据、问答数据、工具调用数据。</td>
+</tr>
+<tr>
+<td>角色结构</td>
+<td>通常没有明确 user / assistant。</td>
+<td>明确区分 system / user / assistant。</td>
+</tr>
+<tr>
+<td>学习重点</td>
+<td>语言模式、事实知识、代码模式。</td>
+<td>指令遵循、对话格式、回答风格、任务完成。</td>
+</tr>
+<tr>
+<td>数据规模</td>
+<td>极大，通常万亿 token。</td>
+<td>更小，但质量要求更高。</td>
+</tr>
+</table>
+
+<div class="box note">
+<strong>一句话理解：</strong>
+预训练让模型“会补全文本”；SFT 让模型“会当助手”。
+</div>
+
+<h3>3.3 SFT 为什么重要？</h3>
+
+<p>
+因为 SFT 给模型建立了最基本的行为边界。没有 SFT，模型可能会：
+</p>
+
+<ul>
+<li>不知道自己应该扮演 assistant；</li>
+<li>不知道如何遵循用户指令；</li>
+<li>不知道什么时候停止；</li>
+<li>不知道如何按照指定格式回答；</li>
+<li>不知道如何处理多轮上下文。</li>
+</ul>
+
+<p>
+所以，SFT 不是高级算法，但它是后训练路线的地基。
+后面不管是 DPO、PPO、GRPO，通常都需要建立在一个经过 SFT 的模型之上。
+</p>
+
+<h3>3.4 SFT 的局限：只能模仿，不能超越数据</h3>
+
+<p>
+SFT 的最大问题是：它只能模仿训练数据里已经存在的答案。
+如果数据很好，模型会学得不错；如果数据一般，模型也会学得一般。
+</p>
+
+<table>
+<tr>
+<th>SFT 的优点</th>
+<th>SFT 的局限</th>
+</tr>
+<tr>
+<td>训练稳定。</td>
+<td>上限受示范数据限制。</td>
+</tr>
+<tr>
+<td>工程简单。</td>
+<td>不会主动探索更优答案。</td>
+</tr>
+<tr>
+<td>适合学格式、风格、基础任务。</td>
+<td>数据质量差会直接污染模型。</td>
+</tr>
+<tr>
+<td>适合做后训练第一步。</td>
+<td>很难解决复杂推理和长期任务。</td>
+</tr>
+</table>
+
+<div class="box warn">
+<strong>核心风险：</strong>
+SFT 对数据质量极其敏感。坏数据不是“没用”，而是会被模型认真学进去。
+</div>
+
+<h3>3.5 对后训练 Agent 的启发</h3>
+
+<p>
+如果你训练的是 Agent，SFT 阶段不是先追求“自主”，而是先追求“格式稳定”。
+</p>
+
+<p>
+比如工具调用 Agent 的 SFT 样本可以长这样：
+</p>
+
+<pre>
+User:
+请计算 27 * 19。
+
+Assistant:
+Thought: 这是一个精确计算问题，需要调用 calculator。
+Action: calculator({"expression": "27 * 19"})
+
+Tool:
+513
+
+Assistant:
+Thought: 工具已经返回结果，可以给出最终答案。
+Final Answer: 27 * 19 = 513。
+</pre>
+
+<table>
+<tr>
+<th>Agent SFT 要学什么</th>
+<th>具体要求</th>
+</tr>
+<tr>
+<td>Thought</td>
+<td>说明为什么下一步要调用某个工具。</td>
+</tr>
+<tr>
+<td>Action</td>
+<td>输出合法、可解析的工具调用。</td>
+</tr>
+<tr>
+<td>Tool Result 使用</td>
+<td>必须根据工具返回继续回答，不能忽略工具。</td>
+</tr>
+<tr>
+<td>Final Answer</td>
+<td>知道什么时候结束任务。</td>
+</tr>
+<tr>
+<td>格式稳定</td>
+<td>不要一会儿 JSON，一会儿自然语言混乱输出。</td>
+</tr>
+</table>
+
+<div class="box train">
+<strong>实践建议：</strong>
+如果你想做一个最小后训练 Agent，第一阶段不要搞复杂任务。
+先做三类 SFT 数据：
+<ol>
+<li>数学计算 → calculator；</li>
+<li>文档问答 → search_doc；</li>
+<li>代码执行 → run_python。</li>
+</ol>
+每类准备 100 到 300 条高质量轨迹，比一开始追求几万条低质量数据更有意义。
+</div>
+
+<hr>
+
+<h2 id="route4">4. Rejection Sampling：拒绝采样</h2>
+
+<p>
+SFT 需要高质量数据，但高质量数据从哪里来？原文接着讲了一个常见办法：Rejection Sampling，拒绝采样。
+</p>
+
+<p>
+它的直觉很简单：
+</p>
+
+<pre>
+同一个 prompt
+  ↓
+让模型生成多个候选答案
+  ↓
+用评分器、人类、规则或测试筛选
+  ↓
+只保留最好的答案
+  ↓
+加入 SFT 数据
+</pre>
+
+<h3>4.1 为什么需要拒绝采样？</h3>
+
+<p>
+因为人工写高质量答案成本很高，而且质量不稳定。
+如果直接把所有人工答案都拿去训练，模型会学习到很多不稳定的风格和错误。
+</p>
+
+<table>
+<tr>
+<th>问题</th>
+<th>后果</th>
+</tr>
+<tr>
+<td>人工答案质量不均</td>
+<td>模型学到不一致风格。</td>
+</tr>
+<tr>
+<td>部分答案事实错误</td>
+<td>模型学习错误信息。</td>
+</tr>
+<tr>
+<td>格式不统一</td>
+<td>模型输出格式不稳定。</td>
+</tr>
+<tr>
+<td>推理步骤不严谨</td>
+<td>模型学到错误推理模式。</td>
+</tr>
+</table>
+
+<p>
+拒绝采样的作用就是：不要把所有候选都拿来训练，而是先筛一遍。
+</p>
+
+<h3>4.2 拒绝采样的完整流程</h3>
+
+<pre>
+Step 1：准备 prompt
+Step 2：模型生成多个 response
+Step 3：用不同 temperature / seed / checkpoint 增加多样性
+Step 4：对 response 打分
+Step 5：选择最高分 response
+Step 6：加入 SFT 数据集
+Step 7：继续训练模型
+</pre>
+
+<table>
+<tr>
+<th>环节</th>
+<th>中文解释</th>
+<th>关键点</th>
+</tr>
+<tr>
+<td>多样生成</td>
+<td>让模型生成多个不同答案。</td>
+<td>候选越多，越可能出现高质量答案。</td>
+</tr>
+<tr>
+<td>评分排序</td>
+<td>用规则、人类、奖励模型或测试排序。</td>
+<td>评分器质量决定筛选质量。</td>
+</tr>
+<tr>
+<td>保留好样本</td>
+<td>只把高质量答案用于训练。</td>
+<td>避免低质量样本污染 SFT。</td>
+</tr>
+<tr>
+<td>迭代提升</td>
+<td>模型变强后继续生成更好候选。</td>
+<td>形成数据自我改进循环。</td>
+</tr>
+</table>
+
+<h3>4.3 拒绝采样和 DPO 的区别</h3>
+
+<table>
+<tr>
+<th>比较项</th>
+<th>Rejection Sampling</th>
+<th>DPO</th>
+</tr>
+<tr>
+<td>怎么用候选答案</td>
+<td>只保留最好的答案。</td>
+<td>同时使用好答案和坏答案。</td>
+</tr>
+<tr>
+<td>数据形式</td>
+<td>prompt → best response。</td>
+<td>prompt + chosen + rejected。</td>
+</tr>
+<tr>
+<td>训练方式</td>
+<td>继续做 SFT。</td>
+<td>做偏好优化。</td>
+</tr>
+<tr>
+<td>坏答案是否利用</td>
+<td>通常丢掉。</td>
+<td>作为 rejected 使用。</td>
+</tr>
+<tr>
+<td>适合阶段</td>
+<td>SFT 数据增强。</td>
+<td>SFT 之后。</td>
+</tr>
+</table>
+
+<h3>4.4 拒绝采样对 Agent 的价值</h3>
+
+<p>
+Agent 任务尤其适合拒绝采样，因为同一个任务可以有多条轨迹：
+</p>
+
+<pre>
+任务：查找文档并回答问题
+
+轨迹 A：没有调用工具，直接胡编 → 失败
+轨迹 B：调用了 search_doc，但 query 不好 → 失败
+轨迹 C：调用 search_doc，找到证据，回答正确 → 成功
+轨迹 D：回答正确，但调用了 6 次无关工具 → 成本太高
+
+选择：
+轨迹 C 作为 SFT 数据
+轨迹 A / B / D 可以作为 DPO 的 rejected
+</pre>
+
+<table>
+<tr>
+<th>筛选标准</th>
+<th>说明</th>
+</tr>
+<tr>
+<td>任务是否完成</td>
+<td>最终答案是否正确。</td>
+</tr>
+<tr>
+<td>工具是否正确</td>
+<td>是否调用合适工具。</td>
+</tr>
+<tr>
+<td>参数是否正确</td>
+<td>JSON、query、路径、表达式是否正确。</td>
+</tr>
+<tr>
+<td>是否利用工具返回</td>
+<td>有没有根据 Observation 回答。</td>
+</tr>
+<tr>
+<td>轨迹是否高效</td>
+<td>有没有过多无意义工具调用。</td>
+</tr>
+</table>
+
+<div class="box train">
+<strong>实践建议：</strong>
+如果你要构造 Agent 后训练数据，可以先用强模型为每个任务生成 5 条轨迹，然后用规则筛选：
+<ul>
+<li>JSON 解析失败 → 丢弃；</li>
+<li>工具执行失败 → 丢弃或标记 rejected；</li>
+<li>最终答案错误 → rejected；</li>
+<li>任务成功且轨迹短 → chosen / SFT 数据。</li>
+</ul>
+</div>
+
+<hr>
+
+<h2 id="route5">5. RL 入门：从模仿到试错</h2>
+
+<p>
+SFT 和 Rejection Sampling 仍然是模仿式学习。
+但是后训练真正想进一步提高模型能力，尤其是推理、代码、工具调用、多步任务，就需要进入 Reinforcement Learning，强化学习。
+</p>
+
+<div class="figure">
+<img src="https://pytorch.org/wp-content/uploads/2025/08/3-1.png" alt="RL agent environment reward loop">
+<div class="caption">
+图 3：强化学习中的 Agent、Environment、Reward pipeline。来源：PyTorch 官方博客。
+如果图片不显示，可以打开原图：
+<a href="https://pytorch.org/wp-content/uploads/2025/08/3-1.png" target="_blank">
+https://pytorch.org/wp-content/uploads/2025/08/3-1.png
+</a>
+</div>
+</div>
+
+<h3>5.1 这张图在讲什么？</h3>
+
+<p>
+这张图是强化学习最基本的闭环：
+</p>
+
+<pre>
+Agent 采取动作
+  ↓
+Environment 环境发生变化
+  ↓
+系统记录发生了什么
+  ↓
+Reward Pipeline 给出奖励
+  ↓
+奖励变成训练信号
+  ↓
+更新 Agent
+</pre>
+
+<table>
+<tr>
+<th>图中元素</th>
+<th>中文解释</th>
+<th>普通 LLM 对应</th>
+<th>Agent 对应</th>
+</tr>
+<tr>
+<td>Agent</td>
+<td>智能体</td>
+<td>正在训练的大模型。</td>
+<td>工具调用 Agent 或代码 Agent。</td>
+</tr>
+<tr>
+<td>Actions</td>
+<td>动作</td>
+<td>生成回答 token。</td>
+<td>搜索、调用工具、写文件、运行代码。</td>
+</tr>
+<tr>
+<td>Environment</td>
+<td>环境</td>
+<td>用户、评估器。</td>
+<td>浏览器、终端、代码仓库、API、数据库。</td>
+</tr>
+<tr>
+<td>Data / what happened</td>
+<td>发生了什么</td>
+<td>模型回答的内容。</td>
+<td>工具返回、测试结果、页面状态变化。</td>
+</tr>
+<tr>
+<td>Reward Pipeline</td>
+<td>奖励管线</td>
+<td>偏好模型、规则检查器。</td>
+<td>测试通过率、工具成功率、任务完成率。</td>
+</tr>
+<tr>
+<td>Labeled data to train on</td>
+<td>训练信号</td>
+<td>reward 转成模型更新信号。</td>
+<td>对整条轨迹进行奖励或惩罚。</td>
+</tr>
+</table>
+
+<h3>5.2 SFT 和 RL 的根本区别</h3>
+
+<table>
+<tr>
+<th>维度</th>
+<th>SFT</th>
+<th>RL</th>
+</tr>
+<tr>
+<td>学习方式</td>
+<td>模仿。</td>
+<td>试错。</td>
+</tr>
+<tr>
+<td>训练信号</td>
+<td>标准答案中的 token。</td>
+<td>环境反馈得到的 reward。</td>
+</tr>
+<tr>
+<td>是否需要标准答案</td>
+<td>需要。</td>
+<td>不一定需要，只要能判断好坏。</td>
+</tr>
+<tr>
+<td>是否能探索新策略</td>
+<td>很弱。</td>
+<td>可以。</td>
+</tr>
+<tr>
+<td>工程难度</td>
+<td>较低。</td>
+<td>较高。</td>
+</tr>
+<tr>
+<td>适合任务</td>
+<td>格式、风格、基础问答。</td>
+<td>数学推理、代码、工具调用、多步任务。</td>
+</tr>
+</table>
+
+<h3>5.3 为什么 RL 更适合推理和代码？</h3>
+
+<p>
+因为有些任务很难写出唯一标准答案，但很容易判断结果对不对。
+</p>
+
+<table>
+<tr>
+<th>任务</th>
+<th>为什么难做 SFT</th>
+<th>为什么适合 RL</th>
+</tr>
+<tr>
+<td>数学推理</td>
+<td>中间推理路径很多。</td>
+<td>最终答案可以自动验证。</td>
+</tr>
+<tr>
+<td>代码生成</td>
+<td>同一个任务有很多写法。</td>
+<td>测试是否通过可以验证。</td>
+</tr>
+<tr>
+<td>工具调用</td>
+<td>轨迹可能有多种。</td>
+<td>工具是否成功、任务是否完成可以验证。</td>
+</tr>
+<tr>
+<td>网页操作</td>
+<td>路径不唯一。</td>
+<td>最终页面状态可以验证。</td>
+</tr>
+</table>
+
+<div class="box note">
+<strong>关键句：</strong>
+SFT 需要“标准答案”；RL 只需要“判断机制”。
+这就是为什么代码、数学、工具调用这些任务特别适合可验证奖励强化学习。
+</div>
+
+<h3>5.4 Judging Ability 与 Doing Ability</h3>
+
+<div class="figure">
+<img src="https://pytorch.org/wp-content/uploads/2025/08/4-1.png" alt="RL closes the gap between judging and doing">
+<div class="caption">
+图 4：RL 缩小 judging ability 与 doing ability 的差距。来源：PyTorch 官方博客。
+如果图片不显示，可以打开原图：
+<a href="https://pytorch.org/wp-content/uploads/2025/08/4-1.png" target="_blank">
+https://pytorch.org/wp-content/uploads/2025/08/4-1.png
+</a>
+</div>
+</div>
+
+<p>
+这张图想表达的是：很多时候，我们判断一个结果好不好，比亲自生成一个好结果更容易。
+RL 的作用就是把 judging ability，判断能力，转化为 doing ability，执行能力。
+</p>
+
+<table>
+<tr>
+<th>概念</th>
+<th>中文</th>
+<th>解释</th>
+</tr>
+<tr>
+<td>Judging Ability</td>
+<td>判断能力</td>
+<td>你能判断哪个回答更好，哪个代码能通过测试。</td>
+</tr>
+<tr>
+<td>Doing Ability</td>
+<td>执行能力</td>
+<td>模型自己能生成好回答、好代码、好轨迹。</td>
+</tr>
+<tr>
+<td>RL's Domain</td>
+<td>RL 作用区域</td>
+<td>通过奖励反馈，把判断能力转成执行能力。</td>
+</tr>
+</table>
+
+<div class="box train">
+<strong>后训练启发：</strong>
+如果你能写出一个可靠判断器，就可以做 RL。
+比如：
+<ul>
+<li>数学答案是否正确；</li>
+<li>代码测试是否通过；</li>
+<li>工具调用 JSON 是否合法；</li>
+<li>网页任务是否达到目标状态；</li>
+<li>Agent 是否在规定步数内完成任务。</li>
+</ul>
+</div>
+
+<h3>5.5 Reward Hacking：奖励黑客</h3>
+
+<p>
+RL 最大的问题是：模型会最大化 reward，但不一定最大化你的真实意图。
+如果 reward 设计有漏洞，模型会钻漏洞。
+</p>
+
+<table>
+<tr>
+<th>真实目标</th>
+<th>错误 reward</th>
+<th>模型可能学到的坏行为</th>
+</tr>
+<tr>
+<td>写出真正通用的代码</td>
+<td>只要测试通过就给满分</td>
+<td>硬编码测试样例。</td>
+</tr>
+<tr>
+<td>简洁准确回答</td>
+<td>回答越长分越高</td>
+<td>模型变得极其啰嗦。</td>
+</tr>
+<tr>
+<td>高效工具调用</td>
+<td>只奖励最终成功</td>
+<td>模型疯狂调用工具，不管成本。</td>
+</tr>
+<tr>
+<td>安全有帮助</td>
+<td>只奖励 helpfulness</td>
+<td>模型过度迎合用户，忽略安全。</td>
+</tr>
+<tr>
+<td>合理推理</td>
+<td>只奖励最终答案正确</td>
+<td>模型可能输出虚假推理，但答案碰巧对。</td>
+</tr>
+</table>
+
+<div class="box warn">
+<strong>这一节最重要的警告：</strong>
+RL 算法不是魔法。它只会优化 reward。
+所以后训练里，reward design 奖励设计往往比算法名字更重要。
+</div>
+
+<h3>5.6 学习到这里应该形成的理解</h3>
+
+<div class="box note">
+<strong>阶段总结：</strong>
+到这里，你应该已经形成一条清楚路线：
+<pre>
+数据格式：告诉模型谁是 user，谁是 assistant
+  ↓
+SFT：让模型模仿高质量回答
+  ↓
+Rejection Sampling：生成多个候选，筛出更好样本
+  ↓
+RL：不再只模仿，而是通过 reward 学习
+</pre>
+下一步要进入的就是：
+<pre>
+RLHF：如何把人类偏好变成 reward
+DPO：如何不用显式 reward model 做偏好优化
+</pre>
+</div>
+  
+  
+<!-- ===================================================== -->
+<!-- 第 6 部分：RLHF 与 Reward Model -->
+<!-- 插入位置：接在第 5 部分 RL 入门后面，放在 </body> 前 -->
+<!-- ===================================================== -->
+
+<h2 id="route6">6. RLHF：Reinforcement Learning from Human Feedback，基于人类反馈的强化学习</h2>
+
+<p>
+前面讲了 RL 的基本逻辑：模型采取动作，环境给出 reward，模型根据 reward 更新。
+那么在 LLM 后训练中，最经典的一种 RL 形式就是 RLHF。
+</p>
+
+<p>
+RLHF 的全称是 <strong>Reinforcement Learning from Human Feedback</strong>，中文可以翻译为“基于人类反馈的强化学习”。
+它的核心问题是：很多语言任务没有客观标准答案，但人类能判断哪个回答更好。
+</p>
+
+<div class="box note">
+<strong>一句话理解：</strong>
+RLHF 不是让人类给模型逐 token 写标准答案，而是让人类判断多个回答哪个更好，然后把这种偏好转成 reward。
+</div>
+
+<h3>6.1 为什么需要 RLHF？</h3>
+
+<p>
+有些任务很适合规则奖励，比如数学题、代码测试、JSON 格式检查。
+但很多对话任务并没有简单规则。
+</p>
+
+<table>
+<tr>
+<th>任务</th>
+<th>为什么很难写规则 reward</th>
+</tr>
+<tr>
+<td>回答是否自然</td>
+<td>自然程度很难用一个固定公式衡量。</td>
+</tr>
+<tr>
+<td>回答是否有帮助</td>
+<td>helpfulness 依赖上下文和用户意图。</td>
+</tr>
+<tr>
+<td>回答是否礼貌</td>
+<td>礼貌程度有主观性。</td>
+</tr>
+<tr>
+<td>回答是否啰嗦</td>
+<td>有些问题需要详细，有些问题需要简短。</td>
+</tr>
+<tr>
+<td>回答是否符合人类偏好</td>
+<td>偏好本身很难写成明确规则。</td>
+</tr>
+</table>
+
+<p>
+因此，RLHF 的思路是：既然规则难写，那就让人类标注偏好。
+比如给同一个 prompt 生成两个回答，让标注者选择哪个更好。
+</p>
+
+<h3>6.2 RLHF 的基本流程</h3>
+
+<pre>
+Step 1：准备 prompts
+  ↓
+Step 2：让模型为同一个 prompt 生成多个回答
+  ↓
+Step 3：人类标注 chosen / rejected
+  ↓
+Step 4：训练 Reward Model 奖励模型
+  ↓
+Step 5：当前模型继续生成回答
+  ↓
+Step 6：Reward Model 给回答打分
+  ↓
+Step 7：用 PPO 等 RL 算法优化模型
+</pre>
+
+<table>
+<tr>
+<th>环节</th>
+<th>英文</th>
+<th>中文解释</th>
+<th>作用</th>
+</tr>
+<tr>
+<td>Prompts</td>
+<td>Prompts</td>
+<td>用户问题或任务。</td>
+<td>作为模型生成回答的输入。</td>
+</tr>
+<tr>
+<td>Responses</td>
+<td>Responses</td>
+<td>模型生成的多个回答。</td>
+<td>供人类比较。</td>
+</tr>
+<tr>
+<td>Human Preference</td>
+<td>人类偏好</td>
+<td>人类判断哪个回答更好。</td>
+<td>构造偏好数据。</td>
+</tr>
+<tr>
+<td>Reward Model</td>
+<td>奖励模型</td>
+<td>学习人类偏好，并给新回答打分。</td>
+<td>把主观偏好转成可训练 reward。</td>
+</tr>
+<tr>
+<td>Policy Model</td>
+<td>策略模型</td>
+<td>正在被优化的 LLM。</td>
+<td>生成回答并接受 RL 更新。</td>
+</tr>
+<tr>
+<td>PPO / RL</td>
+<td>强化学习算法</td>
+<td>根据 reward 更新策略模型。</td>
+<td>让模型更偏向高 reward 回答。</td>
+</tr>
+</table>
+
+<h3>6.3 Reward Model 奖励模型到底学什么？</h3>
+
+<p>
+Reward Model 并不是直接生成回答，而是给回答打分。
+它学习的是：
+</p>
+
+<pre>
+输入：prompt + response
+输出：一个 reward score
+</pre>
+
+<p>
+比如：
+</p>
+
+<pre>
+Prompt:
+解释什么是机器学习。
+
+Response A:
+机器学习是让计算机从数据中学习规律，并用这些规律进行预测或决策的方法。
+
+Response B:
+机器学习就是机器自己变聪明。
+
+人类偏好：A 好于 B
+Reward Model 学到：score(A) > score(B)
+</pre>
+
+<table>
+<tr>
+<th>模型</th>
+<th>输入</th>
+<th>输出</th>
+<th>作用</th>
+</tr>
+<tr>
+<td>Policy Model</td>
+<td>prompt</td>
+<td>response</td>
+<td>生成回答。</td>
+</tr>
+<tr>
+<td>Reward Model</td>
+<td>prompt + response</td>
+<td>reward score</td>
+<td>评价回答好坏。</td>
+</tr>
+<tr>
+<td>Reference Model</td>
+<td>prompt</td>
+<td>概率分布</td>
+<td>约束 policy model 不要偏离太远。</td>
+</tr>
+</table>
+
+<h3>6.4 RLHF 和 SFT 有什么区别？</h3>
+
+<table>
+<tr>
+<th>维度</th>
+<th>SFT</th>
+<th>RLHF</th>
+</tr>
+<tr>
+<td>数据</td>
+<td>标准答案。</td>
+<td>偏好比较。</td>
+</tr>
+<tr>
+<td>训练方式</td>
+<td>模仿标准答案。</td>
+<td>优化 reward。</td>
+</tr>
+<tr>
+<td>是否需要人类写完整答案</td>
+<td>通常需要。</td>
+<td>不一定，人类只需要比较回答。</td>
+</tr>
+<tr>
+<td>优化目标</td>
+<td>让模型输出接近示范答案。</td>
+<td>让模型输出更符合人类偏好。</td>
+</tr>
+<tr>
+<td>上限</td>
+<td>受示范答案质量限制。</td>
+<td>受人类判断和 reward model 质量限制。</td>
+</tr>
+</table>
+
+<div class="box note">
+<strong>核心区别：</strong>
+SFT 学的是“答案长什么样”；RLHF 学的是“什么样的答案更好”。
+</div>
+
+<h3>6.5 RLHF 的关键瓶颈：Reward Model 的质量</h3>
+
+<p>
+PyTorch 原文里有一个非常关键的判断：RL 能达到的上限取决于你的 judging ability，也就是判断能力。
+在 RLHF 里，这个判断能力主要由 Reward Model 决定。
+</p>
+
+<p>
+如果 Reward Model 判断准，模型就可能学到更好行为。
+如果 Reward Model 判断不准，模型就会学会迎合错误评分器。
+</p>
+
+<table>
+<tr>
+<th>Reward Model 偏差</th>
+<th>模型可能学到什么</th>
+</tr>
+<tr>
+<td>偏爱长回答</td>
+<td>模型变得越来越啰嗦。</td>
+</tr>
+<tr>
+<td>看不出事实错误</td>
+<td>模型生成看似流畅但事实错误的回答。</td>
+</tr>
+<tr>
+<td>偏爱礼貌话术</td>
+<td>模型过度客套，但信息密度下降。</td>
+</tr>
+<tr>
+<td>看不懂专业内容</td>
+<td>模型在专业问题上学会“装懂”。</td>
+</tr>
+<tr>
+<td>忽视安全边界</td>
+<td>模型过度迎合用户请求。</td>
+</tr>
+</table>
+
+<div class="box warn">
+<strong>重要风险：</strong>
+RLHF 的 reward 不是天然正确的。Reward Model 只是一个模型，它会有偏差，也会被 policy model 钻漏洞。
+</div>
+
+<h3>6.6 RLHF 与 Reward Hacking</h3>
+
+<p>
+在 RLHF 中，reward hacking 的典型表现是：模型学会让 Reward Model 高兴，而不是真正让用户满意。
+</p>
+
+<table>
+<tr>
+<th>真实目标</th>
+<th>Reward Model 可能偏好的东西</th>
+<th>模型学到的投机行为</th>
+</tr>
+<tr>
+<td>回答准确</td>
+<td>回答看起来流畅。</td>
+<td>模型写得很自信，但事实不一定对。</td>
+</tr>
+<tr>
+<td>回答有帮助</td>
+<td>回答很长、覆盖很多点。</td>
+<td>模型堆砌信息，用户反而难读。</td>
+</tr>
+<tr>
+<td>回答安全</td>
+<td>回答显得合作。</td>
+<td>模型可能不该答也答。</td>
+</tr>
+<tr>
+<td>回答简洁</td>
+<td>回答形式完整。</td>
+<td>模型过度模板化。</td>
+</tr>
+</table>
+
+<h3>6.7 RLHF 对后训练 Agent 的启发</h3>
+
+<p>
+Agent 后训练里也可以用 RLHF，但要小心。
+如果让人类评价 Agent 轨迹，人类不仅要看最终答案，还要看中间行为是否合理。
+</p>
+
+<table>
+<tr>
+<th>Agent 评价维度</th>
+<th>人类可以判断什么</th>
+<th>Reward Model 可能怎么学</th>
+</tr>
+<tr>
+<td>任务是否完成</td>
+<td>最终结果是否满足用户需求。</td>
+<td>学习任务完成质量。</td>
+</tr>
+<tr>
+<td>工具是否合理</td>
+<td>是否调用了合适工具。</td>
+<td>学习工具选择偏好。</td>
+</tr>
+<tr>
+<td>步骤是否高效</td>
+<td>有没有绕远路。</td>
+<td>学习低成本轨迹。</td>
+</tr>
+<tr>
+<td>是否安全</td>
+<td>有没有调用危险工具或执行危险操作。</td>
+<td>学习安全边界。</td>
+</tr>
+<tr>
+<td>是否利用反馈</td>
+<td>工具报错后有没有修正。</td>
+<td>学习错误恢复能力。</td>
+</tr>
+</table>
+
+<div class="box train">
+<strong>实践建议：</strong>
+如果你做 Agent RLHF，不要只让人类给最终答案打分。
+更好的标注格式是：
+<pre>
+任务完成：0 / 1
+工具选择：好 / 中 / 差
+参数正确：0 / 1
+轨迹效率：1-5 分
+安全性：通过 / 不通过
+最终回答质量：1-5 分
+</pre>
+这样 reward 才能更细，不容易只奖励表面答案。
+</div>
+
+<hr>
+
+<!-- ===================================================== -->
+<!-- 第 7 部分：DPO -->
+<!-- ===================================================== -->
+
+<h2 id="route7">7. DPO：Direct Preference Optimization，直接偏好优化</h2>
+
+<p>
+理解了 RLHF 以后，DPO 就很好理解了。
+DPO 的全称是 <strong>Direct Preference Optimization</strong>，中文可以翻译为“直接偏好优化”。
+</p>
+
+<p>
+PyTorch 原文里说，DPO 是专门用于 LLM RLHF 的方法。
+它不是 PPO 那样的通用强化学习算法，更像是一种把偏好优化转成监督学习式 loss 的方法。
+</p>
+
+<div class="box note">
+<strong>一句话理解：</strong>
+DPO 不单独训练 Reward Model，也不做复杂在线 RL。
+它直接利用 chosen / rejected 偏好对，让模型提高 chosen 的概率，降低 rejected 的概率。
+</div>
+
+<h3>7.1 DPO 的数据长什么样？</h3>
+
+<p>
+DPO 的数据不是普通问答，而是一组三元组：
+</p>
+
+<pre>
+prompt：同一个问题
+chosen：更好的回答
+rejected：更差的回答
+</pre>
+
+<p>
+示例：
+</p>
+
+<pre>
+{
+  "prompt": "解释什么是过拟合。",
+  "chosen": "过拟合是指模型在训练集上表现很好，但在新数据上表现较差，说明模型记住了训练数据中的噪声或偶然模式。",
+  "rejected": "过拟合就是模型太复杂了。"
+}
+</pre>
+
+<table>
+<tr>
+<th>字段</th>
+<th>中文</th>
+<th>作用</th>
+</tr>
+<tr>
+<td>prompt</td>
+<td>问题 / 指令</td>
+<td>给定同一个输入。</td>
+</tr>
+<tr>
+<td>chosen</td>
+<td>被偏好的回答</td>
+<td>人类或评估器认为更好的回答。</td>
+</tr>
+<tr>
+<td>rejected</td>
+<td>被拒绝的回答</td>
+<td>较差回答。</td>
+</tr>
+</table>
+
+<h3>7.2 DPO 的核心直觉</h3>
+
+<p>
+DPO 的核心非常直观：
+</p>
+
+<pre>
+对于同一个 prompt：
+
+让模型更愿意生成 chosen
+让模型更不愿意生成 rejected
+</pre>
+
+<p>
+更具体地说，大语言模型本身可以给出一个回答在当前 prompt 下的概率。
+如果 chosen 是好答案，rejected 是坏答案，那么我们希望：
+</p>
+
+<pre>
+P(chosen | prompt) 变大
+P(rejected | prompt) 变小
+</pre>
+
+<p>
+也就是说，DPO 直接在模型概率上做偏好优化。
+</p>
+
+<h3>7.3 为什么 DPO 不需要 Reward Model？</h3>
+
+<p>
+传统 RLHF 的流程是：
+</p>
+
+<pre>
+人类偏好数据
+  ↓
+训练 Reward Model
+  ↓
+Reward Model 给模型输出打分
+  ↓
+PPO 优化 Policy Model
+</pre>
+
+<p>
+而 DPO 的思路是：
+</p>
+
+<pre>
+人类偏好数据
+  ↓
+直接优化 Policy Model
+</pre>
+
+<p>
+它跳过了显式训练 Reward Model 这一步。
+这让 DPO 更简单、更便宜、更稳定。
+</p>
+
+<table>
+<tr>
+<th>路线</th>
+<th>是否需要 Reward Model</th>
+<th>是否需要 Online Rollout</th>
+<th>工程复杂度</th>
+</tr>
+<tr>
+<td>RLHF + PPO</td>
+<td>需要</td>
+<td>需要</td>
+<td>高</td>
+</tr>
+<tr>
+<td>DPO</td>
+<td>不需要显式 Reward Model</td>
+<td>不需要</td>
+<td>低</td>
+</tr>
+</table>
+
+<div class="box note">
+<strong>关键理解：</strong>
+DPO 的优势不是“比 PPO 永远更强”，而是“它用更低成本做偏好优化”。
+</div>
+
+<h3>7.4 DPO 和 SFT 的区别</h3>
+
+<table>
+<tr>
+<th>维度</th>
+<th>SFT</th>
+<th>DPO</th>
+</tr>
+<tr>
+<td>数据形式</td>
+<td>prompt → response</td>
+<td>prompt + chosen + rejected</td>
+</tr>
+<tr>
+<td>学习方式</td>
+<td>模仿一个标准答案。</td>
+<td>比较两个答案，偏向更好的。</td>
+</tr>
+<tr>
+<td>是否使用坏答案</td>
+<td>通常不用。</td>
+<td>使用 rejected 作为负样本。</td>
+</tr>
+<tr>
+<td>优化目标</td>
+<td>提高标准答案概率。</td>
+<td>提高 chosen 相对 rejected 的概率。</td>
+</tr>
+<tr>
+<td>适合阶段</td>
+<td>后训练第一步。</td>
+<td>SFT 之后的偏好对齐。</td>
+</tr>
+</table>
+
+<h3>7.5 DPO 和 PPO 的区别</h3>
+
+<p>
+PyTorch 原文把 DPO 和 PPO 做了对比。这个对比非常关键，因为它解释了为什么很多团队会先用 DPO，而不是直接上 PPO。
+</p>
+
+<table>
+<tr>
+<th>比较项</th>
+<th>DPO</th>
+<th>PPO</th>
+</tr>
+<tr>
+<td>算法类型</td>
+<td>更像监督学习式偏好优化。</td>
+<td>真正的强化学习算法。</td>
+</tr>
+<tr>
+<td>数据来源</td>
+<td>固定偏好数据集。</td>
+<td>当前模型在线生成 rollouts。</td>
+</tr>
+<tr>
+<td>是否探索</td>
+<td>不探索。</td>
+<td>可以探索新回答。</td>
+</tr>
+<tr>
+<td>是否 On-policy</td>
+<td>否，通常是 off-policy。</td>
+<td>是，通常要求当前模型生成数据。</td>
+</tr>
+<tr>
+<td>计算成本</td>
+<td>低。</td>
+<td>高。</td>
+</tr>
+<tr>
+<td>训练稳定性</td>
+<td>高，接近微调。</td>
+<td>低，RL 方差较大。</td>
+</tr>
+<tr>
+<td>上限受什么限制</td>
+<td>受数据限制。</td>
+<td>受 reward 和 compute 限制。</td>
+</tr>
+<tr>
+<td>适合场景</td>
+<td>低成本偏好对齐。</td>
+<td>需要探索、更高上限的任务。</td>
+</tr>
+</table>
+
+<div class="box warn">
+<strong>重要限制：</strong>
+DPO 不探索。它只能学习数据集中已经出现过的 chosen / rejected 差异。
+如果偏好数据里没有更优策略，DPO 自己不会凭空发现。
+</div>
+
+<h3>7.6 DPO 为什么适合作为第二阶段？</h3>
+
+<p>
+因为 SFT 之后，模型已经会基本回答。
+但它可能仍然有很多偏好问题：
+</p>
+
+<ul>
+<li>回答太长；</li>
+<li>回答不够直接；</li>
+<li>工具调用格式不够稳定；</li>
+<li>遇到不确定问题时乱猜；</li>
+<li>忽略用户要求的格式；</li>
+<li>在两个可选答案中经常选较差表达。</li>
+</ul>
+
+<p>
+DPO 可以用 chosen / rejected 数据纠正这些偏好。
+</p>
+
+<h3>7.7 DPO 在 Agent 后训练中的用法</h3>
+
+<p>
+对于 Agent 来说，DPO 不只可以比较最终答案，还可以比较轨迹。
+</p>
+
+<h4>例子一：工具选择偏好</h4>
+
+<pre>
+Prompt:
+计算 125 * 37。
+
+Chosen:
+Action: calculator({"expression": "125 * 37"})
+
+Rejected:
+Action: search({"query": "125 * 37"})
+</pre>
+
+<h4>例子二：参数正确性偏好</h4>
+
+<pre>
+Prompt:
+查找文档中关于 RLHF 的定义。
+
+Chosen:
+Action: search_doc({"query": "RLHF definition"})
+
+Rejected:
+Action: search_doc({"keyword": "RLHF definition"})
+</pre>
+
+<p>
+这里 rejected 的问题是参数字段错了。如果真实工具 schema 需要 <code>query</code> 字段，那么 <code>keyword</code> 就会导致工具调用失败。
+</p>
+
+<h4>例子三：轨迹效率偏好</h4>
+
+<pre>
+Prompt:
+总结文档中 DPO 和 PPO 的区别。
+
+Chosen:
+1. search_doc("DPO PPO comparison")
+2. summarize results
+3. final answer
+
+Rejected:
+1. search_doc("DPO")
+2. search_doc("PPO")
+3. search_doc("RLHF")
+4. search_doc("OpenAI")
+5. summarize loosely
+6. final answer
+</pre>
+
+<p>
+两个轨迹都可能完成任务，但 chosen 更短、更聚焦、更低成本。
+这类偏好对非常适合 Agent DPO。
+</p>
+
+<table>
+<tr>
+<th>Agent DPO 比较对象</th>
+<th>chosen 应该是什么</th>
+<th>rejected 应该是什么</th>
+</tr>
+<tr>
+<td>工具选择</td>
+<td>选择正确工具。</td>
+<td>选择无关或错误工具。</td>
+</tr>
+<tr>
+<td>工具参数</td>
+<td>字段合法、参数准确。</td>
+<td>字段错、格式错、参数不完整。</td>
+</tr>
+<tr>
+<td>任务拆解</td>
+<td>子任务完整、顺序合理。</td>
+<td>缺步骤、顺序乱、不可执行。</td>
+</tr>
+<tr>
+<td>轨迹效率</td>
+<td>少步骤完成任务。</td>
+<td>大量无意义工具调用。</td>
+</tr>
+<tr>
+<td>错误恢复</td>
+<td>工具失败后换策略。</td>
+<td>工具失败后重复同样错误。</td>
+</tr>
+<tr>
+<td>最终回答</td>
+<td>基于工具结果回答。</td>
+<td>忽略工具返回直接编造。</td>
+</tr>
+</table>
+
+<div class="box train">
+<strong>实践建议：</strong>
+如果你要做 Agent DPO，可以先从最容易构造的三类偏好数据开始：
+<ol>
+<li><strong>正确工具 vs 错误工具；</strong></li>
+<li><strong>合法参数 vs 非法参数；</strong></li>
+<li><strong>短成功轨迹 vs 长低效轨迹。</strong></li>
+</ol>
+这些数据比“整体回答好坏”更容易自动构造，也更容易提升 Agent 的可靠性。
+</div>
+
+<h3>7.8 DPO 学到这里应该怎么理解？</h3>
+
+<div class="box note">
+<strong>阶段总结：</strong>
+到这里，后训练路线已经从 SFT 进入偏好优化：
+<pre>
+SFT：
+我告诉模型标准答案是什么。
+
+Rejection Sampling：
+我让模型生成多个答案，只留下最好的继续 SFT。
+
+RLHF：
+我让人类判断哪个答案好，再训练 Reward Model，然后用 RL 优化。
+
+DPO：
+我不显式训练 Reward Model，直接用 chosen / rejected 优化模型偏好。
+</pre>
+</div>
+
+<p>
+下一步就进入 <strong>Online RL / PPO</strong>。这是比 DPO 更复杂、成本更高、但上限更高的阶段。
+DPO 用固定数据学习偏好；Online RL 让模型自己生成新样本，再用 reward 训练。
+</p>
+  
+  
+<!-- ===================================================== -->
+<!-- 第 8 部分：Online RL / PPO -->
+<!-- 插入位置：接在第 7 部分 DPO 后面，放在 </body> 前 -->
+<!-- ===================================================== -->
+
+<h2 id="route8">8. Online RL：在线强化学习</h2>
+
+<p>
+前面讲到 DPO。DPO 的优点是便宜、稳定、像监督微调一样容易跑；但它的缺点也很明显：它只能学习已有偏好数据里的差异，不能自己探索新的答案或新策略。
+</p>
+
+<p>
+所以后训练路线继续往后走，就进入 <strong>Online RL</strong>，在线强化学习。
+PyTorch 原文把它作为后训练管线里的第三个阶段。这里最典型的算法是 <strong>PPO</strong>，也就是 Proximal Policy Optimization，近端策略优化；另一个现在经常被提到的是 <strong>GRPO</strong>，Group Relative Policy Optimization，组相对策略优化。
+</p>
+
+<div class="box note">
+<strong>一句话理解：</strong>
+DPO 是“拿已有好坏样本来学”；Online RL 是“让当前模型自己生成新样本，再根据奖励继续学”。
+</div>
+
+<h3>8.1 Online RL 解决什么问题？</h3>
+
+<p>
+Online RL 解决的是 DPO 和 SFT 的共同上限问题。
+</p>
+
+<table>
+<tr>
+<th>方法</th>
+<th>主要能力</th>
+<th>上限来自哪里</th>
+</tr>
+<tr>
+<td>SFT</td>
+<td>模仿高质量答案。</td>
+<td>受示范答案质量限制。</td>
+</tr>
+<tr>
+<td>DPO</td>
+<td>偏向 chosen，远离 rejected。</td>
+<td>受偏好数据覆盖范围限制。</td>
+</tr>
+<tr>
+<td>Online RL</td>
+<td>模型自己探索新回答、新轨迹。</td>
+<td>受 reward 质量、探索能力、计算资源限制。</td>
+</tr>
+</table>
+
+<p>
+也就是说，如果训练数据里没有某种更好的策略，SFT 和 DPO 都很难凭空学会。
+但 Online RL 可以让模型自己生成新候选，然后由 reward 判断哪些更好。
+这就是为什么 reasoning、代码、数学、工具调用这些任务越来越依赖 RL。
+</p>
+
+<h3>8.2 什么是 Policy？</h3>
+
+<p>
+在强化学习里，policy 可以理解成“策略”。
+对 LLM 来说，policy 就是正在训练的语言模型本身。
+</p>
+
+<table>
+<tr>
+<th>RL 术语</th>
+<th>中文</th>
+<th>在 LLM 中的对应物</th>
+</tr>
+<tr>
+<td>Policy</td>
+<td>策略</td>
+<td>当前正在训练的 LLM。</td>
+</tr>
+<tr>
+<td>Action</td>
+<td>动作</td>
+<td>生成 token、回答、工具调用、代码修改。</td>
+</tr>
+<tr>
+<td>Environment</td>
+<td>环境</td>
+<td>用户、评测器、代码测试环境、工具系统。</td>
+</tr>
+<tr>
+<td>Reward</td>
+<td>奖励</td>
+<td>回答质量分数、测试通过、答案正确、任务完成。</td>
+</tr>
+<tr>
+<td>Rollout</td>
+<td>轨迹采样</td>
+<td>模型完整生成一次回答或完成一次任务的过程。</td>
+</tr>
+</table>
+
+<p>
+如果是普通聊天模型，action 主要是生成文本。
+如果是 Agent，action 可以是调用工具、点击网页、运行代码、写文件、查询数据库。
+</p>
+
+<h3>8.3 On-policy vs Off-policy</h3>
+
+<p>
+PyTorch 原文强调了一个关键概念：<strong>On-policy</strong> 和 <strong>Off-policy</strong>。
+这个概念必须搞清楚，因为它决定了 DPO 和 PPO 的根本差异。
+</p>
+
+<table>
+<tr>
+<th>概念</th>
+<th>中文</th>
+<th>解释</th>
+<th>代表方法</th>
+</tr>
+<tr>
+<td>On-policy</td>
+<td>同策略 / 在线策略</td>
+<td>训练数据来自当前正在训练的模型。</td>
+<td>PPO、A2C、TRPO。</td>
+</tr>
+<tr>
+<td>Off-policy</td>
+<td>异策略 / 离线策略</td>
+<td>训练数据来自过去模型、其他模型或固定数据集。</td>
+<td>DPO、DQN、Replay Buffer 方法。</td>
+</tr>
+</table>
+
+<h4>用学生学习来理解</h4>
+
+<table>
+<tr>
+<th>类比</th>
+<th>On-policy</th>
+<th>Off-policy</th>
+</tr>
+<tr>
+<td>学习方式</td>
+<td>你自己做题，老师立刻批改，然后你根据反馈继续做。</td>
+<td>你看别人以前做过的题和答案，从中学习。</td>
+</tr>
+<tr>
+<td>数据来源</td>
+<td>你当前自己的尝试。</td>
+<td>别人或过去自己的历史记录。</td>
+</tr>
+<tr>
+<td>优点</td>
+<td>能探索自己当前还不会的东西。</td>
+<td>成本低，可以反复使用旧数据。</td>
+</tr>
+<tr>
+<td>缺点</td>
+<td>成本高，训练不稳定。</td>
+<td>不能真正探索新策略。</td>
+</tr>
+</table>
+
+<div class="box note">
+<strong>一句话理解：</strong>
+DPO 更像“看历史偏好题库学习”；PPO 更像“自己现场做题、现场批改、现场调整”。
+</div>
+
+<h3>8.4 Online vs Offline：从工程角度理解</h3>
+
+<p>
+On-policy / Off-policy 是从训练动态角度看。
+如果从工程角度看，就会变成 Online / Offline。
+</p>
+
+<table>
+<tr>
+<th>工程视角</th>
+<th>Offline 离线训练</th>
+<th>Online 在线训练</th>
+</tr>
+<tr>
+<td>数据来源</td>
+<td>固定数据集。</td>
+<td>训练过程中实时生成。</td>
+</tr>
+<tr>
+<td>典型方法</td>
+<td>SFT、Rejection Sampling、DPO。</td>
+<td>PPO、GRPO、Online RL。</td>
+</tr>
+<tr>
+<td>工程难度</td>
+<td>低。</td>
+<td>高。</td>
+</tr>
+<tr>
+<td>是否需要 rollout</td>
+<td>不需要或提前生成。</td>
+<td>需要当前模型不断生成。</td>
+</tr>
+<tr>
+<td>是否需要环境</td>
+<td>通常不需要实时环境。</td>
+<td>通常需要 reward pipeline 或真实环境。</td>
+</tr>
+<tr>
+<td>训练稳定性</td>
+<td>更稳定。</td>
+<td>更不稳定。</td>
+</tr>
+<tr>
+<td>探索能力</td>
+<td>弱。</td>
+<td>强。</td>
+</tr>
+</table>
+
+<p>
+所以从工程角度看，Online RL 的难点不仅是算法，而是系统。
+你需要让模型不断生成新数据，还要给这些数据打分，然后再用这些新数据训练模型。
+</p>
+
+<div class="box warn">
+<strong>重要提醒：</strong>
+很多人学 PPO 时只盯公式，但真正跑起来更难的是工程系统：
+rollout、reward、模型同步、batching、显存、KV cache、训练稳定性。
+</div>
+
+<h3>8.5 Online RL 的基本训练循环</h3>
+
+<p>
+PyTorch 原文给了一个理想化 PPO 训练循环。它的逻辑大致是：
+</p>
+
+<pre>
+collector = CollectorClass(model)
+
+for i in range(num_collection):
+    collector.sync_weights_()
+    data = next(collector)
+
+    for j in range(num_epochs):
+        for batch in split_data_randomly(data):
+            loss_val = loss_fn(data)
+            loss_val.backward()
+            optim.step()
+            optim.zero_grad()
+</pre>
+
+<h4>逐行解释</h4>
+
+<table>
+<tr>
+<th>代码片段</th>
+<th>中文解释</th>
+<th>意义</th>
+</tr>
+<tr>
+<td><code>collector = CollectorClass(model)</code></td>
+<td>创建采样器。</td>
+<td>collector 负责让当前模型生成新数据，也就是 rollout。</td>
+</tr>
+<tr>
+<td><code>collector.sync_weights_()</code></td>
+<td>同步模型权重。</td>
+<td>确保采样器用的是当前最新策略。</td>
+</tr>
+<tr>
+<td><code>data = next(collector)</code></td>
+<td>收集一批新数据。</td>
+<td>让模型生成回答或轨迹，并获得 reward。</td>
+</tr>
+<tr>
+<td><code>for j in range(num_epochs)</code></td>
+<td>对这批数据训练多轮。</td>
+<td>提高数据利用率。</td>
+</tr>
+<tr>
+<td><code>loss_fn(data)</code></td>
+<td>计算 RL loss。</td>
+<td>根据 reward、logprob、advantage 等构造损失。</td>
+</tr>
+<tr>
+<td><code>backward / optim.step</code></td>
+<td>反向传播并更新参数。</td>
+<td>让模型更倾向于高 reward 行为。</td>
+</tr>
+</table>
+
+<h3>8.6 为什么这个循环工程上很难？</h3>
+
+<p>
+这个循环看起来简单，但对 LLM 来说非常贵。
+因为采样不是一次普通 forward，而是自回归生成。
+</p>
+
+<table>
+<tr>
+<th>难点</th>
+<th>解释</th>
+<th>为什么麻烦</th>
+</tr>
+<tr>
+<td>自回归生成慢</td>
+<td>模型一个 token 一个 token 生成。</td>
+<td>比普通训练 forward 慢很多。</td>
+</tr>
+<tr>
+<td>需要大量 rollout</td>
+<td>RL 需要不断生成新样本。</td>
+<td>推理成本很高。</td>
+</tr>
+<tr>
+<td>权重同步复杂</td>
+<td>采样器和训练器需要同步最新模型。</td>
+<td>分布式训练时非常麻烦。</td>
+</tr>
+<tr>
+<td>数据容易过时</td>
+<td>模型更新后，旧 rollout 可能不再 on-policy。</td>
+<td>影响训练稳定性。</td>
+</tr>
+<tr>
+<td>batching 难</td>
+<td>不同回答长度不同，工具调用轨迹也不同。</td>
+<td>GPU 利用率不稳定。</td>
+</tr>
+<tr>
+<td>reward 计算可能慢</td>
+<td>代码测试、网页环境、工具调用都要时间。</td>
+<td>训练吞吐下降。</td>
+</tr>
+</table>
+
+<div class="box train">
+<strong>工程理解：</strong>
+Online RL 不是“多加一个 loss”这么简单。它需要一个完整系统：
+<pre>
+模型生成器
+  ↓
+环境执行器
+  ↓
+奖励计算器
+  ↓
+数据缓存
+  ↓
+训练器
+  ↓
+权重同步
+</pre>
+这也是为什么 OpenRLHF、verl、TRL GRPOTrainer 这些框架会出现。
+</div>
+
+<h3>8.7 为什么 PPO 是 Online RL 的经典方法？</h3>
+
+<p>
+PPO 的全称是 <strong>Proximal Policy Optimization</strong>，中文可以翻译成“近端策略优化”。
+它的核心目标是：让模型朝着高 reward 的方向更新，但不要更新得太猛。
+</p>
+
+<p>
+为什么不能更新太猛？因为在 RL 中，模型稍微一变，生成数据分布就会变。
+如果每次更新都过大，模型很容易崩。
+</p>
+
+<table>
+<tr>
+<th>问题</th>
+<th>如果没有 PPO 的约束会怎样</th>
+</tr>
+<tr>
+<td>模型过度追求 reward</td>
+<td>可能突然学会奇怪格式或投机行为。</td>
+</tr>
+<tr>
+<td>策略变化太大</td>
+<td>新模型和旧模型差异太大，训练不稳定。</td>
+</tr>
+<tr>
+<td>reward model 有漏洞</td>
+<td>模型快速钻漏洞。</td>
+</tr>
+<tr>
+<td>语言质量退化</td>
+<td>模型为了 reward 牺牲流畅性和安全性。</td>
+</tr>
+</table>
+
+<div class="box note">
+<strong>PPO 的直觉：</strong>
+让模型变好，但每一步只允许它小步更新，不要突然跑太远。
+</div>
+
+<h3>8.8 PPO 的基本思想：提高好动作概率，降低坏动作概率</h3>
+
+<p>
+前面说过，RL 不能直接对 reward 反向传播。
+所以它对模型输出的 log probability 做文章。
+</p>
+
+<pre>
+如果某个输出得到高 reward：
+    提高它的 log probability
+
+如果某个输出得到低 reward：
+    降低它的 log probability
+</pre>
+
+<p>
+但 PPO 不会无脑提高或降低，而是会检查新旧策略差异，控制更新幅度。
+</p>
+
+<h3>8.9 Ratio：新旧策略概率比</h3>
+
+<p>
+PPO 中有一个非常重要的概念：ratio。
+它表示新策略生成某个动作的概率，与旧策略生成这个动作的概率之比。
+</p>
+
+<pre>
+ratio = P_new(action) / P_old(action)
+</pre>
+
+<table>
+<tr>
+<th>ratio 情况</th>
+<th>含义</th>
+</tr>
+<tr>
+<td>ratio = 1</td>
+<td>新旧模型对这个动作的概率一样。</td>
+</tr>
+<tr>
+<td>ratio > 1</td>
+<td>新模型更倾向于这个动作。</td>
+</tr>
+<tr>
+<td>ratio < 1</td>
+<td>新模型更不倾向于这个动作。</td>
+</tr>
+</table>
+
+<p>
+如果一个动作 reward 很高，我们希望 ratio 变大；
+如果一个动作 reward 很低，我们希望 ratio 变小。
+但不能无限变大或变小，否则策略会崩。
+</p>
+
+<h3>8.10 Clipping：裁剪更新幅度</h3>
+
+<p>
+PPO 的关键技巧是 clipping，裁剪。
+它会限制 ratio 的范围，例如限制在：
+</p>
+
+<pre>
+1 - ε 到 1 + ε
+</pre>
+
+<p>
+常见情况下，ε 可以理解成一个小范围，比如 0.2。
+这意味着新策略不能相对旧策略变化太剧烈。
+</p>
+
+<table>
+<tr>
+<th>机制</th>
+<th>中文解释</th>
+<th>作用</th>
+</tr>
+<tr>
+<td>ratio</td>
+<td>新旧策略概率比</td>
+<td>衡量模型更新幅度。</td>
+</tr>
+<tr>
+<td>clip</td>
+<td>裁剪</td>
+<td>限制 ratio 不要超过安全范围。</td>
+</tr>
+<tr>
+<td>advantage</td>
+<td>优势</td>
+<td>判断这个动作比平均水平好多少。</td>
+</tr>
+<tr>
+<td>KL penalty</td>
+<td>KL 惩罚</td>
+<td>限制新模型不要偏离参考模型太远。</td>
+</tr>
+</table>
+
+<div class="box note">
+<strong>一句话理解 PPO：</strong>
+如果某个回答好，就提高它的概率；如果不好，就降低它的概率。但无论好坏，每次都只小步调整，避免模型突然崩掉。
+</div>
+
+<h3>8.11 Advantage：优势函数</h3>
+
+<p>
+PPO 不只是看 reward，还会看 advantage。
+Advantage 可以理解为：这个动作比当前状态下的平均水平好多少。
+</p>
+
+<pre>
+advantage = reward - baseline
+</pre>
+
+<table>
+<tr>
+<th>概念</th>
+<th>中文</th>
+<th>解释</th>
+</tr>
+<tr>
+<td>Reward</td>
+<td>奖励</td>
+<td>这个输出得到多少分。</td>
+</tr>
+<tr>
+<td>Baseline / Value</td>
+<td>基线 / 价值估计</td>
+<td>当前状态下平均能拿多少分。</td>
+</tr>
+<tr>
+<td>Advantage</td>
+<td>优势</td>
+<td>当前输出比平均水平好多少。</td>
+</tr>
+</table>
+
+<p>
+为什么不用 reward 直接训练？
+因为不同 prompt 的难度不同。
+一个 0.6 的 reward 在难题里可能很好，在简单题里可能很差。
+Advantage 的作用就是把 reward 放到当前上下文里比较。
+</p>
+
+<h3>8.12 PPO 对后训练 Agent 的意义</h3>
+
+<p>
+如果是普通聊天模型，PPO 优化的是回答。
+如果是 Agent，PPO 优化的是整条轨迹。
+</p>
+
+<table>
+<tr>
+<th>普通 LLM PPO</th>
+<th>Agent PPO</th>
+</tr>
+<tr>
+<td>prompt → response → reward</td>
+<td>task → action sequence → environment feedback → reward</td>
+</tr>
+<tr>
+<td>动作是 token。</td>
+<td>动作可以是工具调用、网页点击、代码修改、搜索 query。</td>
+</tr>
+<tr>
+<td>reward 可能来自人类偏好模型。</td>
+<td>reward 可能来自测试通过率、工具成功率、任务状态。</td>
+</tr>
+<tr>
+<td>主要优化回答质量。</td>
+<td>主要优化任务完成率、轨迹效率和错误恢复能力。</td>
+</tr>
+</table>
+
+<h4>Agent PPO 轨迹示例</h4>
+
+<pre>
+Task:
+修复一个 Python 函数中的 bug。
+
+Action 1:
+read_file("main.py")
+
+Observation 1:
+返回 main.py 内容。
+
+Action 2:
+edit_file("main.py", patch)
+
+Observation 2:
+文件修改成功。
+
+Action 3:
+run_tests()
+
+Observation 3:
+测试失败，提示 IndexError。
+
+Action 4:
+read_file("main.py")
+
+Action 5:
+edit_file("main.py", new_patch)
+
+Action 6:
+run_tests()
+
+Observation 6:
+全部测试通过。
+
+Reward:
++1.0
+</pre>
+
+<p>
+这时 reward 不是给某一句话，而是给整条任务轨迹。
+难点是：最终测试通过，究竟应该奖励哪一步？哪些动作贡献最大？哪些动作是浪费？
+这就是 Agent RL 比普通文本 RL 更难的地方。
+</p>
+
+<h3>8.13 Online RL 的优势与风险</h3>
+
+<table>
+<tr>
+<th>方面</th>
+<th>优势</th>
+<th>风险</th>
+</tr>
+<tr>
+<td>能力上限</td>
+<td>可以通过探索超过已有数据。</td>
+<td>如果 reward 差，会探索出坏行为。</td>
+</tr>
+<tr>
+<td>适合任务</td>
+<td>数学、代码、推理、工具调用、多步任务。</td>
+<td>开放任务 reward 难设计。</td>
+</tr>
+<tr>
+<td>数据</td>
+<td>模型自己持续生成。</td>
+<td>生成成本高。</td>
+</tr>
+<tr>
+<td>训练</td>
+<td>能直接优化任务成功率。</td>
+<td>容易不稳定。</td>
+</tr>
+<tr>
+<td>Agent</td>
+<td>能训练真实环境行动能力。</td>
+<td>环境搭建复杂，安全风险更高。</td>
+</tr>
+</table>
+
+<div class="box warn">
+<strong>不要一上来就做 PPO：</strong>
+对个人学习来说，合理顺序是：
+<pre>
+SFT
+  ↓
+DPO
+  ↓
+Rule-based reward
+  ↓
+GRPO / PPO 小任务
+  ↓
+复杂 Agent RL
+</pre>
+如果直接上 PPO，很容易卡在工程和 reward 设计上。
+</div>
+
+<h3>8.14 这一节阶段总结</h3>
+
+<div class="box note">
+<strong>Online RL 总结：</strong>
+Online RL 是后训练路线里“真正开始探索”的阶段。
+它比 SFT 和 DPO 更贵、更难、更不稳定，但也有更高上限。
+</div>
+
+<table>
+<tr>
+<th>你应该记住的问题</th>
+<th>答案</th>
+</tr>
+<tr>
+<td>Online RL 和 DPO 最大区别是什么？</td>
+<td>DPO 用固定偏好数据；Online RL 用当前模型实时生成数据。</td>
+</tr>
+<tr>
+<td>PPO 为什么需要 clipping？</td>
+<td>防止策略更新太大，导致模型崩掉。</td>
+</tr>
+<tr>
+<td>为什么 Online RL 成本高？</td>
+<td>需要大量自回归生成、reward 计算和权重同步。</td>
+</tr>
+<tr>
+<td>为什么它适合 reasoning / coding？</td>
+<td>这些任务有可验证 reward，适合通过探索提高能力。</td>
+</tr>
+<tr>
+<td>为什么 Agent RL 更难？</td>
+<td>Agent 的 reward 通常来自整条轨迹，信用分配和环境执行都更复杂。</td>
+</tr>
+</table>
+
+<div class="box train">
+<strong>学到这里，后训练主线应该变成：</strong>
+<pre>
+SFT：模仿高质量答案
+  ↓
+Rejection Sampling：生成多个候选，筛好样本
+  ↓
+DPO：学习 chosen / rejected 偏好
+  ↓
+Online RL / PPO：当前模型自己探索，用 reward 优化
+</pre>
+下一步要进入的是：
+Reward Pipeline，也就是“奖励到底怎么设计”。
+</div>
+  
+  
+<!-- ===================================================== -->
+<!-- 第 9 部分：Reward Pipeline 奖励管线 -->
+<!-- 插入位置：接在第 8 部分 Online RL / PPO 后面，放在 </body> 前 -->
+<!-- ===================================================== -->
+
+<h2 id="route9">9. Reward Pipeline：奖励管线</h2>
+
+<p>
+前面讲 Online RL 时，有一个问题一直没有展开：<strong>reward 到底从哪里来？</strong>
+如果没有可靠 reward，RL 就没有方向；如果 reward 写错了，模型就会朝错误方向优化。
+</p>
+
+<p>
+PyTorch 原文在 “Beyond RLHF” 部分强调，奖励不一定只能来自人类反馈。
+在很多后训练任务中，尤其是代码、数学、工具调用和 Agent 任务中，reward 可以来自软件管线、测试用例、规则验证器、格式检查器或大模型评审。
+</p>
+
+<div class="box note">
+<strong>一句话理解：</strong>
+后训练真正的核心不是“用了 PPO 还是 GRPO”，而是你能不能设计一个可靠的 reward pipeline。
+</div>
+
+<h3>9.1 为什么 Reward Pipeline 比算法还重要？</h3>
+
+<p>
+强化学习会最大化 reward。问题在于：模型并不知道你心里真正想要什么，它只知道你给它的 reward。
+所以 reward pipeline 决定了模型最终会学成什么样。
+</p>
+
+<table>
+<tr>
+<th>如果 reward 关注</th>
+<th>模型可能学到</th>
+</tr>
+<tr>
+<td>只关注答案正确</td>
+<td>模型可能推理过程胡编，但最终答案碰巧正确。</td>
+</tr>
+<tr>
+<td>只关注测试通过</td>
+<td>模型可能硬编码测试样例。</td>
+</tr>
+<tr>
+<td>只关注回答长度</td>
+<td>模型可能变得非常啰嗦。</td>
+</tr>
+<tr>
+<td>只关注工具调用成功</td>
+<td>模型可能频繁调用工具，忽视成本。</td>
+</tr>
+<tr>
+<td>只关注最终任务完成</td>
+<td>模型可能过程混乱，但最后碰巧成功。</td>
+</tr>
+</table>
+
+<div class="box warn">
+<strong>关键警告：</strong>
+RL 算法只负责优化 reward。reward 设计得粗糙，模型就会学会粗糙甚至投机的行为。
+</div>
+
+<h3>9.2 原文中的 Coding Reward Pipeline</h3>
+
+<p>
+PyTorch 原文用代码任务举例，展示了一个比较完整的 reward pipeline。
+这个图非常适合理解：真实后训练里，reward 不是一个简单分数，而是多个评估模块的组合。
+</p>
+
+<div class="figure">
+<img src="https://pytorch.org/wp-content/uploads/2025/08/5-1.png" alt="Coding reward pipeline">
+<div class="caption">
+图 5：代码任务中的 Reward Pipeline 奖励管线。来源：PyTorch 官方博客。
+如果图片不显示，可以打开原图：
+<a href="https://pytorch.org/wp-content/uploads/2025/08/5-1.png" target="_blank">
+https://pytorch.org/wp-content/uploads/2025/08/5-1.png
+</a>
+</div>
+</div>
+
+<h3>9.3 图片逐项解释</h3>
+
+<table>
+<tr>
+<th>图中元素</th>
+<th>中文解释</th>
+<th>作用</th>
+<th>对应 reward</th>
+</tr>
+<tr>
+<td>Coding Problems</td>
+<td>代码问题</td>
+<td>训练任务输入，例如写函数、修 bug、补全算法。</td>
+<td>任务来源。</td>
+</tr>
+<tr>
+<td>Model Being Trained</td>
+<td>正在训练的模型</td>
+<td>模型根据代码问题生成 solution。</td>
+<td>策略模型，也就是 policy。</td>
+</tr>
+<tr>
+<td>Solutions</td>
+<td>解决方案</td>
+<td>模型生成的代码答案。</td>
+<td>后续所有 reward 都围绕它计算。</td>
+</tr>
+<tr>
+<td>Rules</td>
+<td>规则</td>
+<td>代码必须满足的一些硬条件。</td>
+<td>违反规则就扣分或直接给负分。</td>
+</tr>
+<tr>
+<td>Linter</td>
+<td>静态检查器</td>
+<td>检查代码风格、语法、格式、潜在错误。</td>
+<td>格式 reward 或负 reward。</td>
+</tr>
+<tr>
+<td>Test Harness</td>
+<td>测试框架</td>
+<td>运行单元测试、隐藏测试、集成测试。</td>
+<td>最重要的可验证 reward。</td>
+</tr>
+<tr>
+<td>Rules Broken?</td>
+<td>是否违反规则</td>
+<td>判断代码是否触犯硬规则。</td>
+<td>违反则 negative reward。</td>
+</tr>
+<tr>
+<td>Code Style Reward Model</td>
+<td>代码风格奖励模型</td>
+<td>评价代码是否可读、简洁、符合风格。</td>
+<td>比例型 reward。</td>
+</tr>
+<tr>
+<td>Rank</td>
+<td>排序</td>
+<td>对多个 solution 进行排序。</td>
+<td>可转成 preference data。</td>
+</tr>
+</table>
+
+<h3>9.4 这张图最重要的意思</h3>
+
+<p>
+这张图不是简单说“代码通过测试就行”。它强调的是：代码任务的 reward 可以由多个部分组成。
+</p>
+
+<pre>
+最终 reward =
+  测试通过奖励
++ 格式正确奖励
++ 代码风格奖励
+- 违反规则惩罚
+- 安全风险惩罚
+- 过长 / 低效惩罚
+</pre>
+
+<p>
+这比单一 reward 更稳，因为真实任务往往不是一个维度。
+比如代码既要能运行，也要可读、安全、不过度硬编码。
+</p>
+
+<div class="box note">
+<strong>一句话理解：</strong>
+Reward Pipeline 是把“好答案”拆成多个可检查维度，然后把这些维度组合成训练信号。
+</div>
+
+<h3>9.5 常见 reward 类型</h3>
+
+<table>
+<tr>
+<th>Reward 类型</th>
+<th>中文</th>
+<th>适合任务</th>
+<th>优点</th>
+<th>缺点</th>
+</tr>
+<tr>
+<td>Human Preference Reward</td>
+<td>人类偏好奖励</td>
+<td>写作、对话、安全、风格。</td>
+<td>能覆盖主观偏好。</td>
+<td>成本高，标注不稳定。</td>
+</tr>
+<tr>
+<td>Reward Model</td>
+<td>奖励模型</td>
+<td>RLHF、对话质量评价。</td>
+<td>可以自动给分。</td>
+<td>可能被模型钻漏洞。</td>
+</tr>
+<tr>
+<td>Rule-based Reward</td>
+<td>规则奖励</td>
+<td>格式检查、JSON、答案匹配。</td>
+<td>清晰、稳定、便宜。</td>
+<td>规则太窄，容易漏掉语义质量。</td>
+</tr>
+<tr>
+<td>Unit Test Reward</td>
+<td>单元测试奖励</td>
+<td>代码生成、代码修复。</td>
+<td>客观、可自动验证。</td>
+<td>测试覆盖不足时会被硬编码。</td>
+</tr>
+<tr>
+<td>Math Verification Reward</td>
+<td>数学验证奖励</td>
+<td>数学题、符号计算。</td>
+<td>最终答案可验证。</td>
+<td>过程质量不一定能验证。</td>
+</tr>
+<tr>
+<td>LLM-as-Judge</td>
+<td>大模型评审奖励</td>
+<td>摘要、问答、开放文本评价。</td>
+<td>灵活、容易部署。</td>
+<td>可能偏见、幻觉、专业性不足。</td>
+</tr>
+<tr>
+<td>Environment Reward</td>
+<td>环境奖励</td>
+<td>Agent、网页操作、游戏、机器人。</td>
+<td>直接反映任务完成。</td>
+<td>环境搭建成本高。</td>
+</tr>
+</table>
+
+<h3>9.6 Outcome Reward Model 和 Process Reward Model</h3>
+
+<p>
+后训练推理模型时，经常会遇到两个概念：ORM 和 PRM。
+</p>
+
+<table>
+<tr>
+<th>英文</th>
+<th>中文</th>
+<th>评价什么</th>
+<th>例子</th>
+</tr>
+<tr>
+<td>ORM, Outcome Reward Model</td>
+<td>结果奖励模型</td>
+<td>只评价最终答案。</td>
+<td>数学题最终答案是否正确。</td>
+</tr>
+<tr>
+<td>PRM, Process Reward Model</td>
+<td>过程奖励模型</td>
+<td>评价中间推理步骤。</td>
+<td>每一步推导是否合理。</td>
+</tr>
+</table>
+
+<h4>ORM 的特点</h4>
+
+<table>
+<tr>
+<th>优点</th>
+<th>缺点</th>
+</tr>
+<tr>
+<td>简单，容易自动验证。</td>
+<td>不知道中间过程哪里错。</td>
+</tr>
+<tr>
+<td>适合答案明确的任务。</td>
+<td>可能奖励错误推理 + 正确答案。</td>
+</tr>
+<tr>
+<td>工程成本低。</td>
+<td>credit assignment 信用分配困难。</td>
+</tr>
+</table>
+
+<h4>PRM 的特点</h4>
+
+<table>
+<tr>
+<th>优点</th>
+<th>缺点</th>
+</tr>
+<tr>
+<td>能给中间步骤反馈。</td>
+<td>标注和训练成本更高。</td>
+</tr>
+<tr>
+<td>有助于训练稳定推理。</td>
+<td>步骤正确性有时也有争议。</td>
+</tr>
+<tr>
+<td>适合复杂推理任务。</td>
+<td>容易受到推理文本表面形式影响。</td>
+</tr>
+</table>
+
+<div class="box note">
+<strong>直观理解：</strong>
+ORM 像只看考试最终答案；PRM 像批改解题步骤。
+</div>
+
+<h3>9.7 可验证奖励：RLVR 的核心</h3>
+
+<p>
+RLVR 全称是 <strong>Reinforcement Learning with Verifiable Rewards</strong>，中文可以翻译为“可验证奖励强化学习”。
+它的核心思想是：如果一个任务的结果可以自动验证，就可以用这个验证结果作为 reward。
+</p>
+
+<table>
+<tr>
+<th>任务</th>
+<th>可验证 reward</th>
+</tr>
+<tr>
+<td>数学题</td>
+<td>最终答案是否等于标准答案。</td>
+</tr>
+<tr>
+<td>代码题</td>
+<td>单元测试是否通过。</td>
+</tr>
+<tr>
+<td>JSON 输出</td>
+<td>是否能被解析，字段是否符合 schema。</td>
+</tr>
+<tr>
+<td>SQL 查询</td>
+<td>查询结果是否和标准结果一致。</td>
+</tr>
+<tr>
+<td>工具调用</td>
+<td>工具是否执行成功，返回是否满足任务。</td>
+</tr>
+<tr>
+<td>网页任务</td>
+<td>页面最终状态是否达到目标。</td>
+</tr>
+</table>
+
+<p>
+这就是为什么数学、代码、工具调用、网页 Agent 是后训练研究中非常重要的场景。
+它们比普通开放问答更容易自动打分。
+</p>
+
+<div class="box train">
+<strong>实践建议：</strong>
+你如果要学 RLVR，不要一开始做开放问答。
+先做这三类任务：
+<ol>
+<li><strong>数学题：</strong>最终答案可验证；</li>
+<li><strong>代码题：</strong>测试是否通过可验证；</li>
+<li><strong>工具调用：</strong>JSON 格式、工具执行、最终答案可验证。</li>
+</ol>
+</div>
+
+<h3>9.8 Agent 的 Reward Pipeline 应该怎么设计？</h3>
+
+<p>
+Agent 的 reward 不能只看最终答案。因为 Agent 有中间动作和工具调用。
+一个 Agent 最终答对了，但中间可能乱调用工具、浪费成本、使用危险操作。
+</p>
+
+<p>
+所以 Agent reward 应该分层设计：
+</p>
+
+<table>
+<tr>
+<th>Reward 层级</th>
+<th>评价对象</th>
+<th>例子</th>
+</tr>
+<tr>
+<td>格式层</td>
+<td>输出是否可解析。</td>
+<td>JSON 合法 +0.1，格式错误 -0.5。</td>
+</tr>
+<tr>
+<td>工具层</td>
+<td>工具选择是否正确。</td>
+<td>正确工具 +0.2，错误工具 -0.2。</td>
+</tr>
+<tr>
+<td>参数层</td>
+<td>工具参数是否正确。</td>
+<td>字段完整、类型正确、值合理。</td>
+</tr>
+<tr>
+<td>执行层</td>
+<td>工具是否执行成功。</td>
+<td>API 成功返回 +0.2，报错 -0.2。</td>
+</tr>
+<td>反馈层</td>
+<td>是否利用 Observation。</td>
+<td>根据工具结果修正下一步 +0.2。</td>
+</tr>
+<tr>
+<td>任务层</td>
+<td>最终任务是否完成。</td>
+<td>答案正确 / 测试通过 / 页面状态正确。</td>
+</tr>
+<tr>
+<td>成本层</td>
+<td>轨迹是否高效。</td>
+<td>过多工具调用扣分。</td>
+</tr>
+<tr>
+<td>安全层</td>
+<td>是否触发危险行为。</td>
+<td>调用危险工具或越权操作直接负分。</td>
+</tr>
+</table>
+
+<h4>Agent reward 示例</h4>
+
+<pre>
+reward = 0.0
+
+if valid_json:
+    reward += 0.1
+
+if correct_tool:
+    reward += 0.2
+
+if correct_args:
+    reward += 0.2
+
+if tool_execution_success:
+    reward += 0.2
+
+if final_answer_correct:
+    reward += 1.0
+
+if unnecessary_tool_calls:
+    reward -= 0.1 * num_extra_calls
+
+if unsafe_action:
+    reward -= 2.0
+</pre>
+
+<div class="box warn">
+<strong>注意：</strong>
+reward 不一定越复杂越好。太复杂的 reward 可能引入互相冲突的信号。
+实际训练中最好先从简单、可验证、稳定的 reward 开始。
+</div>
+
+<h3>9.9 Reward Pipeline 和 DPO / PPO / GRPO 的关系</h3>
+
+<table>
+<tr>
+<th>方法</th>
+<th>如何使用 reward</th>
+</tr>
+<tr>
+<td>SFT</td>
+<td>通常不直接使用 reward，只使用标准答案。</td>
+</tr>
+<tr>
+<td>Rejection Sampling</td>
+<td>用 reward 排序候选答案，只保留好样本。</td>
+</tr>
+<tr>
+<td>DPO</td>
+<td>用 reward 或评审结果构造 chosen / rejected。</td>
+</tr>
+<tr>
+<td>PPO</td>
+<td>直接用 reward 优化当前模型生成的 rollout。</td>
+</tr>
+<tr>
+<td>GRPO</td>
+<td>对同一 prompt 的多个候选，根据组内 reward 相对高低优化。</td>
+</tr>
+</table>
+
+<div class="box note">
+<strong>统一理解：</strong>
+Reward Pipeline 不只是 RL 阶段才用。
+它可以用于筛 SFT 数据，也可以用于构造 DPO 偏好对，还可以直接用于 PPO / GRPO。
+</div>
+
+<h3>9.10 本节总结</h3>
+
+<div class="box train">
+<strong>Reward Pipeline 阶段总结：</strong>
+到这里，后训练路线应该进一步变成：
+<pre>
+SFT：学习标准答案
+  ↓
+Rejection Sampling：用 reward 筛好样本
+  ↓
+DPO：用 reward 构造 chosen / rejected
+  ↓
+Online RL：用 reward 直接优化模型
+</pre>
+
+真正决定训练效果的，不只是算法，而是 reward 的可靠性、覆盖范围和抗投机能力。
+</div>
+
+<hr>
+
+<!-- ===================================================== -->
+<!-- 第 10 部分：Test-time Reasoning 与 DeepSeek-R1 -->
+<!-- ===================================================== -->
+
+<h2 id="route10">10. Test-time Reasoning：测试时推理与 DeepSeek-R1</h2>
+
+<p>
+PyTorch 原文后半部分进入了一个非常重要的主题：<strong>Test-time Reasoning</strong>，测试时推理。
+</p>
+
+<p>
+简单说，模型不一定要立刻给答案。它可以在回答前先生成一段 reasoning，也就是推理过程。
+如果训练得好，模型会学会在推理阶段检查、回退、验证和修正。
+</p>
+
+<div class="box note">
+<strong>一句话理解：</strong>
+Test-time reasoning 是让模型在推理时多花计算，通过“想得更久”换取“答得更准”。
+</div>
+
+<h3>10.1 Test-time Compute 是什么？</h3>
+
+<p>
+Test-time compute，测试时计算，指的是模型在推理阶段额外花费的计算。
+比如：
+</p>
+
+<ul>
+<li>生成更长的思考过程；</li>
+<li>尝试多个候选答案；</li>
+<li>进行自我验证；</li>
+<li>调用工具检查结果；</li>
+<li>回退并重新推理。</li>
+</ul>
+
+<table>
+<tr>
+<th>方式</th>
+<th>中文解释</th>
+<th>例子</th>
+</tr>
+<tr>
+<td>Long CoT</td>
+<td>长思维链</td>
+<td>模型写出更详细的解题过程。</td>
+</tr>
+<tr>
+<td>Self-consistency</td>
+<td>自洽采样</td>
+<td>采样多个推理路径，投票选答案。</td>
+</tr>
+<tr>
+<td>Verification</td>
+<td>验证</td>
+<td>模型检查答案是否满足条件。</td>
+</tr>
+<tr>
+<td>Tool checking</td>
+<td>工具检查</td>
+<td>调用计算器、代码执行器验证答案。</td>
+</tr>
+<tr>
+<td>Backtracking</td>
+<td>回溯</td>
+<td>发现前面推理错了，重新走一条路径。</td>
+</tr>
+</table>
+
+<h3>10.2 DeepSeek-R1-Zero 的训练格式</h3>
+
+<p>
+原文引用了 DeepSeek-R1-Zero 的训练格式。它让模型把推理和最终答案分开放在两个标签里：
+</p>
+
+<div class="figure">
+<img src="https://pytorch.org/wp-content/uploads/2025/08/6-1.png" alt="DeepSeek-R1-Zero training prompt template">
+<div class="caption">
+图 6：DeepSeek-R1-Zero 的训练提示模板。来源：PyTorch 官方博客。
+如果图片不显示，可以打开原图：
+<a href="https://pytorch.org/wp-content/uploads/2025/08/6-1.png" target="_blank">
+https://pytorch.org/wp-content/uploads/2025/08/6-1.png
+</a>
+</div>
+</div>
+
+<h3>10.3 图片逐项解释</h3>
+
+<table>
+<tr>
+<th>模板元素</th>
+<th>中文解释</th>
+<th>作用</th>
+</tr>
+<tr>
+<td><code>&lt;think&gt;</code></td>
+<td>思考开始标签</td>
+<td>要求模型先生成推理过程。</td>
+</tr>
+<tr>
+<td><code>&lt;/think&gt;</code></td>
+<td>思考结束标签</td>
+<td>明确推理过程结束。</td>
+</tr>
+<tr>
+<td><code>&lt;answer&gt;</code></td>
+<td>答案开始标签</td>
+<td>明确最终答案开始。</td>
+</tr>
+<tr>
+<td><code>&lt;/answer&gt;</code></td>
+<td>答案结束标签</td>
+<td>便于自动提取答案和计算 reward。</td>
+</tr>
+</table>
+
+<p>
+这套格式看起来简单，但对 RL 很重要。
+因为 reward pipeline 可以自动检查：
+</p>
+
+<ul>
+<li>有没有 <code>&lt;think&gt;</code> 标签；</li>
+<li>有没有 <code>&lt;answer&gt;</code> 标签；</li>
+<li>最终答案能不能被提取；</li>
+<li>最终答案是否正确。</li>
+</ul>
+
+<div class="box note">
+<strong>关键理解：</strong>
+格式设计本身就是后训练的一部分。没有稳定格式，reward pipeline 就很难自动工作。
+</div>
+
+<h3>10.4 DeepSeek-R1-Zero 的两个主要 reward</h3>
+
+<table>
+<tr>
+<th>Reward</th>
+<th>中文</th>
+<th>检查什么</th>
+<th>例子</th>
+</tr>
+<tr>
+<td>Accuracy Reward</td>
+<td>准确性奖励</td>
+<td>最终答案是否正确。</td>
+<td>数学答案是否等于标准答案。</td>
+</tr>
+<tr>
+<td>Format Reward</td>
+<td>格式奖励</td>
+<td>输出是否遵守指定格式。</td>
+<td>是否包含 <code>&lt;think&gt;</code> 和 <code>&lt;answer&gt;</code>。</td>
+</tr>
+</table>
+
+<p>
+这说明推理后训练不一定一开始就需要复杂的人类偏好。
+如果任务可验证，accuracy reward 就能提供非常强的训练信号。
+</p>
+
+<h3>10.5 为什么 RL 能激发推理？</h3>
+
+<p>
+直觉上，模型为了拿到更高 accuracy reward，会探索不同的推理方式。
+如果更长、更仔细的推理更容易得到正确答案，那么 RL 就会逐渐提高这些行为的概率。
+</p>
+
+<pre>
+模型尝试短推理 → 答错 → reward 低
+模型尝试详细推理 → 答对 → reward 高
+模型逐渐学会：复杂题需要更长推理
+</pre>
+
+<p>
+这就是为什么 reasoning model 的后训练往往和 RLVR、GRPO 联系在一起。
+</p>
+
+<h3>10.6 Aha Moment：模型学会自我修正</h3>
+
+<p>
+原文展示了 DeepSeek-R1-Zero 训练过程中出现的 “aha moment”。
+所谓 aha moment，就是模型在推理中突然意识到前面可能错了，然后主动回退、重新检查。
+</p>
+
+<div class="figure">
+<img src="https://pytorch.org/wp-content/uploads/2025/08/7.png" alt="Aha moment in DeepSeek-R1-Zero">
+<div class="caption">
+图 7：DeepSeek-R1-Zero 训练中的 Aha Moment。来源：PyTorch 官方博客。
+如果图片不显示，可以打开原图：
+<a href="https://pytorch.org/wp-content/uploads/2025/08/7.png" target="_blank">
+https://pytorch.org/wp-content/uploads/2025/08/7.png
+</a>
+</div>
+</div>
+
+<h3>10.7 图片逐项解释</h3>
+
+<table>
+<tr>
+<th>图中现象</th>
+<th>中文解释</th>
+<th>意义</th>
+</tr>
+<tr>
+<td>Wait, wait</td>
+<td>模型停下来</td>
+<td>说明模型没有一条路走到黑，而是开始检查当前推理。</td>
+</tr>
+<tr>
+<td>That's an aha moment</td>
+<td>顿悟时刻</td>
+<td>模型意识到前面需要重新评估。</td>
+</tr>
+<tr>
+<td>re-evaluate</td>
+<td>重新评估</td>
+<td>模型回到前面步骤检查错误。</td>
+</tr>
+<tr>
+<td>step-by-step</td>
+<td>逐步推理</td>
+<td>模型把问题拆成更细步骤重新处理。</td>
+</tr>
+</table>
+
+<p>
+这张图的重点不是某一句英文，而是模型行为发生了变化：
+它不只是生成答案，而是在推理过程中学会了自我检查、自我怀疑和自我修正。
+</p>
+
+<div class="box train">
+<strong>对 Agent 后训练的启发：</strong>
+Agent 也需要类似 aha moment：
+<ul>
+<li>工具调用失败后，不应重复同样参数；</li>
+<li>搜索不到结果后，应改写 query；</li>
+<li>代码测试失败后，应读取报错并定位原因；</li>
+<li>网页任务卡住后，应回退并尝试其他路径。</li>
+</ul>
+这可以训练成：
+<pre>
+失败 Observation
+  ↓
+Reflection 反思
+  ↓
+New Action 新动作
+</pre>
+</div>
+
+<h3>10.8 推理长度为什么会变长？</h3>
+
+<p>
+原文还展示了 DeepSeek-R1-Zero 在训练过程中，平均回答长度逐渐上升。
+</p>
+
+<div class="figure">
+<img src="https://pytorch.org/wp-content/uploads/2025/08/8.png" alt="DeepSeek-R1-Zero average response length during training">
+<div class="caption">
+图 8：DeepSeek-R1-Zero 训练中平均回答长度变化。来源：PyTorch 官方博客。
+如果图片不显示，可以打开原图：
+<a href="https://pytorch.org/wp-content/uploads/2025/08/8.png" target="_blank">
+https://pytorch.org/wp-content/uploads/2025/08/8.png
+</a>
+</div>
+</div>
+
+<h3>10.9 图片逐项解释</h3>
+
+<table>
+<tr>
+<th>图中元素</th>
+<th>中文解释</th>
+<th>含义</th>
+</tr>
+<tr>
+<td>Training Steps</td>
+<td>训练步数</td>
+<td>RL 训练推进过程。</td>
+</tr>
+<tr>
+<td>Average Response Length</td>
+<td>平均回答长度</td>
+<td>模型每次回答平均生成多少 token。</td>
+</tr>
+<tr>
+<td>曲线上升</td>
+<td>回答变长</td>
+<td>模型学会用更多推理 token 来提高正确率。</td>
+</tr>
+</table>
+
+<p>
+这个现象说明：如果复杂题需要更长推理才能答对，而 reward 只奖励答案正确，那么模型就会倾向于生成更长 reasoning。
+</p>
+
+<div class="box warn">
+<strong>风险：</strong>
+如果 reward 不惩罚长度，模型可能过度延长推理，造成 token 浪费。
+所以 reasoning 后训练需要平衡：
+<ul>
+<li>答案正确性；</li>
+<li>格式正确性；</li>
+<li>推理长度成本；</li>
+<li>推理是否真的有用。</li>
+</ul>
+</div>
+
+<h3>10.10 Reasoning 后训练的核心逻辑</h3>
+
+<table>
+<tr>
+<th>阶段</th>
+<th>模型学到什么</th>
+</tr>
+<tr>
+<td>格式约束</td>
+<td>学会把推理放进 <code>&lt;think&gt;</code>，把答案放进 <code>&lt;answer&gt;</code>。</td>
+</tr>
+<tr>
+<td>准确性奖励</td>
+<td>学会最终答案必须正确。</td>
+</tr>
+<tr>
+<td>探索推理路径</td>
+<td>尝试不同长度和结构的 reasoning。</td>
+</tr>
+<tr>
+<td>自我修正</td>
+<td>发现前面可能错了，会重新评估。</td>
+</tr>
+<tr>
+<td>测试时计算扩展</td>
+<td>复杂问题上愿意花更多 token 推理。</td>
+</tr>
+</table>
+
+<h3>10.11 Reasoning 和 Agent 的关系</h3>
+
+<p>
+Reasoning model 学到的是“在回答前思考和检查”。
+Agent model 需要的是“在行动前规划，在失败后修正”。
+两者本质上是相通的。
+</p>
+
+<table>
+<tr>
+<th>Reasoning 后训练</th>
+<th>Agent 后训练</th>
+</tr>
+<tr>
+<td>模型生成推理步骤。</td>
+<td>Agent 生成任务计划。</td>
+</tr>
+<tr>
+<td>模型发现推理错误。</td>
+<td>Agent 发现工具调用失败。</td>
+</tr>
+<tr>
+<td>模型重新计算答案。</td>
+<td>Agent 改写 query、换工具、改代码。</td>
+</tr>
+<tr>
+<td>reward 来自答案正确。</td>
+<td>reward 来自任务完成、测试通过、环境状态正确。</td>
+</tr>
+</table>
+
+<div class="box note">
+<strong>统一理解：</strong>
+Reasoning 后训练和 Agent 后训练都在训练一种能力：
+模型不再一次性输出，而是在过程中检查、修正、继续尝试。
+</div>
+
+<h3>10.12 本节总结</h3>
+
+<div class="box train">
+<strong>Test-time Reasoning 阶段总结：</strong>
+这一节说明，RL 不只是让模型回答更符合偏好，还能激发新的推理行为。
+特别是在答案可验证的任务中，模型可以通过 RL 学会：
+<pre>
+多想一步
+  ↓
+检查错误
+  ↓
+回退重算
+  ↓
+生成更长推理
+  ↓
+提高最终正确率
+</pre>
+
+这就是 DeepSeek-R1、RLVR、GRPO 这些方向的重要背景。
+</div>
+  
+<!-- ===================================================== -->
+<!-- 第 11 部分：PPO 深入理解 -->
+<!-- 插入位置：接在第 10 部分 Test-time Reasoning 后面，放在 </body> 前 -->
+<!-- ===================================================== -->
+
+<h2 id="route11">11. PPO 深入理解：为什么 PPO 稳定但复杂？</h2>
+
+<p>
+前面已经讲过 Online RL 和 PPO 的基本直觉：
+模型生成回答或动作，reward pipeline 给分，然后模型根据 reward 调整自己。
+</p>
+
+<p>
+但是，如果只是简单地“reward 高就提高概率，reward 低就降低概率”，训练会非常不稳定。
+PyTorch 原文在 Appendix A 里专门解释了 PPO 为什么要加一堆约束。
+</p>
+
+<div class="box note">
+<strong>一句话理解：</strong>
+PPO 的目的不是让模型更新得更猛，而是让模型在提高 reward 的同时不要跑偏、不要崩、不要一步更新太大。
+</div>
+
+<h3>11.1 从最朴素的 Policy Gradient 开始</h3>
+
+<p>
+在 LLM 中，模型输出每个 token 的概率。
+如果某个输出带来了高 reward，我们希望模型以后更容易生成它；
+如果某个输出带来了低 reward，我们希望模型以后少生成它。
+</p>
+
+<pre>
+如果 reward 高：
+    增大对应 response 的 log probability
+
+如果 reward 低：
+    降低对应 response 的 log probability
+</pre>
+
+<p>
+所以最简单的 policy gradient loss 可以写成：
+</p>
+
+<pre>
+policy_gradient_loss = - (rewards * log_probs).sum(dim=-1).mean()
+</pre>
+
+<h4>这个公式怎么理解？</h4>
+
+<table>
+<tr>
+<th>元素</th>
+<th>中文解释</th>
+<th>作用</th>
+</tr>
+<tr>
+<td><code>log_probs</code></td>
+<td>模型生成当前输出的对数概率</td>
+<td>决定模型以后是否更倾向生成这个输出。</td>
+</tr>
+<tr>
+<td><code>rewards</code></td>
+<td>奖励</td>
+<td>告诉模型这个输出好不好。</td>
+</tr>
+<tr>
+<td><code>-</code></td>
+<td>负号</td>
+<td>因为优化器默认最小化 loss，所以加负号等价于最大化高 reward 输出概率。</td>
+</tr>
+</table>
+
+<div class="box note">
+<strong>直观理解：</strong>
+reward 像方向盘，log_prob 像油门。reward 高，就让模型更用力往这个输出方向走。
+</div>
+
+<h3>11.2 为什么朴素 Policy Gradient 不够？</h3>
+
+<p>
+因为 reward 往往非常不稳定。
+有些 prompt 很简单，模型随便答就能高分；有些 prompt 很难，模型努力了也只能低分。
+如果直接用原始 reward 训练，梯度会非常抖。
+</p>
+
+<table>
+<tr>
+<th>问题</th>
+<th>表现</th>
+<th>后果</th>
+</tr>
+<tr>
+<td>Reward 方差大</td>
+<td>有些样本 reward 特别高，有些特别低。</td>
+<td>训练震荡。</td>
+</tr>
+<tr>
+<td>不同 prompt 难度不同</td>
+<td>同样 0.6 分，在难题里可能不错，在简单题里很差。</td>
+<td>模型无法公平比较动作好坏。</td>
+</tr>
+<tr>
+<td>长尾 reward</td>
+<td>极端样本带来巨大梯度。</td>
+<td>模型突然跑偏。</td>
+</tr>
+<tr>
+<td>更新过猛</td>
+<td>模型一次更新后输出分布大变。</td>
+<td>语言质量、格式、安全性退化。</td>
+</tr>
+</table>
+
+<h3>11.3 Advantage：优势函数</h3>
+
+<p>
+为了解决 reward 原始分数不好比较的问题，PPO 引入了 advantage，优势函数。
+</p>
+
+<pre>
+advantage = reward - baseline
+</pre>
+
+<p>
+baseline 也叫 value，它表示在当前状态下平均能拿多少分。
+advantage 则表示当前输出比平均水平好多少。
+</p>
+
+<table>
+<tr>
+<th>概念</th>
+<th>中文</th>
+<th>解释</th>
+</tr>
+<tr>
+<td>Reward</td>
+<td>奖励</td>
+<td>当前输出得了多少分。</td>
+</tr>
+<tr>
+<td>Baseline / Value</td>
+<td>基线 / 价值估计</td>
+<td>当前 prompt 平均能拿多少分。</td>
+</tr>
+<tr>
+<td>Advantage</td>
+<td>优势</td>
+<td>当前输出比平均水平高多少。</td>
+</tr>
+</table>
+
+<h4>例子</h4>
+
+<table>
+<tr>
+<th>Prompt 类型</th>
+<th>Reward</th>
+<th>Baseline</th>
+<th>Advantage</th>
+<th>解释</th>
+</tr>
+<tr>
+<td>简单数学题</td>
+<td>0.8</td>
+<td>0.9</td>
+<td>-0.1</td>
+<td>虽然分数不低，但比平均水平差。</td>
+</tr>
+<tr>
+<td>复杂证明题</td>
+<td>0.6</td>
+<td>0.3</td>
+<td>+0.3</td>
+<td>虽然绝对分不高，但相对这个难题已经很好。</td>
+</tr>
+</table>
+
+<div class="box note">
+<strong>一句话理解：</strong>
+Reward 看“绝对分数”，Advantage 看“相对表现”。
+</div>
+
+<h3>11.4 PPO 的第一个约束：Standardize Advantages 标准化优势</h3>
+
+<p>
+PyTorch 原文说，原始 advantage 仍然可能导致巨大更新。
+所以第一步是把 advantage 标准化，让它均值为 0、方差为 1。
+</p>
+
+<pre>
+advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
+</pre>
+
+<table>
+<tr>
+<th>操作</th>
+<th>中文解释</th>
+<th>作用</th>
+</tr>
+<tr>
+<td>减去均值</td>
+<td>把 advantage 中心移到 0</td>
+<td>避免整体偏高或偏低。</td>
+</tr>
+<tr>
+<td>除以标准差</td>
+<td>缩放到稳定范围</td>
+<td>避免极端样本导致巨大梯度。</td>
+</tr>
+<tr>
+<td>加 <code>1e-8</code></td>
+<td>防止除零</td>
+<td>数值稳定。</td>
+</tr>
+</table>
+
+<div class="box train">
+<strong>实践理解：</strong>
+标准化 advantage 是训练稳定性的基础步骤。
+如果 reward 分布非常不稳，标准化能避免某些 batch 让模型突然大幅更新。
+</div>
+
+<h3>11.5 PPO 的第二个约束：Importance Sampling 重要性采样</h3>
+
+<p>
+PPO 需要比较新策略和旧策略。
+因为 rollout 是旧模型生成的，但训练时模型参数已经在变。
+如果新模型和旧模型差太远，这批数据就不可靠。
+</p>
+
+<p>
+所以 PPO 计算一个 ratio：
+</p>
+
+<pre>
+ratio = exp(new_log_probs - old_log_probs)
+</pre>
+
+<p>
+这个 ratio 表示：新模型相对于旧模型，生成同一个动作的概率变了多少。
+</p>
+
+<table>
+<tr>
+<th>ratio 值</th>
+<th>含义</th>
+</tr>
+<tr>
+<td><code>ratio = 1</code></td>
+<td>新旧模型对这个动作的概率一样。</td>
+</tr>
+<tr>
+<td><code>ratio > 1</code></td>
+<td>新模型更喜欢这个动作。</td>
+</tr>
+<tr>
+<td><code>ratio < 1</code></td>
+<td>新模型更不喜欢这个动作。</td>
+</tr>
+<tr>
+<td><code>ratio 很大</code></td>
+<td>新模型相对旧模型变化太大，可能危险。</td>
+</tr>
+<tr>
+<td><code>ratio 很小</code></td>
+<td>新模型几乎放弃旧动作，也可能不稳定。</td>
+</tr>
+</table>
+
+<div class="figure">
+<img src="https://pytorch.org/wp-content/uploads/2025/08/9.png" alt="PPO trust region">
+<div class="caption">
+图 9：PPO 的 trust region 直观示意。来源：PyTorch 官方博客。
+如果图片不显示，可以打开原图：
+<a href="https://pytorch.org/wp-content/uploads/2025/08/9.png" target="_blank">
+https://pytorch.org/wp-content/uploads/2025/08/9.png
+</a>
+</div>
+</div>
+
+<h4>图片解释</h4>
+
+<p>
+这张图表达的是 trust region，信任区域。
+PPO 不希望新策略离旧策略太远。
+如果新策略变化太大，模型可能突然从一个相对稳定的语言模型，变成一个疯狂追 reward 的模型。
+</p>
+
+<table>
+<tr>
+<th>图中概念</th>
+<th>中文解释</th>
+<th>训练含义</th>
+</tr>
+<tr>
+<td>Old policy</td>
+<td>旧策略</td>
+<td>生成 rollout 的模型。</td>
+</tr>
+<tr>
+<td>New policy</td>
+<td>新策略</td>
+<td>正在训练更新的模型。</td>
+</tr>
+<tr>
+<td>Trust region</td>
+<td>信任区域</td>
+<td>允许策略变化的安全范围。</td>
+</tr>
+<tr>
+<td>Too far</td>
+<td>偏离太远</td>
+<td>更新幅度过大，训练可能崩。</td>
+</tr>
+</table>
+
+<h3>11.6 PPO 的第三个约束：Clipping 裁剪</h3>
+
+<p>
+有了 ratio 以后，PPO 还会进一步裁剪 ratio，限制它不要离 1 太远。
+</p>
+
+<pre>
+clipped_ratio = clamp(ratio, 1 - epsilon, 1 + epsilon)
+</pre>
+
+<p>
+如果 <code>epsilon = 0.2</code>，那 ratio 大致会被限制在：
+</p>
+
+<pre>
+0.8 到 1.2
+</pre>
+
+<table>
+<tr>
+<th>情况</th>
+<th>没有 clipping</th>
+<th>有 clipping</th>
+</tr>
+<tr>
+<td>高 reward 输出</td>
+<td>概率可能被无限推高。</td>
+<td>只能在安全范围内提高。</td>
+</tr>
+<tr>
+<td>低 reward 输出</td>
+<td>概率可能被过度压低。</td>
+<td>只能在安全范围内降低。</td>
+</tr>
+<tr>
+<td>训练稳定性</td>
+<td>容易震荡。</td>
+<td>更稳定。</td>
+</tr>
+</table>
+
+<div class="box note">
+<strong>一句话理解 clipping：</strong>
+好答案可以奖励，但不能奖励到模型一下子变形；坏答案可以惩罚，但不能惩罚到模型突然失控。
+</div>
+
+<h3>11.7 PPO 的第四个约束：Taking a min() 取最小值</h3>
+
+<p>
+PyTorch 原文说，PPO 不只是使用 clipped ratio，还要在 unclipped 和 clipped 之间取最小。
+</p>
+
+<pre>
+loss = - min(
+    ratio * advantage,
+    clipped_ratio * advantage
+)
+</pre>
+
+<p>
+这个设计是为了防止模型“钻 clipping 的空子”。
+如果只用 clipped 版本，模型可能会把概率推到裁剪边界附近，仍然导致不稳定。
+取 min 会让优化更保守。
+</p>
+
+<table>
+<tr>
+<th>机制</th>
+<th>中文解释</th>
+<th>作用</th>
+</tr>
+<tr>
+<td>unclipped objective</td>
+<td>未裁剪目标</td>
+<td>真实策略更新方向。</td>
+</tr>
+<tr>
+<td>clipped objective</td>
+<td>裁剪后目标</td>
+<td>受限制的更新方向。</td>
+</tr>
+<tr>
+<td>min()</td>
+<td>取较保守的那个</td>
+<td>防止模型利用裁剪边界投机。</td>
+</tr>
+</table>
+
+<h3>11.8 PPO 还需要 Value Loss 和 KL Penalty</h3>
+
+<p>
+PPO 不只有 policy loss。PyTorch 原文指出，PPO 还通常包含 value loss 和 KL divergence loss。
+</p>
+
+<table>
+<tr>
+<th>Loss</th>
+<th>中文</th>
+<th>作用</th>
+</tr>
+<tr>
+<td>Policy loss</td>
+<td>策略损失</td>
+<td>让模型提高高 advantage 输出的概率。</td>
+</tr>
+<tr>
+<td>Value loss</td>
+<td>价值损失</td>
+<td>训练 value network，让它更好预测 baseline。</td>
+</tr>
+<tr>
+<td>KL loss</td>
+<td>KL 散度损失</td>
+<td>防止模型偏离 reference model 太远。</td>
+</tr>
+<tr>
+<td>Entropy bonus</td>
+<td>熵奖励</td>
+<td>鼓励适度探索，防止模型太快变得确定。</td>
+</tr>
+</table>
+
+<h4>为什么需要 KL？</h4>
+
+<p>
+预训练花了巨大成本让模型学会语言、知识和基本能力。
+如果 RL 更新太猛，模型可能为了 reward 丢掉这些能力。
+KL penalty 的作用就是：不要让新模型偏离原来的 reference model 太远。
+</p>
+
+<pre>
+最终 PPO loss 通常包含：
+policy loss
++ value loss
++ KL penalty
++ entropy bonus
+</pre>
+
+<div class="box warn">
+<strong>PPO 的复杂性：</strong>
+PPO 不是一个单纯的 loss，而是一整套稳定训练机制：
+advantage、value network、old policy、reference model、KL、clipping、rollout。
+这也是为什么 PPO 工程成本明显高于 SFT 和 DPO。
+</div>
+
+<h3>11.9 PPO 的完整训练组件</h3>
+
+<table>
+<tr>
+<th>组件</th>
+<th>中文</th>
+<th>作用</th>
+<th>是否昂贵</th>
+</tr>
+<tr>
+<td>Policy model</td>
+<td>策略模型</td>
+<td>正在训练的 LLM。</td>
+<td>昂贵。</td>
+</tr>
+<tr>
+<td>Old policy</td>
+<td>旧策略</td>
+<td>生成 rollout 时的模型，用于计算 ratio。</td>
+<td>需要保存 log_probs。</td>
+</tr>
+<tr>
+<td>Reference model</td>
+<td>参考模型</td>
+<td>用于 KL 约束，防止模型偏离太远。</td>
+<td>昂贵。</td>
+</tr>
+<tr>
+<td>Reward model / pipeline</td>
+<td>奖励模型 / 奖励管线</td>
+<td>给输出打分。</td>
+<td>可能昂贵。</td>
+</tr>
+<tr>
+<td>Value network / Critic</td>
+<td>价值网络 / 评论家模型</td>
+<td>估计 baseline，计算 advantage。</td>
+<td>昂贵。</td>
+</tr>
+<tr>
+<td>Rollout workers</td>
+<td>采样 worker</td>
+<td>生成新回答或轨迹。</td>
+<td>非常昂贵。</td>
+</tr>
+</table>
+
+<h3>11.10 PPO 对后训练学习的意义</h3>
+
+<p>
+你现在学 PPO，不需要一开始就死磕公式。
+更重要的是理解它在后训练路线中的位置：
+</p>
+
+<table>
+<tr>
+<th>问题</th>
+<th>PPO 的作用</th>
+</tr>
+<tr>
+<td>SFT 只能模仿</td>
+<td>PPO 可以让模型通过 reward 探索。</td>
+</tr>
+<td>DPO 不在线探索</td>
+<td>PPO 使用当前模型生成新 rollout。</td>
+</tr>
+<td>RL 容易发散</td>
+<td>PPO 用 clipping 和 KL 限制更新幅度。</td>
+</tr>
+<tr>
+<td>Reward 可能稀疏</td>
+<td>PPO 可以用 advantage 处理长程奖励。</td>
+</tr>
+<tr>
+<td>Agent 轨迹很长</td>
+<td>PPO 可以把整条轨迹 reward 转为策略更新。</td>
+</tr>
+</table>
+
+<div class="box train">
+<strong>学习建议：</strong>
+PPO 这一节你应该掌握 5 个词：
+<ol>
+<li><strong>log_probs：</strong>模型生成动作的概率；</li>
+<li><strong>reward：</strong>动作或轨迹的得分；</li>
+<li><strong>advantage：</strong>相对平均水平好多少；</li>
+<li><strong>ratio：</strong>新旧策略概率比；</li>
+<li><strong>clip：</strong>限制更新幅度。</li>
+</ol>
+先抓住这 5 个，再看公式就不会乱。
+</div>
+
+<hr>
+
+<!-- ===================================================== -->
+<!-- 第 12 部分：GRPO -->
+<!-- ===================================================== -->
+
+<h2 id="route12">12. GRPO：Group Relative Policy Optimization，组相对策略优化</h2>
+
+<p>
+理解 PPO 后，再看 GRPO 就容易很多。
+GRPO 的全称是 <strong>Group Relative Policy Optimization</strong>，中文可以译为“组相对策略优化”。
+</p>
+
+<p>
+PyTorch 原文把 GRPO 放在 DeepSeek 部分后面讲，因为它和 DeepSeek-R1 的 reasoning 后训练关系很紧。
+它的核心动机是：PPO 需要 value network / critic 来估计 baseline，但这很贵。
+GRPO 试图用一组候选答案的相对 reward 来替代 critic。
+</p>
+
+<div class="figure">
+<img src="https://pytorch.org/wp-content/uploads/2025/08/14.png" alt="GRPO formula from DeepSeek paper">
+<div class="caption">
+图 10：DeepSeek 论文中的 GRPO 目标函数。来源：PyTorch 官方博客。
+如果图片不显示，可以打开原图：
+<a href="https://pytorch.org/wp-content/uploads/2025/08/14.png" target="_blank">
+https://pytorch.org/wp-content/uploads/2025/08/14.png
+</a>
+</div>
+</div>
+
+<h3>12.1 GRPO 的核心直觉</h3>
+
+<p>
+GRPO 的直觉非常简单：
+</p>
+
+<pre>
+同一个 prompt
+  ↓
+模型生成一组回答，比如 4 个或 8 个
+  ↓
+reward pipeline 给每个回答打分
+  ↓
+计算每个回答相对于组内平均水平好多少
+  ↓
+提高组内高分回答概率
+  ↓
+降低组内低分回答概率
+</pre>
+
+<p>
+也就是说，GRPO 不需要单独训练一个 critic 来估计 baseline。
+它直接用同组多个样本的平均 reward 当作比较基准。
+</p>
+
+<h3>12.2 用例子理解 GRPO</h3>
+
+<p>
+假设同一个数学题，模型生成 4 个答案：
+</p>
+
+<table>
+<tr>
+<th>候选</th>
+<th>答案</th>
+<th>Reward</th>
+<th>组内评价</th>
+</tr>
+<tr>
+<td>Output 1</td>
+<td>正确答案，格式正确</td>
+<td>1.0</td>
+<td>明显高于平均，应该提高概率。</td>
+</tr>
+<tr>
+<td>Output 2</td>
+<td>答案错，格式正确</td>
+<td>0.2</td>
+<td>低于平均，应该降低概率。</td>
+</tr>
+<tr>
+<td>Output 3</td>
+<td>答案错，格式也错</td>
+<td>0.0</td>
+<td>最低，应该明显降低概率。</td>
+</tr>
+<tr>
+<td>Output 4</td>
+<td>答案正确，但格式有小问题</td>
+<td>0.8</td>
+<td>高于平均，也应该提高概率。</td>
+</tr>
+</table>
+
+<p>
+组内平均 reward 是：
+</p>
+
+<pre>
+mean_reward = (1.0 + 0.2 + 0.0 + 0.8) / 4 = 0.5
+</pre>
+
+<p>
+那么：
+</p>
+
+<table>
+<tr>
+<th>候选</th>
+<th>Reward</th>
+<th>相对平均</th>
+<th>训练方向</th>
+</tr>
+<tr>
+<td>Output 1</td>
+<td>1.0</td>
+<td>+0.5</td>
+<td>提高概率。</td>
+</tr>
+<tr>
+<td>Output 2</td>
+<td>0.2</td>
+<td>-0.3</td>
+<td>降低概率。</td>
+</tr>
+<tr>
+<td>Output 3</td>
+<td>0.0</td>
+<td>-0.5</td>
+<td>降低概率。</td>
+</tr>
+<tr>
+<td>Output 4</td>
+<td>0.8</td>
+<td>+0.3</td>
+<td>提高概率。</td>
+</tr>
+</table>
+
+<div class="box note">
+<strong>一句话理解：</strong>
+PPO 问 critic：“这个答案比平均水平好吗？”
+GRPO 直接看同一题的一组答案：“这几个里面谁更好？”
+</div>
+
+<h3>12.3 GRPO 和 PPO 的关键区别</h3>
+
+<table>
+<tr>
+<th>比较项</th>
+<th>PPO</th>
+<th>GRPO</th>
+</tr>
+<tr>
+<td>Baseline 来源</td>
+<td>Value network / critic 预测。</td>
+<td>同组样本 reward 的平均和标准差。</td>
+</tr>
+<tr>
+<td>是否需要 critic</td>
+<td>通常需要。</td>
+<td>通常不需要。</td>
+</tr>
+<tr>
+<td>优势估计</td>
+<td>reward - value。</td>
+<td>reward 相对同组其他样本。</td>
+</tr>
+<tr>
+<td>计算成本</td>
+<td>高。</td>
+<td>相对更低。</td>
+</tr>
+<tr>
+<td>适合任务</td>
+<td>通用 RLHF、复杂策略优化。</td>
+<td>数学、代码、推理等可验证 reward 场景。</td>
+</tr>
+<tr>
+<td>风险</td>
+<td>critic 训练成本高、系统复杂。</td>
+<td>组内样本质量和数量影响 advantage 稳定性。</td>
+</tr>
+</table>
+
+<h3>12.4 为什么 GRPO 适合 Reasoning 后训练？</h3>
+
+<p>
+Reasoning 任务通常有两个特点：
+</p>
+
+<ol>
+<li>同一个问题可以采样多个推理路径；</li>
+<li>最终答案常常可以自动验证。</li>
+</ol>
+
+<p>
+这正好适合 GRPO。
+比如数学题，一个 prompt 可以生成多个解法，然后用标准答案验证 reward。
+不需要复杂人类偏好，也不一定需要 critic。
+</p>
+
+<table>
+<tr>
+<th>Reasoning 任务特点</th>
+<th>GRPO 为什么合适</th>
+</tr>
+<tr>
+<td>同一题可采样多个答案</td>
+<td>天然形成 group。</td>
+</tr>
+<tr>
+<td>答案可验证</td>
+<td>reward 容易自动计算。</td>
+</tr>
+<tr>
+<td>推理路径多样</td>
+<td>组内比较能筛出更好路径。</td>
+</tr>
+<tr>
+<td>训练成本需要控制</td>
+<td>去掉 critic 可以省内存和计算。</td>
+</tr>
+</table>
+
+<div class="box train">
+<strong>实践理解：</strong>
+如果你训练数学或代码 reasoning，小规模实验可以这样想：
+<pre>
+每个 prompt 采样 4 个答案
+  ↓
+用规则或测试给每个答案打分
+  ↓
+组内标准化 reward
+  ↓
+优化高分答案，压低低分答案
+</pre>
+这就是 GRPO 的基本学习直觉。
+</div>
+
+<h3>12.5 GRPO 对 Agent 后训练的启发</h3>
+
+<p>
+GRPO 不只适合数学题，也可以迁移到 Agent。
+同一个任务可以让 Agent 采样多条轨迹，然后根据任务完成率、工具成本、测试结果打分。
+</p>
+
+<h4>Agent GRPO 示例</h4>
+
+<pre>
+同一个任务：
+“修复这个 Python 项目的测试错误。”
+
+Trajectory 1:
+读文件 → 修改 → 测试通过
+Reward = 1.0
+
+Trajectory 2:
+读文件 → 修改错误位置 → 测试失败
+Reward = 0.0
+
+Trajectory 3:
+读文件 → 搜索无关文件 → 修改 → 测试通过，但用了很多步骤
+Reward = 0.7
+
+Trajectory 4:
+直接回答，不运行测试
+Reward = 0.2
+</pre>
+
+<table>
+<tr>
+<th>轨迹</th>
+<th>表现</th>
+<th>Reward</th>
+<th>训练方向</th>
+</tr>
+<tr>
+<td>Trajectory 1</td>
+<td>短路径、任务完成</td>
+<td>1.0</td>
+<td>提高概率。</td>
+</tr>
+<tr>
+<td>Trajectory 2</td>
+<td>任务失败</td>
+<td>0.0</td>
+<td>降低概率。</td>
+</tr>
+<tr>
+<td>Trajectory 3</td>
+<td>任务完成但低效</td>
+<td>0.7</td>
+<td>略提高，但不如轨迹 1。</td>
+</tr>
+<tr>
+<td>Trajectory 4</td>
+<td>没有真实验证</td>
+<td>0.2</td>
+<td>降低概率。</td>
+</tr>
+</table>
+
+<p>
+这说明 Agent 后训练可以用 group 方式比较轨迹。
+不是只问“成功或失败”，还可以比较“哪个成功轨迹更高效、更安全、更稳”。
+</p>
+
+<h3>12.6 GRPO 省掉了什么成本？</h3>
+
+<p>
+PyTorch 原文指出，最坏情况下 PPO / RLHF 训练需要顺序运行多个模型：
+</p>
+
+<ol>
+<li>inference model：生成 tokens 和 log-probs；</li>
+<li>reference model：计算 reference log-probs；</li>
+<li>reward model：计算 reward；</li>
+<li>critic / value model：估计 value 和 advantage；</li>
+<li>train model：重新 forward，计算训练 loss；</li>
+<li>backward + optimizer step。</li>
+</ol>
+
+<p>
+GRPO 移除 critic 后，可以省掉：
+</p>
+
+<ul>
+<li>critic 的一次 forward；</li>
+<li>critic 的 backward；</li>
+<li>critic 的 optimizer step；</li>
+<li>critic 占用的显存和工程维护成本。</li>
+</ul>
+
+<table>
+<tr>
+<th>组件</th>
+<th>PPO</th>
+<th>GRPO</th>
+</tr>
+<tr>
+<td>Policy model</td>
+<td>需要</td>
+<td>需要</td>
+</tr>
+<tr>
+<td>Reference model</td>
+<td>需要</td>
+<td>通常仍需要</td>
+</tr>
+<tr>
+<td>Reward model / reward pipeline</td>
+<td>需要</td>
+<td>需要</td>
+</tr>
+<tr>
+<td>Critic / value model</td>
+<td>通常需要</td>
+<td>通常不需要</td>
+</tr>
+<tr>
+<td>Group sampling</td>
+<td>不一定必须</td>
+<td>核心机制</td>
+</tr>
+<tr>
+<td>工程复杂度</td>
+<td>更高</td>
+<td>相对降低</td>
+</tr>
+</table>
+
+<div class="box note">
+<strong>关键理解：</strong>
+GRPO 不是完全免费。它省掉 critic，但需要每个 prompt 采样多个输出。
+所以它把成本从“训练 critic”转移到了“生成多个候选”。
+</div>
+
+<h3>12.7 GRPO 的局限</h3>
+
+<table>
+<tr>
+<th>局限</th>
+<th>解释</th>
+</tr>
+<tr>
+<td>需要多个样本</td>
+<td>每个 prompt 要生成一组回答，推理成本增加。</td>
+</tr>
+<tr>
+<td>依赖 reward 可靠性</td>
+<td>reward 错了，组内比较也会错。</td>
+</tr>
+<tr>
+<td>组内方差问题</td>
+<td>如果一组答案都很差，比较信号可能弱。</td>
+</tr>
+<tr>
+<td>开放任务难打分</td>
+<td>对开放写作、复杂研究任务，reward 很难可靠。</td>
+</tr>
+<td>轨迹任务更复杂</td>
+<td>Agent 轨迹长，采样多个完整轨迹成本很高。</td>
+</tr>
+</table>
+
+<h3>12.8 PPO、GRPO、DPO 怎么选择？</h3>
+
+<table>
+<tr>
+<th>场景</th>
+<th>优先方法</th>
+<th>原因</th>
+</tr>
+<tr>
+<td>你只有高质量标准答案</td>
+<td>SFT</td>
+<td>先让模型学会基本格式和能力。</td>
+</tr>
+<tr>
+<td>你有 chosen / rejected 偏好对</td>
+<td>DPO</td>
+<td>便宜、稳定，适合偏好优化。</td>
+</tr>
+<tr>
+<td>任务有可验证 reward，想让模型探索</td>
+<td>GRPO</td>
+<td>适合数学、代码、推理，去掉 critic 降低成本。</td>
+</tr>
+<tr>
+<td>任务复杂，需要更通用 RL 控制</td>
+<td>PPO</td>
+<td>更通用，但工程成本高。</td>
+</tr>
+<tr>
+<td>Agent 任务刚开始</td>
+<td>SFT + DPO</td>
+<td>先稳定格式和工具调用，不要一上来做 RL。</td>
+</tr>
+<tr>
+<td>Agent 有可靠环境 reward</td>
+<td>GRPO / PPO</td>
+<td>可以开始训练多条轨迹的任务完成率。</td>
+</tr>
+</table>
+
+<div class="box train">
+<strong>学习路线建议：</strong>
+你应该按这个顺序学：
+<pre>
+SFT：先跑通训练
+  ↓
+DPO：理解偏好优化
+  ↓
+Reward Pipeline：学会设计 reward
+  ↓
+GRPO：做可验证任务 RL
+  ↓
+PPO：理解更完整的在线 RL 系统
+</pre>
+不要一开始直接 PPO，否则很容易被工程细节劝退。
+</div>
+
+<h3>12.9 本节总结</h3>
+
+<div class="box note">
+<strong>GRPO 阶段总结：</strong>
+GRPO 的核心不是一个神秘公式，而是一个简单思想：
+<pre>
+同一题，多生成几个答案；
+用 reward 排序；
+高于组内平均的提高概率；
+低于组内平均的降低概率。
+</pre>
+
+它特别适合 reasoning 后训练，因为数学、代码、格式任务都可以自动验证。
+对于 Agent 后训练，它也可以用来比较多条任务轨迹，但前提是你能设计可靠 reward。
+</div>
+
+<!-- ===================================================== -->
+<!-- 第 13 部分：把博客内容转成学习路线 -->
+<!-- 插入位置：接在第 12 部分 GRPO 后面，放在 </body> 前 -->
+<!-- ===================================================== -->
+
+<h2 id="route13">13. 把这篇博客转成你的后训练学习路线</h2>
+
+<p>
+到这里，PyTorch 这篇博客的主要内容已经讲完了。
+现在要做的不是继续堆概念，而是把它转成一条真正能学习、能复现、能做项目的路线。
+</p>
+
+<p>
+这篇博客的主线其实可以压缩成一句话：
+</p>
+
+<div class="box note">
+<strong>后训练路线：</strong>
+先用 SFT 让模型学会基本格式和行为，再用偏好优化让模型偏向更好的输出，最后用奖励管线和在线强化学习让模型通过试错继续提升。
+</div>
+
+<h3>13.1 后训练学习路线总览</h3>
+
+<pre>
+阶段 0：理解后训练数据格式
+  ↓
+阶段 1：SFT 监督微调
+  ↓
+阶段 2：Rejection Sampling 拒绝采样
+  ↓
+阶段 3：DPO 偏好优化
+  ↓
+阶段 4：Reward Pipeline 奖励管线
+  ↓
+阶段 5：GRPO / PPO 在线强化学习
+  ↓
+阶段 6：Reasoning / Agent 后训练
+</pre>
+
+<table>
+<tr>
+<th>阶段</th>
+<th>你要学什么</th>
+<th>核心问题</th>
+<th>建议实践</th>
+</tr>
+<tr>
+<td>阶段 0</td>
+<td>后训练数据格式</td>
+<td>模型到底看到了什么？system / user / assistant 怎么组织？</td>
+<td>手写 20 条 chat template 数据，理解 loss mask。</td>
+</tr>
+<tr>
+<td>阶段 1</td>
+<td>SFT</td>
+<td>如何让模型先学会基本回答格式？</td>
+<td>用小模型跑一个指令微调任务。</td>
+</tr>
+<tr>
+<td>阶段 2</td>
+<td>Rejection Sampling</td>
+<td>如何从多个候选中筛出更好的样本？</td>
+<td>同一 prompt 生成多个回答，用规则或模型筛选。</td>
+</tr>
+<tr>
+<td>阶段 3</td>
+<td>DPO</td>
+<td>如何用 chosen / rejected 数据优化偏好？</td>
+<td>构造 200 条偏好对，训练一个 DPO 小模型。</td>
+</tr>
+<tr>
+<td>阶段 4</td>
+<td>Reward Pipeline</td>
+<td>怎么设计可靠 reward？</td>
+<td>做 JSON / 数学 / 代码测试的规则奖励。</td>
+</tr>
+<tr>
+<td>阶段 5</td>
+<td>GRPO / PPO</td>
+<td>如何让模型在线生成、打分、更新？</td>
+<td>先用 GRPO 跑可验证数学或格式任务。</td>
+</tr>
+<tr>
+<td>阶段 6</td>
+<td>Reasoning / Agent</td>
+<td>如何训练推理、工具调用、多步轨迹？</td>
+<td>做一个 mini tool-use agent 后训练实验。</td>
+</tr>
+</table>
+
+<div class="box train">
+<strong>学习顺序建议：</strong>
+不要一开始就碰 PPO。更稳的顺序是：
+<pre>
+Chat Template
+  ↓
+SFT
+  ↓
+DPO
+  ↓
+Reward Function
+  ↓
+GRPO
+  ↓
+Agent Trajectory Training
+</pre>
+</div>
+
+<hr>
+
+<h2 id="route14">14. 第一轮实践：只做 SFT，先跑通后训练最小闭环</h2>
+
+<p>
+第一轮实践不要贪心。
+目标不是训练出强模型，而是完整理解：数据怎么组织、loss 怎么 mask、模型怎么学会 assistant 格式。
+</p>
+
+<h3>14.1 任务目标</h3>
+
+<table>
+<tr>
+<th>项目</th>
+<th>建议</th>
+</tr>
+<tr>
+<td>模型</td>
+<td>Qwen2.5-0.5B / Qwen2.5-1.5B / Llama 小模型。</td>
+</tr>
+<tr>
+<td>框架</td>
+<td>Hugging Face Transformers + TRL SFTTrainer。</td>
+</tr>
+<tr>
+<td>数据规模</td>
+<td>先用 100 到 1000 条高质量样本。</td>
+</tr>
+<tr>
+<td>任务类型</td>
+<td>简单指令问答、格式转换、工具调用格式学习。</td>
+</tr>
+<tr>
+<td>训练目标</td>
+<td>让模型稳定输出 assistant response。</td>
+</tr>
+</table>
+
+<h3>14.2 SFT 数据样例：普通问答</h3>
+
+<pre>
+{
+  "messages": [
+    {
+      "role": "system",
+      "content": "你是一个简洁、准确的中文助手。"
+    },
+    {
+      "role": "user",
+      "content": "解释什么是 SFT。"
+    },
+    {
+      "role": "assistant",
+      "content": "SFT 是监督微调，指用高质量输入输出样本训练模型，让模型学会按照指令生成目标回答。"
+    }
+  ]
+}
+</pre>
+
+<h3>14.3 SFT 数据样例：工具调用格式</h3>
+
+<pre>
+{
+  "messages": [
+    {
+      "role": "system",
+      "content": "你是一个会调用工具的助手。可用工具：calculator(expression)。"
+    },
+    {
+      "role": "user",
+      "content": "计算 23 * 17。"
+    },
+    {
+      "role": "assistant",
+      "content": "Action: calculator({\"expression\": \"23 * 17\"})"
+    }
+  ]
+}
+</pre>
+
+<h3>14.4 这一阶段不要做什么？</h3>
+
+<table>
+<tr>
+<th>不要做</th>
+<th>原因</th>
+</tr>
+<tr>
+<td>不要一开始就训练复杂 Agent</td>
+<td>格式还没稳定，复杂轨迹会放大错误。</td>
+</tr>
+<tr>
+<td>不要混太多任务</td>
+<td>初学阶段容易分不清模型到底学到了什么。</td>
+</tr>
+<tr>
+<td>不要用低质量自动生成数据</td>
+<td>SFT 会认真学习坏样本。</td>
+</tr>
+<tr>
+<td>不要一上来做 PPO</td>
+<td>PPO 工程复杂，reward 还没设计好时容易崩。</td>
+</tr>
+</table>
+
+<div class="box note">
+<strong>SFT 阶段判断标准：</strong>
+模型能不能稳定理解 role？能不能按指定格式回答？能不能停止？能不能少胡乱发挥？
+如果这些都不稳，不要急着进入 DPO 或 RL。
+</div>
+
+<hr>
+
+<h2 id="route15">15. 第二轮实践：DPO，学会偏好优化</h2>
+
+<p>
+SFT 之后，模型已经能正常回答。
+但它可能仍然有很多偏好问题：回答啰嗦、格式不稳定、工具选择错误、参数不合法、忽略用户约束。
+这时可以进入 DPO。
+</p>
+
+<h3>15.1 DPO 的核心数据</h3>
+
+<pre>
+prompt + chosen + rejected
+</pre>
+
+<table>
+<tr>
+<th>字段</th>
+<th>含义</th>
+<th>重点</th>
+</tr>
+<tr>
+<td>prompt</td>
+<td>同一个输入任务。</td>
+<td>必须保持一致。</td>
+</tr>
+<tr>
+<td>chosen</td>
+<td>更好的回答。</td>
+<td>应该是你希望模型偏向的行为。</td>
+</tr>
+<tr>
+<td>rejected</td>
+<td>更差的回答。</td>
+<td>应该是你希望模型减少的行为。</td>
+</tr>
+</table>
+
+<h3>15.2 DPO 数据样例：普通回答偏好</h3>
+
+<pre>
+{
+  "prompt": "请解释什么是 DPO。",
+  "chosen": "DPO 是直接偏好优化，它使用 chosen / rejected 偏好对直接优化模型，使模型更倾向于生成被偏好的回答。",
+  "rejected": "DPO 是一种训练方法，挺有用的。"
+}
+</pre>
+
+<h3>15.3 DPO 数据样例：工具选择偏好</h3>
+
+<pre>
+{
+  "prompt": "计算 128 * 64。",
+  "chosen": "Action: calculator({\"expression\": \"128 * 64\"})",
+  "rejected": "Action: search({\"query\": \"128 * 64\"})"
+}
+</pre>
+
+<h3>15.4 DPO 数据样例：参数格式偏好</h3>
+
+<pre>
+{
+  "prompt": "在文档中搜索 RLHF 的定义。",
+  "chosen": "Action: search_doc({\"query\": \"RLHF definition\"})",
+  "rejected": "Action: search_doc({\"keyword\": \"RLHF definition\"})"
+}
+</pre>
+
+<p>
+这里 rejected 的问题是参数字段不符合工具 schema。
+如果工具要求字段名是 <code>query</code>，模型输出 <code>keyword</code> 就会导致工具调用失败。
+</p>
+
+<h3>15.5 DPO 阶段最适合优化什么？</h3>
+
+<table>
+<tr>
+<th>优化对象</th>
+<th>chosen</th>
+<th>rejected</th>
+</tr>
+<tr>
+<td>回答简洁性</td>
+<td>直接回答用户问题。</td>
+<td>绕很远、模板化废话。</td>
+</tr>
+<tr>
+<td>格式遵循</td>
+<td>严格输出 JSON。</td>
+<td>JSON 外面夹杂解释文字。</td>
+</tr>
+<tr>
+<td>工具选择</td>
+<td>选择正确工具。</td>
+<td>选择无关工具。</td>
+</tr>
+<tr>
+<td>参数合法性</td>
+<td>字段、类型和值都正确。</td>
+<td>字段缺失、类型错误。</td>
+</tr>
+<tr>
+<td>轨迹效率</td>
+<td>少步骤完成任务。</td>
+<td>多次无意义调用。</td>
+</tr>
+<tr>
+<td>错误恢复</td>
+<td>失败后换策略。</td>
+<td>失败后重复同样动作。</td>
+</tr>
+</table>
+
+<div class="box train">
+<strong>DPO 阶段实践建议：</strong>
+初学时先不要做很主观的“回答好坏”。
+先做容易判断的偏好对：
+<ol>
+<li>正确工具 vs 错误工具；</li>
+<li>合法 JSON vs 非法 JSON；</li>
+<li>正确参数 vs 错误参数；</li>
+<li>基于工具结果回答 vs 忽略工具结果胡编。</li>
+</ol>
+这些偏好更清楚，训练效果也更容易观察。
+</div>
+
+<hr>
+
+<h2 id="route16">16. 第三轮实践：Reward Pipeline，先做可验证奖励</h2>
+
+<p>
+DPO 之后，你要开始学习 reward pipeline。
+注意，这一步不一定马上训练 RL。
+你可以先只写 reward function，用它来筛数据、评估模型、构造 DPO 数据。
+</p>
+
+<h3>16.1 最小 reward function 设计</h3>
+
+<p>
+以工具调用任务为例，最小 reward 可以拆成几个部分：
+</p>
+
+<pre>
+reward = 0
+
+格式正确：+0.1
+工具正确：+0.2
+参数正确：+0.2
+工具执行成功：+0.2
+最终答案正确：+1.0
+无意义工具调用：-0.1 * 次数
+危险操作：-2.0
+</pre>
+
+<h3>16.2 JSON 格式 reward</h3>
+
+<pre>
+def reward_json_format(output):
+    try:
+        obj = json.loads(output)
+    except Exception:
+        return -0.5
+
+    if "tool" not in obj:
+        return -0.2
+
+    if "arguments" not in obj:
+        return -0.2
+
+    return 0.1
+</pre>
+
+<h3>16.3 工具选择 reward</h3>
+
+<pre>
+def reward_tool_choice(task, tool_name):
+    if "计算" in task and tool_name == "calculator":
+        return 0.2
+
+    if "搜索文档" in task and tool_name == "search_doc":
+        return 0.2
+
+    if "运行代码" in task and tool_name == "run_python":
+        return 0.2
+
+    return -0.2
+</pre>
+
+<h3>16.4 最终答案 reward</h3>
+
+<pre>
+def reward_final_answer(pred, gold):
+    if normalize(pred) == normalize(gold):
+        return 1.0
+    return 0.0
+</pre>
+
+<h3>16.5 Reward Pipeline 的三个用途</h3>
+
+<table>
+<tr>
+<th>用途</th>
+<th>怎么用</th>
+<th>例子</th>
+</tr>
+<tr>
+<td>筛 SFT 数据</td>
+<td>多候选生成后，只保留高 reward 样本。</td>
+<td>Rejection Sampling。</td>
+</tr>
+<tr>
+<td>构造 DPO 数据</td>
+<td>高 reward 作为 chosen，低 reward 作为 rejected。</td>
+<td>工具选择偏好对。</td>
+</tr>
+<tr>
+<td>做 RL 训练</td>
+<td>模型在线生成，reward 直接参与 PPO / GRPO。</td>
+<td>数学 RLVR、代码测试 reward。</td>
+</tr>
+</table>
+
+<div class="box warn">
+<strong>实践警告：</strong>
+reward function 要从简单开始。
+不要第一版就写十几个互相冲突的 reward 项。
+最开始只保留：
+<pre>
+格式是否正确
+工具是否正确
+最终答案是否正确
+</pre>
+跑通以后再加成本、安全、风格等细项。
+</div>
+
+<hr>
+
+<h2 id="route17">17. 第四轮实践：GRPO 小实验</h2>
+
+<p>
+当你已经有一个 SFT 模型、DPO 数据和 reward function 后，可以开始做最小 GRPO 实验。
+</p>
+
+<p>
+GRPO 最适合用在可验证任务上，所以建议从数学、JSON、简单代码开始。
+</p>
+
+<h3>17.1 最小 GRPO 任务：数学计算</h3>
+
+<table>
+<tr>
+<th>项目</th>
+<th>设计</th>
+</tr>
+<tr>
+<td>任务</td>
+<td>给模型一个简单数学题。</td>
+</tr>
+<tr>
+<td>模型输出</td>
+<td>推理过程 + 最终答案。</td>
+</tr>
+<tr>
+<td>采样数量</td>
+<td>每个 prompt 采样 4 个或 8 个回答。</td>
+</tr>
+<tr>
+<td>Reward</td>
+<td>最终答案正确 +1，格式正确 +0.1。</td>
+</tr>
+<tr>
+<td>优化</td>
+<td>组内高分样本提高概率，低分样本降低概率。</td>
+</tr>
+</table>
+
+<h3>17.2 样例任务</h3>
+
+<pre>
+Prompt:
+计算 37 * 24，并给出最终答案。
+
+Output 1:
+&lt;think&gt;37 * 24 = 37 * 20 + 37 * 4 = 740 + 148 = 888&lt;/think&gt;
+&lt;answer&gt;888&lt;/answer&gt;
+Reward = 1.1
+
+Output 2:
+&lt;think&gt;37 * 24 = 37 * 20 + 37 * 2 = 740 + 74 = 814&lt;/think&gt;
+&lt;answer&gt;814&lt;/answer&gt;
+Reward = 0.1
+
+Output 3:
+答案是 888
+Reward = 1.0 或 0.9，取决于是否要求格式
+
+Output 4:
+&lt;think&gt;我不知道&lt;/think&gt;
+&lt;answer&gt;900&lt;/answer&gt;
+Reward = 0.1
+</pre>
+
+<h3>17.3 GRPO 中 group 的作用</h3>
+
+<pre>
+同一个 prompt：
+  output_1 reward = 1.1
+  output_2 reward = 0.1
+  output_3 reward = 0.9
+  output_4 reward = 0.1
+
+组内平均 reward = 0.55
+
+高于平均：output_1, output_3
+低于平均：output_2, output_4
+</pre>
+
+<p>
+训练方向就是：
+</p>
+
+<ul>
+<li>提高 output_1 和 output_3 的概率；</li>
+<li>降低 output_2 和 output_4 的概率；</li>
+<li>如果你重视格式，就让 output_1 比 output_3 得分更高。</li>
+</ul>
+
+<h3>17.4 GRPO 小实验不要做什么？</h3>
+
+<table>
+<tr>
+<th>不要做</th>
+<th>原因</th>
+</tr>
+<tr>
+<td>不要一开始用开放问答</td>
+<td>reward 难设计，训练信号不稳定。</td>
+</tr>
+<tr>
+<td>不要一开始用长链 Agent</td>
+<td>轨迹太长，reward 归因困难。</td>
+</tr>
+<tr>
+<td>不要让 reward 太复杂</td>
+<td>容易出现冲突，难以排查。</td>
+</tr>
+<tr>
+<td>不要只看 loss</td>
+<td>RL loss 不像 SFT loss 那样直观。</td>
+</tr>
+<tr>
+<td>不要忽略采样质量</td>
+<td>如果一组输出都很差，GRPO 学不到什么。</td>
+</tr>
+</table>
+
+<div class="box train">
+<strong>GRPO 初学建议：</strong>
+先做“短 prompt、短输出、可验证答案”的任务。
+数学题、JSON schema、简单代码测试，是比开放 Agent 更好的第一站。
+</div>
+
+<hr>
+
+<h2 id="route18">18. 第五轮实践：Mini Tool-use Agent 后训练</h2>
+
+<p>
+当你理解 SFT、DPO、Reward Pipeline 和 GRPO 后，就可以把它们组合成一个最小工具调用 Agent。
+</p>
+
+<h3>18.1 Mini Agent 工具设计</h3>
+
+<table>
+<tr>
+<th>工具</th>
+<th>参数</th>
+<th>用途</th>
+</tr>
+<tr>
+<td><code>calculator</code></td>
+<td><code>{"expression": "..."}</code></td>
+<td>精确计算。</td>
+</tr>
+<tr>
+<td><code>search_doc</code></td>
+<td><code>{"query": "..."}</code></td>
+<td>搜索本地文档。</td>
+</tr>
+<tr>
+<td><code>run_python</code></td>
+<td><code>{"code": "..."}</code></td>
+<td>执行 Python 代码。</td>
+</tr>
+<tr>
+<td><code>finish</code></td>
+<td><code>{"answer": "..."}</code></td>
+<td>输出最终答案。</td>
+</tr>
+</table>
+
+<h3>18.2 Agent 轨迹格式</h3>
+
+<pre>
+User:
+请计算 23 * 17，并只给出最终数字。
+
+Assistant:
+Thought: 这是一个精确计算问题，需要调用 calculator。
+Action: {"tool": "calculator", "arguments": {"expression": "23 * 17"}}
+
+Tool:
+391
+
+Assistant:
+Thought: 工具返回 391，用户要求只给数字。
+Action: {"tool": "finish", "arguments": {"answer": "391"}}
+</pre>
+
+<h3>18.3 训练路线</h3>
+
+<table>
+<tr>
+<th>阶段</th>
+<th>训练内容</th>
+<th>目标</th>
+</tr>
+<tr>
+<td>SFT</td>
+<td>学习标准工具调用轨迹。</td>
+<td>模型会输出合法 Action。</td>
+</tr>
+<tr>
+<td>DPO</td>
+<td>正确工具 vs 错误工具，合法参数 vs 非法参数。</td>
+<td>模型更偏向正确工具调用。</td>
+</tr>
+<tr>
+<td>Reward Pipeline</td>
+<td>检查 JSON、工具名、参数、最终答案。</td>
+<td>形成自动评分器。</td>
+</tr>
+<tr>
+<td>GRPO</td>
+<td>同一任务采样多条轨迹，按 reward 优化。</td>
+<td>提高成功率和轨迹效率。</td>
+</tr>
+</table>
+
+<h3>18.4 Mini Agent 的 reward 设计</h3>
+
+<pre>
+reward = 0.0
+
+# 格式层
+if action_is_valid_json:
+    reward += 0.1
+else:
+    reward -= 0.5
+
+# 工具层
+if tool_name_is_correct:
+    reward += 0.2
+else:
+    reward -= 0.2
+
+# 参数层
+if arguments_match_schema:
+    reward += 0.2
+else:
+    reward -= 0.2
+
+# 执行层
+if tool_execution_success:
+    reward += 0.2
+
+# 任务层
+if final_answer_correct:
+    reward += 1.0
+
+# 成本层
+reward -= 0.05 * unnecessary_tool_calls
+</pre>
+
+<h3>18.5 Mini Agent 的评测指标</h3>
+
+<table>
+<tr>
+<th>指标</th>
+<th>中文解释</th>
+<th>为什么重要</th>
+</tr>
+<tr>
+<td>Tool Accuracy</td>
+<td>工具选择准确率</td>
+<td>判断模型是否知道该用哪个工具。</td>
+</tr>
+<tr>
+<td>JSON Valid Rate</td>
+<td>JSON 合法率</td>
+<td>判断输出能否被系统解析。</td>
+</tr>
+<tr>
+<td>Execution Success Rate</td>
+<td>工具执行成功率</td>
+<td>判断参数是否正确。</td>
+</tr>
+<tr>
+<td>Task Success Rate</td>
+<td>任务成功率</td>
+<td>最终是否完成用户任务。</td>
+</tr>
+<tr>
+<td>Average Steps</td>
+<td>平均步数</td>
+<td>判断轨迹效率。</td>
+</tr>
+<tr>
+<td>Recovery Rate</td>
+<td>错误恢复率</td>
+<td>工具失败后能否换策略。</td>
+</tr>
+</table>
+
+<div class="box note">
+<strong>Mini Agent 后训练的核心：</strong>
+不要只看最终答案。
+Agent 的可靠性来自每一步：
+格式、工具、参数、执行、反馈使用、最终回答。
+</div>
+
+<hr>
+
+<h2 id="route19">19. 后训练常见坑</h2>
+
+<p>
+下面这部分是把前面所有内容落到实践时最容易踩的坑。
+</p>
+
+<h3>19.1 SFT 常见坑</h3>
+
+<table>
+<tr>
+<th>问题</th>
+<th>表现</th>
+<th>解决方式</th>
+</tr>
+<tr>
+<td>数据格式不统一</td>
+<td>模型输出一会儿 JSON，一会儿自然语言。</td>
+<td>统一 chat template 和输出 schema。</td>
+</tr>
+<tr>
+<td>loss mask 错误</td>
+<td>模型学会生成 user prompt 或 tool output。</td>
+<td>只对 assistant 部分计算 loss。</td>
+</tr>
+<tr>
+<td>低质量样本太多</td>
+<td>模型学到坏习惯。</td>
+<td>先少量高质量，不要追求数量。</td>
+</tr>
+<tr>
+<td>任务混得太杂</td>
+<td>模型行为不稳定。</td>
+<td>先单任务，再多任务。</td>
+</tr>
+</table>
+
+<h3>19.2 DPO 常见坑</h3>
+
+<table>
+<tr>
+<th>问题</th>
+<th>表现</th>
+<th>解决方式</th>
+</tr>
+<tr>
+<td>chosen / rejected 差异不清楚</td>
+<td>模型学不到稳定偏好。</td>
+<td>构造明确对比，如正确工具 vs 错误工具。</td>
+</tr>
+<tr>
+<td>rejected 太弱</td>
+<td>训练太容易，提升有限。</td>
+<td>加入 hard negative。</td>
+</tr>
+<tr>
+<td>chosen 本身也有问题</td>
+<td>模型偏向错误答案。</td>
+<td>人工或规则二次清洗。</td>
+</tr>
+<tr>
+<td>偏好过度单一</td>
+<td>模型只学会某一种风格。</td>
+<td>保持偏好维度多样。</td>
+</tr>
+</table>
+
+<h3>19.3 Reward Pipeline 常见坑</h3>
+
+<table>
+<tr>
+<th>问题</th>
+<th>表现</th>
+<th>解决方式</th>
+</tr>
+<tr>
+<td>reward 太粗</td>
+<td>模型只优化最终成功，过程混乱。</td>
+<td>增加格式、工具、参数等中间 reward。</td>
+</tr>
+<tr>
+<td>reward 太复杂</td>
+<td>信号冲突，训练不稳定。</td>
+<td>从 2 到 3 个核心 reward 开始。</td>
+</tr>
+<tr>
+<td>reward 有漏洞</td>
+<td>模型学会 reward hacking。</td>
+<td>加入反作弊规则和隐藏测试。</td>
+</tr>
+<tr>
+<td>LLM judge 不可靠</td>
+<td>评分波动大或偏向模板化答案。</td>
+<td>能用规则验证就优先规则验证。</td>
+</tr>
+</table>
+
+<h3>19.4 GRPO / PPO 常见坑</h3>
+
+<table>
+<tr>
+<th>问题</th>
+<th>表现</th>
+<th>解决方式</th>
+</tr>
+<tr>
+<td>rollout 质量太差</td>
+<td>一组样本全错，学不到东西。</td>
+<td>先 SFT / DPO 再 RL。</td>
+</tr>
+<tr>
+<td>reward 分布太稀疏</td>
+<td>大多数样本都是 0 分。</td>
+<td>增加格式、步骤、局部 reward。</td>
+</tr>
+<tr>
+<td>更新太猛</td>
+<td>模型格式崩、语言质量下降。</td>
+<td>使用 KL、clip、较小学习率。</td>
+</tr>
+<tr>
+<td>只看 loss</td>
+<td>误判训练效果。</td>
+<td>重点看任务成功率和 reward 曲线。</td>
+</tr>
+<tr>
+<td>生成成本过高</td>
+<td>训练速度很慢。</td>
+<td>先小模型、小 batch、小任务。</td>
+</tr>
+</table>
+
+<div class="box warn">
+<strong>最大的坑：</strong>
+把算法名当核心。
+真正的核心是数据格式、偏好数据、reward 设计、评测指标。
+算法只是最后的优化器。
+</div>
+
+<hr>
+
+<h2 id="route20">20. 术语表：后训练英文术语 + 中文解释</h2>
+
+<table>
+<tr>
+<th>英文术语</th>
+<th>中文译法</th>
+<th>解释</th>
+</tr>
+<tr>
+<td>Post-training</td>
+<td>后训练</td>
+<td>预训练之后，用 SFT、偏好优化、RL 等方法让模型学会对话、推理、指令遵循和人类偏好。</td>
+</tr>
+<tr>
+<td>Alignment</td>
+<td>对齐</td>
+<td>让模型输出更符合人类偏好、安全要求和任务目标。</td>
+</tr>
+<tr>
+<td>Base Model</td>
+<td>基座模型</td>
+<td>经过预训练但尚未充分对话微调的模型。</td>
+</tr>
+<tr>
+<td>Chat Template</td>
+<td>聊天模板</td>
+<td>把 system、user、assistant 等角色拼成模型输入格式的模板。</td>
+</tr>
+<tr>
+<td>SFT</td>
+<td>监督微调</td>
+<td>用 prompt → response 数据训练模型模仿高质量回答。</td>
+</tr>
+<tr>
+<td>Loss Mask</td>
+<td>损失掩码</td>
+<td>只让 assistant response 参与 loss，不让 prompt 参与 loss。</td>
+</tr>
+<tr>
+<td>Rejection Sampling</td>
+<td>拒绝采样</td>
+<td>同一 prompt 生成多个候选，只保留最好的样本。</td>
+</tr>
+<tr>
+<td>Preference Data</td>
+<td>偏好数据</td>
+<td>包含 chosen 和 rejected 的好坏回答比较数据。</td>
+</tr>
+<tr>
+<td>RLHF</td>
+<td>基于人类反馈的强化学习</td>
+<td>用人类偏好训练 reward model，再用 RL 优化模型。</td>
+</tr>
+<tr>
+<td>Reward Model</td>
+<td>奖励模型</td>
+<td>给模型输出打分的模型。</td>
+</tr>
+<tr>
+<td>DPO</td>
+<td>直接偏好优化</td>
+<td>不用显式 reward model，直接用 chosen / rejected 优化模型。</td>
+</tr>
+<tr>
+<td>RL</td>
+<td>强化学习</td>
+<td>模型通过动作、环境反馈和奖励来优化策略。</td>
+</tr>
+<tr>
+<td>Online RL</td>
+<td>在线强化学习</td>
+<td>当前模型实时生成新样本，并用 reward 更新自己。</td>
+</tr>
+<tr>
+<td>On-policy</td>
+<td>同策略</td>
+<td>训练数据来自当前正在训练的模型。</td>
+</tr>
+<tr>
+<td>Off-policy</td>
+<td>异策略</td>
+<td>训练数据来自旧模型、其他模型或固定数据集。</td>
+</tr>
+<tr>
+<td>Rollout</td>
+<td>轨迹采样</td>
+<td>让模型生成完整回答或执行完整任务的过程。</td>
+</tr>
+<tr>
+<td>Policy</td>
+<td>策略</td>
+<td>当前正在训练的模型。</td>
+</tr>
+<tr>
+<td>Reward</td>
+<td>奖励</td>
+<td>衡量模型输出好坏的分数。</td>
+</tr>
+<tr>
+<td>Advantage</td>
+<td>优势</td>
+<td>当前输出相对于平均水平或 baseline 好多少。</td>
+</tr>
+<tr>
+<td>PPO</td>
+<td>近端策略优化</td>
+<td>一种通过 clipping、KL 等机制稳定策略更新的 RL 算法。</td>
+</tr>
+<tr>
+<td>GRPO</td>
+<td>组相对策略优化</td>
+<td>对同一 prompt 的多个输出进行组内比较，用相对 reward 优化模型。</td>
+</tr>
+<tr>
+<td>Reward Pipeline</td>
+<td>奖励管线</td>
+<td>由规则、测试、模型评审等组成的自动评分系统。</td>
+</tr>
+<tr>
+<td>ORM</td>
+<td>结果奖励模型</td>
+<td>只评价最终答案是否正确。</td>
+</tr>
+<tr>
+<td>PRM</td>
+<td>过程奖励模型</td>
+<td>评价中间推理步骤或过程是否正确。</td>
+</tr>
+<tr>
+<td>RLVR</td>
+<td>可验证奖励强化学习</td>
+<td>使用可自动验证的奖励进行强化学习，例如数学答案、代码测试。</td>
+</tr>
+<tr>
+<td>Reward Hacking</td>
+<td>奖励黑客 / 奖励投机</td>
+<td>模型钻 reward 漏洞，拿高分但不符合真实目标。</td>
+</tr>
+<tr>
+<td>KL Divergence</td>
+<td>KL 散度</td>
+<td>衡量新模型与参考模型分布差异，用来防止模型偏离太远。</td>
+</tr>
+<tr>
+<td>Test-time Compute</td>
+<td>测试时计算</td>
+<td>模型推理阶段额外花费的计算，如更长推理、多次采样、验证。</td>
+</tr>
+<tr>
+<td>Agent Trajectory</td>
+<td>智能体轨迹</td>
+<td>Agent 完成任务过程中的观察、思考、动作、工具返回和最终答案序列。</td>
+</tr>
+</table>
+
+<hr>
+
+<h2 id="route21">21. 最终总结：这篇博客应该学到什么？</h2>
+
+<p>
+PyTorch 这篇后训练博客最值得学习的不是某一个公式，而是一条路线。
+</p>
+
+<div class="box note">
+<strong>完整路线：</strong>
+<pre>
+预训练模型
+  ↓
+聊天格式与后训练数据格式
+  ↓
+SFT：学会模仿高质量回答
+  ↓
+Rejection Sampling：筛选更好样本
+  ↓
+DPO：用 chosen / rejected 学偏好
+  ↓
+Reward Pipeline：设计可验证奖励
+  ↓
+Online RL：当前模型自己生成样本
+  ↓
+PPO / GRPO：用 reward 优化模型
+  ↓
+Reasoning / Agent：训练推理和多步行动能力
+</pre>
+</div>
+
+<h3>21.1 你应该建立的 5 个核心理解</h3>
+
+<table>
+<tr>
+<th>核心理解</th>
+<th>解释</th>
+</tr>
+<tr>
+<td>第一，后训练首先是格式问题。</td>
+<td>模型必须知道谁是 system、user、assistant，自己应该生成什么。</td>
+</tr>
+<tr>
+<td>第二，SFT 是地基。</td>
+<td>没有稳定 SFT，DPO 和 RL 都会建立在不稳定输出上。</td>
+</tr>
+<tr>
+<td>第三，DPO 是低成本偏好优化。</td>
+<td>它不探索，但很适合纠正偏好和格式问题。</td>
+</tr>
+<tr>
+<td>第四，RL 的核心是 reward。</td>
+<td>算法会优化 reward，reward 错了模型就会学歪。</td>
+</tr>
+<tr>
+<td>第五，Agent 后训练优化的是轨迹。</td>
+<td>不是只优化最终回答，而是优化观察、动作、工具调用、反馈和停止判断。</td>
+</tr>
+</table>
+
+<h3>21.2 对你的学习建议</h3>
+
+<div class="box train">
+<strong>建议你接下来按这个顺序动手：</strong>
+<ol>
+<li>先复现一个 SFT 小实验，理解 chat template 和 loss mask。</li>
+<li>再做一个 DPO 小实验，理解 chosen / rejected 数据。</li>
+<li>写一个简单 reward function，评估 JSON、工具名、最终答案。</li>
+<li>做一个数学或 JSON 格式任务的 GRPO 小实验。</li>
+<li>最后再做 Mini Tool-use Agent，把 SFT、DPO、reward、GRPO 串起来。</li>
+</ol>
+</div>
+
+<h3>21.3 一句话收束</h3>
+
+<div class="box note">
+<strong>一句话总结：</strong>
+后训练不是让模型多背知识，而是通过格式、示范、偏好、奖励和环境反馈，把一个会补全文本的基座模型，塑造成一个会对话、会推理、会调用工具、会根据反馈改进行为的模型。
+</div>
+
+<p class="small">
+说明：本文为 PyTorch 官方博客《A Primer on LLM Post-Training》的中文学习笔记与后训练路线整理。原文图片通过原博客链接引用，版权归原作者与 PyTorch 所有。
+</p>
+
+<p class="small">
+说明：...
+</p>
+
+
+
+<script>
+(function () {
+  const toc = document.querySelector(".page-toc");
+  const tocList = document.getElementById("page-toc-list");
+  if (!toc || !tocList) {
+    return;
+  }
+
+  let toggle = document.getElementById("page-toc-toggle");
+  if (!toggle) {
+    toggle = document.createElement("button");
+    toggle.id = "page-toc-toggle";
+    toggle.type = "button";
+    toggle.className = "page-toc-toggle";
+    toggle.setAttribute("aria-expanded", "false");
+    toggle.textContent = "目录";
+    toc.insertBefore(toggle, toc.firstChild);
+  }
+
+  let panel = document.getElementById("page-toc-panel");
+  if (!panel) {
+    panel = document.createElement("div");
+    panel.id = "page-toc-panel";
+    panel.className = "page-toc-panel";
+    toc.appendChild(panel);
+  }
+
+  toggle.setAttribute("aria-controls", "page-toc-panel");
+
+  const tocTitle = toc.querySelector(":scope > .page-toc-title");
+  if (tocTitle) {
+    panel.appendChild(tocTitle);
+  }
+  panel.appendChild(tocList);
+  toc.id = "page-toc";
+
+  const setOpen = (isOpen) => {
+    toc.classList.toggle("is-open", isOpen);
+    toggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
+  };
+
+  toggle.addEventListener("click", function () {
+    setOpen(!toc.classList.contains("is-open"));
+  });
+
+  document.addEventListener("click", function (event) {
+    if (!toc.contains(event.target)) {
+      setOpen(false);
+    }
+  });
+
+  tocList.textContent = "";
+  const headings = Array.from(document.querySelectorAll("h2, h3"));
+  let currentSubList = null;
+
+  headings.forEach((heading, index) => {
+    const text = heading.textContent.trim();
+    if (!text) {
+      return;
+    }
+
+    if (!heading.id) {
+      heading.id = "section-" + (index + 1);
+    }
+
+    const link = document.createElement("a");
+    link.className = "page-toc-link";
+    link.href = "#" + heading.id;
+    link.textContent = text;
+    link.addEventListener("click", function () {
+      setOpen(false);
+    });
+
+    if (heading.tagName === "H2") {
+      const item = document.createElement("li");
+      item.className = "page-toc-item";
+      item.appendChild(link);
+
+      currentSubList = document.createElement("ol");
+      currentSubList.className = "page-toc-sublist";
+      item.appendChild(currentSubList);
+      tocList.appendChild(item);
+      return;
+    }
+
+    if (!currentSubList) {
+      const item = document.createElement("li");
+      item.className = "page-toc-item";
+      currentSubList = document.createElement("ol");
+      currentSubList.className = "page-toc-sublist";
+      item.appendChild(currentSubList);
+      tocList.appendChild(item);
+    }
+
+    const subItem = document.createElement("li");
+    subItem.className = "page-toc-subitem";
+    subItem.appendChild(link);
+    currentSubList.appendChild(subItem);
+  });
+})();
+</script>
+
+</body>
+</html>

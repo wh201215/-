@@ -1,0 +1,2230 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>强化学习大模型路线｜Stage 6：Agent RL / Tool-use RL / 多轮环境强化学习</title>
+
+<script>
+window.MathJax = {
+  tex: {
+    inlineMath: [['\\(', '\\)'], ['$', '$']],
+    displayMath: [['\\[', '\\]']],
+    processEscapes: true
+  },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+
+<style>
+html {
+  scroll-behavior: smooth;
+}
+body {
+  font-family: "Microsoft YaHei", Arial, sans-serif;
+  line-height: 1.85;
+  max-width: 1080px;
+  margin: 40px auto;
+  padding: 0 28px 100px;
+  background: #f7f8fb;
+  color: #1f2937;
+  font-size: 17px;
+}
+h1 {
+  font-size: 34px;
+  line-height: 1.35;
+  border-bottom: 5px solid #2563eb;
+  padding-bottom: 14px;
+}
+h2 {
+  margin-top: 48px;
+  padding: 12px 16px;
+  font-size: 27px;
+  background: #eef4ff;
+  border-left: 7px solid #2563eb;
+}
+h3 {
+  margin-top: 28px;
+  font-size: 21px;
+}
+h4 {
+  margin-top: 24px;
+  font-size: 18px;
+}
+h2, h3 {
+  scroll-margin-top: 24px;
+}
+.box {
+  background: #ffffff;
+  border: 1px solid #d9e2ef;
+  border-radius: 12px;
+  padding: 18px 22px;
+  margin: 18px 0;
+}
+.note {
+  background: #fff7d6;
+  border-left: 6px solid #d6a800;
+}
+.train {
+  background: #ecfdf3;
+  border-left: 6px solid #16a34a;
+}
+.warn {
+  background: #fff1f1;
+  border-left: 6px solid #dc2626;
+}
+.formula {
+  background: #ffffff;
+  border: 1px solid #d9e2ef;
+  border-radius: 12px;
+  padding: 16px 18px;
+  margin: 18px 0;
+  overflow-x: auto;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 18px 0;
+  background: #ffffff;
+}
+th, td {
+  border: 1px solid #d9e2ef;
+  padding: 11px 13px;
+  vertical-align: top;
+}
+th {
+  background: #f1f5f9;
+}
+pre {
+  background: #111827;
+  color: #e5e7eb;
+  padding: 18px;
+  border-radius: 10px;
+  overflow-x: auto;
+  line-height: 1.55;
+}
+code {
+  font-family: Consolas, Monaco, "Courier New", monospace;
+}
+.small {
+  color: #667085;
+  font-size: 14px;
+}
+.page-toc {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+}
+.page-toc-toggle {
+  border: 0;
+  border-radius: 999px;
+  padding: 10px 16px;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.24);
+}
+.page-toc-toggle:hover {
+  background: #1d4ed8;
+}
+.page-toc-panel {
+  display: none;
+  width: 370px;
+  max-height: calc(100vh - 90px);
+  overflow: auto;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid #d9e2ef;
+  border-radius: 14px;
+  padding: 16px 18px;
+  margin-top: 10px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+  backdrop-filter: blur(8px);
+}
+.page-toc.is-open .page-toc-panel {
+  display: block;
+}
+.page-toc-title {
+  margin-bottom: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+}
+.page-toc-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.page-toc-item + .page-toc-item {
+  margin-top: 10px;
+}
+.page-toc-link {
+  display: block;
+  color: #334155;
+  text-decoration: none;
+  font-size: 14px;
+  line-height: 1.55;
+}
+.page-toc-link:hover {
+  color: #2563eb;
+}
+.step {
+  background: #ffffff;
+  border: 1px solid #d9e2ef;
+  border-radius: 12px;
+  padding: 16px 18px;
+  margin: 16px 0;
+}
+.step-title {
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 8px;
+}
+.arrow {
+  text-align: center;
+  color: #2563eb;
+  font-weight: 700;
+  font-size: 22px;
+  margin: 10px 0;
+}
+.hr {
+  height: 1px;
+  background: #d9e2ef;
+  margin: 26px 0;
+}
+@media (max-width: 1100px) {
+  .page-toc {
+    top: 12px;
+    right: 12px;
+  }
+  .page-toc-panel {
+    width: min(370px, calc(100vw - 24px));
+    max-height: calc(100vh - 72px);
+  }
+}
+@media (max-width: 760px) {
+  body {
+    margin: 30px auto;
+    padding: 0 18px 80px;
+    font-size: 16px;
+  }
+  h1 {
+    font-size: 28px;
+  }
+  h2 {
+    font-size: 23px;
+  }
+  table {
+    font-size: 15px;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<nav class="page-toc" aria-label="文章目录">
+  <button class="page-toc-toggle" onclick="document.querySelector('.page-toc').classList.toggle('is-open')">☰ 目录</button>
+  <div class="page-toc-panel">
+    <div class="page-toc-title">目录导航</div>
+    <ol class="page-toc-list">
+      <li class="page-toc-item"><a class="page-toc-link" href="#intro">0. Stage 6 学什么</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#why">1. 为什么 GRPO / RLVR 之后要学 Agent RL</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#agent">2. 什么是 LLM Agent</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#mdp">3. 把 Agent 写成 MDP / POMDP</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#trajectory">4. 多轮轨迹 Trajectory</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#actions">5. Agent 的动作空间</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#observation">6. Observation：工具返回如何进入状态</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#objective">7. Agent RL 目标函数</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#reward">8. 多轮 Agent Reward 怎么设计</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#credit">9. 长轨迹 Credit Assignment</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#tool">10. Tool-use Reward 设计</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#search">11. Search Agent RL</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#code">12. Code Agent RL</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#sql">13. SQL / Table Agent RL</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#react">14. ReAct 轨迹与 RL 训练</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#grpo-agent">15. Agent 中如何用 GRPO</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#sft-rl">16. Agent SFT 与 Agent RL 的关系</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#stability">17. 稳定性问题与约束</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#toy">18. 最小 Tool-use Agent Toy 实验</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#project">19. 可作为研究项目的方向</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#summary">20. 一页总结</a></li>
+    </ol>
+  </div>
+</nav>
+
+<h1>强化学习大模型路线｜Stage 6：Agent RL / Tool-use RL / 多轮环境强化学习</h1>
+
+<div class="box note" id="intro">
+<p><strong>学习定位：</strong>Stage 5 讲了 GRPO / RLVR，重点是单轮可验证任务：模型生成一个回答，验证器给 reward。Stage 6 进入 <strong>Agent RL</strong>：模型不只生成答案，还要在环境中多轮行动、调用工具、接收观察、继续决策。</p>
+
+<p>这一阶段的核心变化是：</p>
+
+<div class="formula">
+\[
+\text{single response}
+\quad\Longrightarrow\quad
+\text{multi-turn action trajectory}
+\]
+</div>
+
+<p>也就是从：</p>
+
+<pre>
+Prompt
+  ↓
+Response
+  ↓
+Reward
+</pre>
+
+<p>变成：</p>
+
+<pre>
+User Task
+  ↓
+Plan / Thought
+  ↓
+Tool Call
+  ↓
+Observation
+  ↓
+Next Action
+  ↓
+More Observations
+  ↓
+Final Answer
+  ↓
+Trajectory Reward
+</pre>
+
+<p><strong>Stage 6 目标：</strong></p>
+<ol>
+<li>理解 LLM Agent 如何写成 MDP / POMDP；</li>
+<li>理解 Agent 的状态、动作、观察、奖励分别是什么；</li>
+<li>掌握多轮工具调用轨迹的概率分解；</li>
+<li>理解 trajectory-level reward 和 step-level reward；</li>
+<li>理解为什么 Agent RL 比单轮 RLVR 更难；</li>
+<li>学会设计 tool-use、search、code、SQL Agent 的 reward；</li>
+<li>能设计一个最小可复现的 Tool-use Agent RL toy project。</li>
+</ol>
+</div>
+
+<h2 id="why">1. 为什么 GRPO / RLVR 之后要学 Agent RL？</h2>
+
+<p>
+Stage 5 的 RLVR 适合这种形式：
+</p>
+
+<div class="formula">
+\[
+x \rightarrow y \rightarrow R(x,y)
+\]
+</div>
+
+<p>
+也就是 prompt \(x\)，模型输出回答 \(y\)，验证器给奖励 \(R(x,y)\)。
+</p>
+
+<p>
+但很多真实任务不是一次回答能完成的，而是要多步交互。
+</p>
+
+<table>
+<tr>
+<th>任务</th>
+<th>是否单轮足够</th>
+<th>为什么需要 Agent</th>
+</tr>
+<tr>
+<td>简单数学题</td>
+<td>通常够</td>
+<td>直接输出答案即可</td>
+</tr>
+<tr>
+<td>复杂代码调试</td>
+<td>不够</td>
+<td>需要运行代码、看报错、修改、再运行</td>
+</tr>
+<tr>
+<td>搜索问答</td>
+<td>不够</td>
+<td>需要检索、阅读、整合证据</td>
+</tr>
+<tr>
+<td>SQL 问答</td>
+<td>不够</td>
+<td>需要查 schema、写 SQL、执行、修正</td>
+</tr>
+<tr>
+<td>网页任务</td>
+<td>不够</td>
+<td>需要点击、输入、观察页面变化</td>
+</tr>
+<tr>
+<td>工具调用任务</td>
+<td>不够</td>
+<td>需要判断何时调用工具、如何用结果继续推理</td>
+</tr>
+</table>
+
+<div class="box train">
+<strong>一句话：</strong>
+RLVR 解决“回答是否正确”；Agent RL 解决“行动过程是否能完成任务”。
+</div>
+
+<h2 id="agent">2. 什么是 LLM Agent</h2>
+
+<p>
+LLM Agent 可以理解为：
+</p>
+
+<div class="box">
+<strong>以大语言模型为策略核心，能够根据任务状态选择动作、调用工具、读取观察结果，并持续更新行动的系统。</strong>
+</div>
+
+<h3>2.1 普通 LLM 和 Agent 的区别</h3>
+
+<table>
+<tr>
+<th>普通 LLM</th>
+<th>LLM Agent</th>
+</tr>
+<tr>
+<td>输入 prompt，输出文本</td>
+<td>输入任务，输出动作序列和最终答案</td>
+</tr>
+<tr>
+<td>主要依靠模型内部知识</td>
+<td>可以调用外部工具和环境</td>
+</tr>
+<tr>
+<td>一般单轮生成</td>
+<td>可以多轮交互</td>
+</tr>
+<tr>
+<td>错误后难以自我修正</td>
+<td>可以根据 observation 修正下一步动作</td>
+</tr>
+</table>
+
+<h3>2.2 Agent 的典型循环</h3>
+
+<pre>
+while not done:
+    1. 读取当前上下文和历史 observation
+    2. 模型生成下一步 action
+    3. 环境执行 action
+    4. 返回 observation
+    5. 模型根据 observation 决定下一步
+</pre>
+
+<p>
+数学上可以写成：
+</p>
+
+<div class="formula">
+\[
+a_t \sim \pi_\theta(\cdot \mid h_t)
+\]
+</div>
+
+<div class="formula">
+\[
+o_{t+1} \sim \mathcal{E}(\cdot \mid h_t,a_t)
+\]
+</div>
+
+<p>
+其中 \(h_t\) 是到第 \(t\) 步为止的历史，\(\mathcal{E}\) 是环境或工具系统。
+</p>
+
+<div class="box note">
+<strong>关键变化：</strong>
+Agent 的状态通常不是单个 \(s_t\)，而是一整段历史 \(h_t\)：任务、过去动作、工具返回、当前中间结果。
+</div>
+
+<h2 id="mdp">3. 把 Agent 写成 MDP / POMDP</h2>
+
+<p>
+在 Stage 1 里，MDP 是：
+</p>
+
+<div class="formula">
+\[
+\mathcal{M}=(\mathcal{S},\mathcal{A},p,r,\gamma)
+\]
+</div>
+
+<p>
+Agent 也可以写成类似结构，但实际更接近 POMDP，因为模型通常看不到完整真实环境状态，只看到 observation。
+</p>
+
+<h3>3.1 MDP 视角</h3>
+
+<table>
+<tr>
+<th>MDP 元素</th>
+<th>Agent 中对应什么</th>
+</tr>
+<tr>
+<td>状态 \(s_t\)</td>
+<td>任务上下文、工具历史、环境状态</td>
+</tr>
+<tr>
+<td>动作 \(a_t\)</td>
+<td>文本回复、工具调用、搜索查询、代码执行、停止</td>
+</tr>
+<tr>
+<td>转移 \(p(s_{t+1}\mid s_t,a_t)\)</td>
+<td>执行动作后环境变化</td>
+</tr>
+<tr>
+<td>奖励 \(r_t\)</td>
+<td>工具调用是否正确、任务是否完成、成本是否低</td>
+</tr>
+<tr>
+<td>折扣 \(\gamma\)</td>
+<td>控制远期成功和短期成本权衡</td>
+</tr>
+</table>
+
+<h3>3.2 POMDP 视角</h3>
+
+<p>
+在很多 Agent 任务中，真实状态 \(s_t\) 不完全可见。
+</p>
+
+<p>
+例如网页 Agent：
+</p>
+
+<ul>
+<li>真实状态包括完整网页 DOM、登录状态、后端数据库状态；</li>
+<li>模型看到的只是当前页面截图、文本摘要或部分 DOM；</li>
+<li>所以模型根据 observation 决策，而不是完整状态。</li>
+</ul>
+
+<p>
+POMDP 可以写成：
+</p>
+
+<div class="formula">
+\[
+o_t \sim O(\cdot \mid s_t)
+\]
+</div>
+
+<p>
+模型的策略通常依赖历史：
+</p>
+
+<div class="formula">
+\[
+a_t \sim \pi_\theta(a_t\mid h_t)
+\]
+</div>
+
+<p>
+其中：
+</p>
+
+<div class="formula">
+\[
+h_t=(x,a_0,o_1,a_1,o_2,\ldots,a_{t-1},o_t)
+\]
+</div>
+
+<div class="box train">
+<strong>一句话：</strong>
+Agent 的“状态”常常就是历史上下文。模型通过历史近似理解真实环境状态。
+</div>
+
+<h2 id="trajectory">4. 多轮轨迹 Trajectory</h2>
+
+<p>
+单轮 RLVR 的轨迹很短：
+</p>
+
+<div class="formula">
+\[
+\tau=(x,y,R)
+\]
+</div>
+
+<p>
+Agent 的轨迹更长：
+</p>
+
+<div class="formula">
+\[
+\tau=
+(x,a_0,o_1,a_1,o_2,\ldots,a_{T-1},o_T,y_{\mathrm{final}},R)
+\]
+</div>
+
+<p>
+其中：
+</p>
+
+<table>
+<tr>
+<th>符号</th>
+<th>含义</th>
+</tr>
+<tr>
+<td>\(x\)</td>
+<td>用户任务</td>
+</tr>
+<tr>
+<td>\(a_t\)</td>
+<td>第 \(t\) 步动作</td>
+</tr>
+<tr>
+<td>\(o_{t+1}\)</td>
+<td>执行动作后得到的观察</td>
+</tr>
+<tr>
+<td>\(y_{\mathrm{final}}\)</td>
+<td>最终回答</td>
+</tr>
+<tr>
+<td>\(R\)</td>
+<td>整条轨迹的最终奖励</td>
+</tr>
+</table>
+
+<h3>4.1 轨迹概率分解</h3>
+
+<p>
+给定任务 \(x\)，Agent 轨迹概率可以写成：
+</p>
+
+<div class="formula">
+\[
+p_\theta(\tau\mid x)
+=
+\prod_{t=0}^{T-1}
+\pi_\theta(a_t\mid h_t)
+\,
+\mathcal{E}(o_{t+1}\mid h_t,a_t)
+\]
+</div>
+
+<p>
+这里：
+</p>
+
+<table>
+<tr>
+<th>部分</th>
+<th>含义</th>
+</tr>
+<tr>
+<td>\(\pi_\theta(a_t\mid h_t)\)</td>
+<td>模型在历史 \(h_t\) 下选择动作 \(a_t\) 的概率</td>
+</tr>
+<tr>
+<td>\(\mathcal{E}(o_{t+1}\mid h_t,a_t)\)</td>
+<td>环境执行动作后返回 observation 的概率</td>
+</tr>
+</table>
+
+<p>
+对 \(\theta\) 求导时，环境项通常不含模型参数，所以：
+</p>
+
+<div class="formula">
+\[
+\nabla_\theta \log p_\theta(\tau\mid x)
+=
+\sum_{t=0}^{T-1}
+\nabla_\theta
+\log
+\pi_\theta(a_t\mid h_t)
+\]
+</div>
+
+<div class="box note">
+<strong>这和 Stage 2 的 Policy Gradient 完全对应：</strong>
+只不过这里的 action 不一定是 token，也可能是一整个工具调用。
+</div>
+
+<h2 id="actions">5. Agent 的动作空间</h2>
+
+<p>
+Agent 的动作比普通 LLM 更丰富。
+</p>
+
+<h3>5.1 常见动作类型</h3>
+
+<table>
+<tr>
+<th>动作类型</th>
+<th>例子</th>
+<th>是否可验证</th>
+</tr>
+<tr>
+<td>直接回答</td>
+<td>Final Answer: ...</td>
+<td>可以用答案验证器验证</td>
+</tr>
+<tr>
+<td>搜索</td>
+<td>search(query="...")</td>
+<td>可以检查 query 质量和证据命中</td>
+</tr>
+<tr>
+<td>计算器</td>
+<td>calculator(expression="1497*63")</td>
+<td>可以检查表达式和结果</td>
+</tr>
+<tr>
+<td>Python 执行</td>
+<td>python(code="...")</td>
+<td>可以看运行结果和测试</td>
+</tr>
+<tr>
+<td>SQL 查询</td>
+<td>sql(query="SELECT ...")</td>
+<td>可以检查执行结果</td>
+</tr>
+<tr>
+<td>API 调用</td>
+<td>get_weather(city="北京")</td>
+<td>可以检查工具名和参数</td>
+</tr>
+<tr>
+<td>停止动作</td>
+<td>finish(answer="...")</td>
+<td>可以检查是否该停止</td>
+</tr>
+</table>
+
+<h3>5.2 动作可以是结构化的</h3>
+
+<p>
+工具调用通常不是普通文本，而是结构化动作：
+</p>
+
+<pre><code>{
+  "action_type": "tool_call",
+  "tool_name": "calculator",
+  "arguments": {
+    "expression": "1497 * 63"
+  }
+}</code></pre>
+
+<p>
+数学上可以把动作分解为：
+</p>
+
+<div class="formula">
+\[
+a_t=(c_t,u_t,\eta_t)
+\]
+</div>
+
+<table>
+<tr>
+<th>符号</th>
+<th>含义</th>
+</tr>
+<tr>
+<td>\(c_t\)</td>
+<td>动作类别，例如 answer / tool_call / search / finish</td>
+</tr>
+<tr>
+<td>\(u_t\)</td>
+<td>具体工具名或动作名</td>
+</tr>
+<tr>
+<td>\(\eta_t\)</td>
+<td>动作参数，例如 JSON arguments</td>
+</tr>
+</table>
+
+<h3>5.3 动作概率怎么写</h3>
+
+<p>
+如果动作是结构化的，可以分解为：
+</p>
+
+<div class="formula">
+\[
+\pi_\theta(a_t\mid h_t)
+=
+\pi_\theta(c_t\mid h_t)
+\,
+\pi_\theta(u_t\mid h_t,c_t)
+\,
+\pi_\theta(\eta_t\mid h_t,c_t,u_t)
+\]
+</div>
+
+<p>
+在实际 LLM 中，这些结构通常还是通过 token 序列生成出来。
+</p>
+
+<div class="box warn">
+<strong>实践难点：</strong>
+结构化动作看起来清楚，但模型输出时可能 JSON 格式错误、参数缺失、工具名拼错，所以 format reward 很重要。
+</div>
+
+<h2 id="observation">6. Observation：工具返回如何进入状态</h2>
+
+<p>
+Agent 调用工具后，环境会返回 observation。
+</p>
+
+<pre>
+Action:
+calculator("1497 * 63")
+
+Observation:
+94311
+</pre>
+
+<p>
+下一步模型的输入就变成：
+</p>
+
+<pre>
+User task:
+请计算 1497 × 63。
+
+Action history:
+calculator("1497 * 63")
+
+Observation:
+94311
+
+Next:
+请给出最终回答。
+</pre>
+
+<h3>6.1 历史状态更新</h3>
+
+<p>
+如果当前历史是 \(h_t\)，执行动作 \(a_t\)，得到 observation \(o_{t+1}\)，则新历史是：
+</p>
+
+<div class="formula">
+\[
+h_{t+1}
+=
+(h_t,a_t,o_{t+1})
+\]
+</div>
+
+<p>
+下一步策略是：
+</p>
+
+<div class="formula">
+\[
+a_{t+1}\sim\pi_\theta(\cdot\mid h_{t+1})
+\]
+</div>
+
+<h3>6.2 Observation 的质量很关键</h3>
+
+<table>
+<tr>
+<th>Observation 类型</th>
+<th>例子</th>
+<th>风险</th>
+</tr>
+<tr>
+<td>数值结果</td>
+<td>94311</td>
+<td>模型可能忽略或抄错</td>
+</tr>
+<tr>
+<td>搜索结果</td>
+<td>网页片段</td>
+<td>证据可能噪声大</td>
+</tr>
+<tr>
+<td>代码报错</td>
+<td>Traceback</td>
+<td>模型需要理解报错并修正</td>
+</tr>
+<tr>
+<td>SQL 执行结果</td>
+<td>表格行</td>
+<td>模型需要整合结果</td>
+</tr>
+<tr>
+<td>网页状态</td>
+<td>按钮、表单、页面文本</td>
+<td>可能只看到部分页面</td>
+</tr>
+</table>
+
+<div class="box train">
+<strong>Agent 能力的一半来自 action，一半来自能不能正确利用 observation。</strong>
+</div>
+
+<h2 id="objective">7. Agent RL 目标函数</h2>
+
+<p>
+Agent 的目标仍然是最大化期望回报：
+</p>
+
+<div class="formula">
+\[
+J(\theta)
+=
+\mathbb{E}_{\tau\sim p_\theta(\tau\mid x)}
+[
+R(\tau)
+]
+\]
+</div>
+
+<p>
+如果有 prompt 分布：
+</p>
+
+<div class="formula">
+\[
+x\sim \mathcal{D}
+\]
+</div>
+
+<p>
+则：
+</p>
+
+<div class="formula">
+\[
+J(\theta)
+=
+\mathbb{E}_{x\sim\mathcal{D}}
+\mathbb{E}_{\tau\sim p_\theta(\tau\mid x)}
+[
+R(x,\tau)
+]
+\]
+</div>
+
+<h3>7.1 Policy Gradient 形式</h3>
+
+<p>
+根据 Stage 2：
+</p>
+
+<div class="formula">
+\[
+\nabla_\theta J(\theta)
+=
+\mathbb{E}
+\left[
+\sum_{t=0}^{T-1}
+\nabla_\theta
+\log
+\pi_\theta(a_t\mid h_t)
+\,
+\hat{A}_t
+\right]
+\]
+</div>
+
+<p>
+这里和普通 RL 的区别是：
+</p>
+
+<table>
+<tr>
+<th>普通 RL</th>
+<th>Agent RL</th>
+</tr>
+<tr>
+<td>\(s_t\)</td>
+<td>\(h_t\)，包含历史动作和 observation</td>
+</tr>
+<tr>
+<td>\(a_t\)</td>
+<td>工具调用、搜索、代码执行、回答、停止</td>
+</tr>
+<tr>
+<td>\(\hat{A}_t\)</td>
+<td>该步动作对最终任务成功的贡献估计</td>
+</tr>
+</table>
+
+<h3>7.2 轨迹级奖励</h3>
+
+<p>
+很多 Agent 任务只有最终奖励：
+</p>
+
+<div class="formula">
+\[
+R(\tau)=
+\begin{cases}
+1, & \text{任务完成}\\
+0, & \text{任务失败}
+\end{cases}
+\]
+</div>
+
+<p>
+这会导致长轨迹 credit assignment 很难。
+</p>
+
+<div class="box warn">
+<strong>Agent RL 的难点：</strong>
+最终成功或失败可能由很早之前某一步工具调用决定，但奖励只在最后出现。
+</div>
+
+<h2 id="reward">8. 多轮 Agent Reward 怎么设计</h2>
+
+<p>
+Agent reward 可以分成四类：
+</p>
+
+<table>
+<tr>
+<th>Reward 类型</th>
+<th>检查什么</th>
+<th>例子</th>
+</tr>
+<tr>
+<td>Outcome Reward</td>
+<td>最终任务是否完成</td>
+<td>答案正确、网页任务成功</td>
+</tr>
+<tr>
+<td>Step Reward</td>
+<td>每一步动作是否合理</td>
+<td>工具名正确、参数完整</td>
+</tr>
+<tr>
+<td>Cost Reward</td>
+<td>是否节省成本</td>
+<td>少调用工具、少 token、少搜索</td>
+</tr>
+<tr>
+<td>Safety Reward</td>
+<td>是否遵守约束</td>
+<td>不泄露信息、不执行危险代码</td>
+</tr>
+</table>
+
+<h3>8.1 总 reward 形式</h3>
+
+<div class="formula">
+\[
+R(\tau)
+=
+R_{\mathrm{outcome}}(\tau)
++
+\alpha R_{\mathrm{step}}(\tau)
+-
+\lambda C(\tau)
+-
+\mu R_{\mathrm{risk}}(\tau)
+\]
+</div>
+
+<table>
+<tr>
+<th>项</th>
+<th>含义</th>
+</tr>
+<tr>
+<td>\(R_{\mathrm{outcome}}\)</td>
+<td>最终任务成功奖励</td>
+</tr>
+<tr>
+<td>\(R_{\mathrm{step}}\)</td>
+<td>中间步骤质量奖励</td>
+</tr>
+<tr>
+<td>\(C(\tau)\)</td>
+<td>成本，例如工具次数、token 数、时间</td>
+</tr>
+<tr>
+<td>\(R_{\mathrm{risk}}\)</td>
+<td>风险或违规惩罚</td>
+</tr>
+<tr>
+<td>\(\alpha,\lambda,\mu\)</td>
+<td>不同奖励项的权重</td>
+</tr>
+</table>
+
+<h3>8.2 成本惩罚</h3>
+
+<p>
+如果没有成本惩罚，Agent 可能疯狂调用工具。
+</p>
+
+<div class="formula">
+\[
+C(\tau)
+=
+c_{\mathrm{tool}}N_{\mathrm{tool}}
++
+c_{\mathrm{token}}N_{\mathrm{token}}
++
+c_{\mathrm{time}}T
+\]
+</div>
+
+<p>
+例如：
+</p>
+
+<pre><code>reward = task_success
+reward -= 0.02 * num_tool_calls
+reward -= 0.001 * num_generated_tokens</code></pre>
+
+<div class="box note">
+<strong>关键：</strong>
+Agent reward 不能只看成功，还要看成本和行为质量。
+</div>
+
+<h2 id="credit">9. 长轨迹 Credit Assignment</h2>
+
+<p>
+假设一个 Agent 任务轨迹如下：
+</p>
+
+<pre>
+a0: search("DeepSeek R1 date")
+o1: 搜索结果错误
+a1: read(result 1)
+o2: 信息不相关
+a2: final answer
+R: 0
+</pre>
+
+<p>
+最终失败了，但到底是哪一步错了？
+</p>
+
+<ul>
+<li>是搜索 query 不好？</li>
+<li>是读错了结果？</li>
+<li>是过早停止？</li>
+<li>是最终回答整合错误？</li>
+</ul>
+
+<h3>9.1 只用最终奖励的问题</h3>
+
+<div class="formula">
+\[
+R_T=0
+\]
+</div>
+
+<p>
+如果把这个 0 分平均归因给所有动作，模型很难知道具体改哪里。
+</p>
+
+<h3>9.2 Step-level reward</h3>
+
+<p>
+可以给每一步单独奖励：
+</p>
+
+<div class="formula">
+\[
+R(\tau)=
+\sum_{t=0}^{T}
+\gamma^t r_t
+\]
+</div>
+
+<p>
+例如：
+</p>
+
+<table>
+<tr>
+<th>步骤</th>
+<th>奖励</th>
+</tr>
+<tr>
+<td>搜索 query 命中关键实体</td>
+<td>+0.2</td>
+</tr>
+<tr>
+<td>读取相关文档</td>
+<td>+0.2</td>
+</tr>
+<tr>
+<td>引用证据支持答案</td>
+<td>+0.3</td>
+</tr>
+<tr>
+<td>最终答案正确</td>
+<td>+1.0</td>
+</tr>
+<tr>
+<td>编造证据</td>
+<td>-1.0</td>
+</tr>
+</table>
+
+<h3>9.3 Advantage 的时间分配</h3>
+
+<p>
+Agent 中可以用 return-to-go：
+</p>
+
+<div class="formula">
+\[
+G_t=
+\sum_{k=t}^{T}
+\gamma^{k-t}r_k
+\]
+</div>
+
+<p>
+然后：
+</p>
+
+<div class="formula">
+\[
+\hat{A}_t=G_t-V(h_t)
+\]
+</div>
+
+<p>
+或者像 GRPO 那样，用同任务多轨迹的相对 reward：
+</p>
+
+<div class="formula">
+\[
+\hat{A}_i
+=
+\frac{
+R(\tau_i)-\bar{R}
+}{
+\sigma_R+\epsilon
+}
+\]
+</div>
+
+<div class="box train">
+<strong>长轨迹的核心问题：</strong>
+最终 reward 给的是整条轨迹的评价，但训练要更新每一步 action 的概率。
+</div>
+
+<h2 id="tool">10. Tool-use Reward 设计</h2>
+
+<p>
+工具调用任务是 Agent RL 最好的入门场景。
+</p>
+
+<h3>10.1 工具调用动作</h3>
+
+<pre><code>{
+  "tool": "calculator",
+  "arguments": {
+    "expression": "1497 * 63"
+  }
+}</code></pre>
+
+<h3>10.2 Reward 拆解</h3>
+
+<table>
+<tr>
+<th>检查项</th>
+<th>奖励</th>
+<th>说明</th>
+</tr>
+<tr>
+<td>JSON 可解析</td>
+<td>+0.1</td>
+<td>格式基础</td>
+</tr>
+<tr>
+<td>工具名正确</td>
+<td>+0.3</td>
+<td>选择了正确工具</td>
+</tr>
+<tr>
+<td>参数完整</td>
+<td>+0.2</td>
+<td>没有漏填必要参数</td>
+</tr>
+<tr>
+<td>参数值正确</td>
+<td>+0.3</td>
+<td>参数语义正确</td>
+</tr>
+<tr>
+<td>工具执行成功</td>
+<td>+0.3</td>
+<td>调用能跑通</td>
+</tr>
+<tr>
+<td>不该调用时调用</td>
+<td>-0.5</td>
+<td>惩罚乱调用</td>
+</tr>
+<tr>
+<td>工具返回后回答正确</td>
+<td>+0.5</td>
+<td>利用 observation 完成任务</td>
+</tr>
+</table>
+
+<h3>10.3 Reward Function 示例</h3>
+
+<pre><code>def tool_use_reward(action, observation, final_answer, gold):
+    reward = 0.0
+
+    if not is_valid_json(action):
+        return -1.0
+
+    reward += 0.1
+
+    if action["tool"] == gold["tool"]:
+        reward += 0.3
+    else:
+        reward -= 0.3
+
+    if required_args_complete(action, gold):
+        reward += 0.2
+
+    if args_match(action, gold):
+        reward += 0.3
+
+    if observation_success(observation):
+        reward += 0.3
+
+    if final_answer_correct(final_answer, gold["answer"]):
+        reward += 0.5
+
+    return reward</code></pre>
+
+<div class="box warn">
+<strong>注意：</strong>
+不要只奖励工具名正确。否则模型可能学会“工具名对，但参数胡写”。
+</div>
+
+<h2 id="search">11. Search Agent RL</h2>
+
+<p>
+Search Agent 的动作通常是：
+</p>
+
+<pre><code>search(query="...")</code></pre>
+
+<p>
+环境返回搜索结果：
+</p>
+
+<pre>
+Observation:
+1. title ...
+2. snippet ...
+3. source ...
+</pre>
+
+<h3>11.1 Search Agent 的 reward</h3>
+
+<table>
+<tr>
+<th>奖励项</th>
+<th>说明</th>
+</tr>
+<tr>
+<td>Query relevance</td>
+<td>搜索 query 是否包含关键实体和问题意图</td>
+</tr>
+<tr>
+<td>Evidence hit</td>
+<td>搜索结果是否包含答案证据</td>
+</tr>
+<tr>
+<td>Source quality</td>
+<td>是否使用高质量来源</td>
+</tr>
+<tr>
+<td>Answer correctness</td>
+<td>最终回答是否正确</td>
+</tr>
+<tr>
+<td>Citation support</td>
+<td>引用是否支持回答</td>
+</tr>
+<tr>
+<td>Search cost</td>
+<td>搜索次数是否过多</td>
+</tr>
+</table>
+
+<h3>11.2 Search trajectory</h3>
+
+<div class="formula">
+\[
+\tau=(x,q_1,o_1,q_2,o_2,y_{\mathrm{final}})
+\]
+</div>
+
+<p>
+其中 \(q_i\) 是第 \(i\) 次搜索 query。
+</p>
+
+<h3>11.3 Search reward 示例</h3>
+
+<pre><code>reward = 0.0
+
+if query_contains_key_entities(query):
+    reward += 0.2
+
+if retrieved_evidence_contains_answer(observation):
+    reward += 0.4
+
+if final_answer_correct(answer):
+    reward += 1.0
+
+if cites_unsupported_source(answer):
+    reward -= 0.5
+
+reward -= 0.05 * num_searches</code></pre>
+
+<div class="box note">
+<strong>Search Agent 的难点：</strong>
+搜索 query 本身就是动作。模型不仅要会回答，还要学会问出好 query。
+</div>
+
+<h2 id="code">12. Code Agent RL</h2>
+
+<p>
+Code Agent 不只是生成代码，还会运行代码、看错误、修改代码。
+</p>
+
+<pre>
+User task
+  ↓
+write code
+  ↓
+run tests
+  ↓
+observe error
+  ↓
+edit code
+  ↓
+run tests again
+  ↓
+final answer
+</pre>
+
+<h3>12.1 Code Agent 状态</h3>
+
+<div class="formula">
+\[
+h_t=(x,\text{current code},\text{test results},\text{error messages},\text{edit history})
+\]
+</div>
+
+<h3>12.2 Code Agent 动作</h3>
+
+<table>
+<tr>
+<th>动作</th>
+<th>例子</th>
+</tr>
+<tr>
+<td>write_code</td>
+<td>生成初始代码</td>
+</tr>
+<tr>
+<td>run_tests</td>
+<td>执行单元测试</td>
+</tr>
+<tr>
+<td>edit_code</td>
+<td>根据错误修改代码</td>
+</tr>
+<tr>
+<td>explain</td>
+<td>解释解决方案</td>
+</tr>
+<tr>
+<td>finish</td>
+<td>提交最终代码</td>
+</tr>
+</table>
+
+<h3>12.3 Code Agent reward</h3>
+
+<div class="formula">
+\[
+R(\tau)
+=
+\frac{\#\text{passed tests}}{\#\text{total tests}}
+-
+\lambda N_{\mathrm{runs}}
+-
+\mu N_{\mathrm{tokens}}
+\]
+</div>
+
+<p>
+如果代码无法运行，可以给负奖励：
+</p>
+
+<div class="formula">
+\[
+R_{\mathrm{compile}}=
+\begin{cases}
+0, & \text{can compile}\\
+-1, & \text{compile error}
+\end{cases}
+\]
+</div>
+
+<div class="box train">
+<strong>Code Agent 很适合 RL：</strong>
+因为环境反馈非常明确：代码能不能运行、测试能不能通过。
+</div>
+
+<h2 id="sql">13. SQL / Table Agent RL</h2>
+
+<p>
+SQL Agent 的任务是根据自然语言问题查询数据库。
+</p>
+
+<pre>
+Question:
+哪个部门的平均工资最高？
+
+Agent:
+1. inspect schema
+2. write SQL
+3. execute SQL
+4. read result
+5. answer
+</pre>
+
+<h3>13.1 SQL Agent 动作</h3>
+
+<table>
+<tr>
+<th>动作</th>
+<th>例子</th>
+</tr>
+<tr>
+<td>inspect_schema</td>
+<td>查看表结构</td>
+</tr>
+<tr>
+<td>write_sql</td>
+<td>生成 SQL 查询</td>
+</tr>
+<tr>
+<td>execute_sql</td>
+<td>执行 SQL</td>
+</tr>
+<tr>
+<td>revise_sql</td>
+<td>根据报错修改 SQL</td>
+</tr>
+<tr>
+<td>finish</td>
+<td>输出最终答案</td>
+</tr>
+</table>
+
+<h3>13.2 SQL reward</h3>
+
+<table>
+<tr>
+<th>检查项</th>
+<th>奖励</th>
+</tr>
+<tr>
+<td>SQL 语法正确</td>
+<td>+0.2</td>
+</tr>
+<tr>
+<td>执行成功</td>
+<td>+0.3</td>
+</tr>
+<tr>
+<td>结果匹配标准答案</td>
+<td>+1.0</td>
+</tr>
+<tr>
+<td>查询无关表</td>
+<td>-0.2</td>
+</tr>
+<tr>
+<td>执行次数过多</td>
+<td>-0.05 每次</td>
+</tr>
+</table>
+
+<h3>13.3 SQL reward 公式</h3>
+
+<div class="formula">
+\[
+R(\tau)
+=
+\mathbb{I}[\text{result correct}]
++
+0.3\mathbb{I}[\text{execution success}]
++
+0.2\mathbb{I}[\text{syntax valid}]
+-
+0.05N_{\mathrm{exec}}
+\]
+</div>
+
+<div class="box note">
+<strong>SQL Agent 的核心：</strong>
+最终 SQL 写法不唯一，但执行结果可以验证，所以天然适合 RLVR / Agent RL。
+</div>
+
+<h2 id="react">14. ReAct 轨迹与 RL 训练</h2>
+
+<p>
+ReAct 是 Reasoning + Acting 的组合格式。
+</p>
+
+<pre>
+Thought: 我需要先查找相关信息。
+Action: search("...")
+Observation: ...
+Thought: 现在我知道了关键事实。
+Action: calculator("...")
+Observation: ...
+Final Answer: ...
+</pre>
+
+<h3>14.1 ReAct 中哪些部分是动作？</h3>
+
+<table>
+<tr>
+<th>部分</th>
+<th>是否动作</th>
+<th>说明</th>
+</tr>
+<tr>
+<td>Thought</td>
+<td>可以看作隐式动作或中间文本</td>
+<td>影响后续 action，但通常不直接执行</td>
+</tr>
+<tr>
+<td>Action</td>
+<td>是</td>
+<td>环境会执行</td>
+</tr>
+<tr>
+<td>Observation</td>
+<td>不是模型动作</td>
+<td>环境返回</td>
+</tr>
+<tr>
+<td>Final Answer</td>
+<td>是停止 / 回答动作</td>
+<td>结束任务</td>
+</tr>
+</table>
+
+<h3>14.2 ReAct 轨迹概率</h3>
+
+<p>
+如果把 Thought 和 Action 都看作模型输出，则：
+</p>
+
+<div class="formula">
+\[
+\log\pi_\theta(\tau\mid x)
+=
+\sum_{t}
+\log\pi_\theta(\text{Thought}_t\mid h_t)
++
+\sum_t
+\log\pi_\theta(\text{Action}_t\mid h_t,\text{Thought}_t)
+\]
+</div>
+
+<p>
+如果只训练工具 Action，也可以只对 Action tokens 计算 RL loss。
+</p>
+
+<div class="box warn">
+<strong>实践选择：</strong>
+是否训练 Thought tokens 是一个重要设计。训练全部 tokens 简单，但可能强化冗长推理；只训练 Action tokens 更聚焦，但实现更复杂。
+</div>
+
+<h2 id="grpo-agent">15. Agent 中如何用 GRPO</h2>
+
+<p>
+Agent 也可以用 GRPO 思路：对同一个任务采样多条轨迹。
+</p>
+
+<div class="formula">
+\[
+\tau_1,\tau_2,\ldots,\tau_G
+\sim
+\pi_{\theta_{\mathrm{old}}}(\cdot\mid x)
+\]
+</div>
+
+<p>
+每条轨迹得到 reward：
+</p>
+
+<div class="formula">
+\[
+R_i=R(x,\tau_i)
+\]
+</div>
+
+<p>
+组内 advantage：
+</p>
+
+<div class="formula">
+\[
+\hat{A}_i
+=
+\frac{
+R_i-\bar{R}
+}{
+\sigma_R+\epsilon
+}
+\]
+</div>
+
+<p>
+然后对轨迹中每个模型动作 token 或 action 计算 policy ratio。
+</p>
+
+<h3>15.1 Trajectory-level GRPO</h3>
+
+<div class="formula">
+\[
+L_{\mathrm{Agent-GRPO}}
+=
+\mathbb{E}
+\left[
+\frac{1}{G}
+\sum_{i=1}^{G}
+\sum_{t=0}^{T_i-1}
+\min
+\left(
+r_{i,t}(\theta)\hat{A}_i,
+\mathrm{clip}(r_{i,t}(\theta),1-\epsilon,1+\epsilon)\hat{A}_i
+\right)
+\right]
+\]
+</div>
+
+<p>
+其中：
+</p>
+
+<div class="formula">
+\[
+r_{i,t}(\theta)
+=
+\frac{
+\pi_\theta(a_{i,t}\mid h_{i,t})
+}{
+\pi_{\theta_{\mathrm{old}}}(a_{i,t}\mid h_{i,t})
+}
+\]
+</div>
+
+<h3>15.2 和单轮 GRPO 的区别</h3>
+
+<table>
+<tr>
+<th>单轮 GRPO</th>
+<th>Agent-GRPO</th>
+</tr>
+<tr>
+<td>一个 response</td>
+<td>一条多步轨迹</td>
+</tr>
+<tr>
+<td>reward 看最终回答</td>
+<td>reward 看任务完成、工具调用、成本</td>
+</tr>
+<tr>
+<td>token 序列较短</td>
+<td>多轮 action + observation</td>
+</tr>
+<tr>
+<td>credit assignment 相对简单</td>
+<td>长轨迹归因更难</td>
+</tr>
+</table>
+
+<div class="box train">
+<strong>一句话：</strong>
+Agent-GRPO 把“同题多回答比较”扩展成“同任务多轨迹比较”。
+</div>
+
+<h2 id="sft-rl">16. Agent SFT 与 Agent RL 的关系</h2>
+
+<p>
+Agent 通常不能直接从 RL 开始。更稳的路线是：
+</p>
+
+<pre>
+Agent SFT
+  ↓
+Agent Rejection Sampling
+  ↓
+Agent RL / GRPO
+</pre>
+
+<h3>16.1 Agent SFT 学什么？</h3>
+
+<table>
+<tr>
+<th>能力</th>
+<th>例子</th>
+</tr>
+<tr>
+<td>工具调用格式</td>
+<td>JSON schema、函数名、参数格式</td>
+</tr>
+<tr>
+<td>基本规划</td>
+<td>先查 schema，再写 SQL</td>
+</tr>
+<tr>
+<td>观察结果利用</td>
+<td>根据报错修改代码</td>
+</tr>
+<tr>
+<td>停止行为</td>
+<td>知道何时 finish</td>
+</tr>
+</table>
+
+<h3>16.2 Agent RL 学什么？</h3>
+
+<table>
+<tr>
+<th>能力</th>
+<th>例子</th>
+</tr>
+<tr>
+<td>更优工具选择</td>
+<td>少用无关工具</td>
+</tr>
+<tr>
+<td>更强纠错</td>
+<td>根据失败 observation 调整</td>
+</tr>
+<tr>
+<td>更高任务成功率</td>
+<td>最终结果正确</td>
+</tr>
+<tr>
+<td>成本控制</td>
+<td>用更少步骤完成任务</td>
+</tr>
+</table>
+
+<div class="box note">
+<strong>关系：</strong>
+SFT 负责让 Agent “能跑起来”；RL 负责让 Agent “跑得更好”。
+</div>
+
+<h2 id="stability">17. 稳定性问题与约束</h2>
+
+<p>
+Agent RL 比单轮 RL 更容易不稳定。
+</p>
+
+<h3>17.1 常见问题</h3>
+
+<table>
+<tr>
+<th>问题</th>
+<th>表现</th>
+<th>原因</th>
+</tr>
+<tr>
+<td>工具滥用</td>
+<td>反复调用搜索或计算器</td>
+<td>没有成本惩罚</td>
+</tr>
+<tr>
+<td>过早停止</td>
+<td>还没查完就 final answer</td>
+<td>停止动作 reward 设计不当</td>
+</tr>
+<tr>
+<td>格式崩坏</td>
+<td>JSON 无法解析</td>
+<td>format 约束不足</td>
+</tr>
+<tr>
+<td>Observation 忽略</td>
+<td>工具结果正确但回答仍错</td>
+<td>没有奖励 observation utilization</td>
+</tr>
+<tr>
+<td>长轨迹退化</td>
+<td>越做越绕</td>
+<td>没有长度和步骤惩罚</td>
+</tr>
+<tr>
+<td>环境漏洞利用</td>
+<td>钻测试器漏洞</td>
+<td>reward function 不严密</td>
+</tr>
+</table>
+
+<h3>17.2 常用约束</h3>
+
+<ul>
+<li>最大工具调用次数；</li>
+<li>最大轨迹长度；</li>
+<li>JSON schema 强校验；</li>
+<li>危险工具白名单；</li>
+<li>失败动作立即终止；</li>
+<li>重复 action 惩罚；</li>
+<li>KL penalty 限制偏离 reference；</li>
+<li>trajectory cost penalty。</li>
+</ul>
+
+<h3>17.3 KL 约束</h3>
+
+<div class="formula">
+\[
+L(\theta)
+=
+L_{\mathrm{RL}}(\theta)
+-
+\beta
+\mathrm{KL}
+\left(
+\pi_\theta
+\|
+\pi_{\mathrm{ref}}
+\right)
+\]
+</div>
+
+<p>
+在实现中，也可以对每个动作 token 加 KL penalty：
+</p>
+
+<div class="formula">
+\[
+r_t^{\mathrm{KL}}
+=
+-\beta
+\left[
+\log\pi_\theta(a_t\mid h_t)
+-
+\log\pi_{\mathrm{ref}}(a_t\mid h_t)
+\right]
+\]
+</div>
+
+<div class="box warn">
+<strong>关键：</strong>
+Agent RL 中 KL 不只是防止语言变怪，也防止工具调用策略突然偏离 SFT 学到的基本格式。
+</div>
+
+<h2 id="toy">18. 最小 Tool-use Agent Toy 实验</h2>
+
+<p>
+建议你第一个 Agent RL 项目不要做网页或复杂搜索，而是做一个最小工具选择任务。
+</p>
+
+<h3>18.1 任务设定</h3>
+
+<p>
+给模型一个用户请求和三个工具：
+</p>
+
+<pre><code>tools = [
+    "calculator(expression)",
+    "search(query)",
+    "translator(text, target_language)"
+]</code></pre>
+
+<p>
+任务样例：
+</p>
+
+<table>
+<tr>
+<th>User Request</th>
+<th>正确工具</th>
+<th>正确参数</th>
+</tr>
+<tr>
+<td>计算 1497 * 63</td>
+<td>calculator</td>
+<td>{"expression": "1497 * 63"}</td>
+</tr>
+<tr>
+<td>把 hello 翻译成中文</td>
+<td>translator</td>
+<td>{"text": "hello", "target_language": "zh"}</td>
+</tr>
+<tr>
+<td>查一下强化学习是什么</td>
+<td>search</td>
+<td>{"query": "强化学习 是什么"}</td>
+</tr>
+</table>
+
+<h3>18.2 模型输出格式</h3>
+
+<pre><code>{
+  "tool": "...",
+  "arguments": {
+    ...
+  }
+}</code></pre>
+
+<h3>18.3 Reward Function</h3>
+
+<pre><code>def reward(output, gold):
+    obj = parse_json(output)
+    if obj is None:
+        return -1.0
+
+    reward = 0.0
+    reward += 0.2
+
+    if obj["tool"] == gold["tool"]:
+        reward += 0.4
+    else:
+        reward -= 0.4
+
+    if required_args_complete(obj, gold):
+        reward += 0.2
+
+    if args_match(obj, gold):
+        reward += 0.4
+
+    return reward</code></pre>
+
+<h3>18.4 如何做 GRPO</h3>
+
+<pre><code>for each prompt:
+    sample G tool-call outputs
+
+    for each output:
+        compute reward
+
+    compute group advantage
+
+    update policy with GRPO objective</code></pre>
+
+<div class="box train">
+<strong>这个 toy 项目的意义：</strong>
+它能让你把 Stage 5 的 GRPO 和 Stage 6 的 Tool-use Agent 连接起来，而且 reward 很容易写。
+</div>
+
+<h2 id="project">19. 可作为研究项目的方向</h2>
+
+<p>
+结合数学研究生背景，你可以考虑下面几条研究路线。
+</p>
+
+<h3>19.1 数学工具增强 Agent</h3>
+
+<table>
+<tr>
+<th>方向</th>
+<th>说明</th>
+</tr>
+<tr>
+<td>Calculator-augmented Math Agent</td>
+<td>模型决定何时调用计算器，何时自己推理</td>
+</tr>
+<tr>
+<td>Python-augmented Math Agent</td>
+<td>复杂计算交给 Python，模型负责建模和解释</td>
+</tr>
+<tr>
+<td>Symbolic Solver Agent</td>
+<td>调用 sympy 求解方程、积分、矩阵问题</td>
+</tr>
+</table>
+
+<h3>19.2 可验证奖励设计</h3>
+
+<ul>
+<li>最终答案 reward；</li>
+<li>工具调用正确性 reward；</li>
+<li>过程一致性 reward；</li>
+<li>计算成本惩罚；</li>
+<li>错误恢复 reward。</li>
+</ul>
+
+<h3>19.3 多轮 Agent 训练研究问题</h3>
+
+<table>
+<tr>
+<th>问题</th>
+<th>研究价值</th>
+</tr>
+<tr>
+<td>什么时候应该调用工具？</td>
+<td>减少过度工具依赖</td>
+</tr>
+<tr>
+<td>如何奖励错误恢复？</td>
+<td>提升 Agent 鲁棒性</td>
+</tr>
+<tr>
+<td>如何避免长轨迹退化？</td>
+<td>提升效率和稳定性</td>
+</tr>
+<tr>
+<td>如何从 outcome reward 学到过程策略？</td>
+<td>解决 credit assignment</td>
+</tr>
+<tr>
+<td>如何设计可验证但不易 hack 的 reward？</td>
+<td>提升训练可靠性</td>
+</tr>
+</table>
+
+<div class="box note">
+<strong>适合你的切入点：</strong>
+数学推理 + 工具调用 + 可验证奖励。这个方向既有数学结构，又有大模型 Agent 前沿价值。
+</div>
+
+<h2 id="summary">20. 一页总结</h2>
+
+<table>
+<tr>
+<th>概念</th>
+<th>核心公式或理解</th>
+<th>你要掌握什么</th>
+</tr>
+<tr>
+<td>Agent</td>
+<td>模型通过动作与环境多轮交互</td>
+<td>不只是生成文本，而是行动</td>
+</tr>
+<tr>
+<td>历史状态</td>
+<td>\(h_t=(x,a_0,o_1,\ldots,a_{t-1},o_t)\)</td>
+<td>Agent 常用历史近似状态</td>
+</tr>
+<tr>
+<td>动作</td>
+<td>\(a_t\sim\pi_\theta(\cdot\mid h_t)\)</td>
+<td>动作可以是工具调用、搜索、代码执行、回答</td>
+</tr>
+<tr>
+<td>Observation</td>
+<td>\(o_{t+1}\sim\mathcal{E}(\cdot\mid h_t,a_t)\)</td>
+<td>环境返回结果进入下一步状态</td>
+</tr>
+<tr>
+<td>轨迹</td>
+<td>\(\tau=(x,a_0,o_1,\ldots,y_{\mathrm{final}})\)</td>
+<td>训练对象是一整条行动链</td>
+</tr>
+<tr>
+<td>Agent RL 目标</td>
+<td>\(J(\theta)=\mathbb{E}_{\tau}[R(\tau)]\)</td>
+<td>最大化任务轨迹 reward</td>
+</tr>
+<tr>
+<td>Policy Gradient</td>
+<td>\(\nabla J=\mathbb{E}[\sum_t\nabla\log\pi_\theta(a_t\mid h_t)\hat{A}_t]\)</td>
+<td>更新每一步动作概率</td>
+</tr>
+<tr>
+<td>Tool Reward</td>
+<td>格式、工具名、参数、执行结果、最终答案</td>
+<td>工具调用可分项验证</td>
+</tr>
+<tr>
+<td>Cost Penalty</td>
+<td>\(-\lambda C(\tau)\)</td>
+<td>防止工具滥用和长轨迹</td>
+</tr>
+<tr>
+<td>Agent-GRPO</td>
+<td>同任务多轨迹比较</td>
+<td>用组内 reward 训练多轮 Agent</td>
+</tr>
+</table>
+
+<div class="box train">
+<strong>Stage 6 结束标准：</strong>
+你应该能解释清楚：
+<ol>
+<li>Agent 的状态为什么常写成历史 \(h_t\)；</li>
+<li>工具调用为什么可以看成动作；</li>
+<li>Observation 如何影响下一步决策；</li>
+<li>Agent 轨迹概率如何分解；</li>
+<li>为什么最终 reward 会带来 credit assignment 问题；</li>
+<li>如何设计 tool-use reward；</li>
+<li>如何把 GRPO 扩展到同任务多轨迹 Agent 训练。</li>
+</ol>
+</div>
+
+<h2>21. 本阶段练习</h2>
+
+<h3>21.1 手推练习</h3>
+
+<ol>
+<li>把一个工具调用任务写成 \(h_t,a_t,o_{t+1}\) 形式。</li>
+<li>写出 Agent 轨迹概率 \(p_\theta(\tau\mid x)\)。</li>
+<li>推导 \(\nabla_\theta\log p_\theta(\tau\mid x)=\sum_t\nabla_\theta\log\pi_\theta(a_t\mid h_t)\)。</li>
+<li>给一个三步工具调用轨迹设计 reward。</li>
+<li>解释为什么同任务多轨迹可以用 GRPO。</li>
+</ol>
+
+<h3>21.2 编程练习</h3>
+
+<pre><code>实现一个最小 Tool-use Agent 环境：
+
+1. 定义 3 个工具：
+   calculator / translator / search
+
+2. 准备 30 条用户请求。
+
+3. 为每条请求写 gold tool 和 gold arguments。
+
+4. 模型或模拟器生成 4 个候选工具调用。
+
+5. 写 reward_fn：
+   - JSON 是否合法
+   - 工具名是否正确
+   - 参数是否完整
+   - 参数是否正确
+
+6. 计算 group advantage。
+
+7. 输出哪些候选动作应该被提高概率。</code></pre>
+
+<h3>21.3 研究思考题</h3>
+
+<div class="box note">
+<ol>
+<li>如果 Agent 会反复调用 search，应该怎么设计成本惩罚？</li>
+<li>如果工具返回正确结果，但模型最终回答错，reward 应该怎么分配？</li>
+<li>如果模型为了高 reward 学会不输出 Thought，只输出工具调用，这一定是坏事吗？</li>
+<li>数学 Agent 中，什么时候应该让模型自己算，什么时候应该调用 Python？</li>
+<li>如何设计一个既能鼓励正确答案，又能鼓励短轨迹的 reward？</li>
+</ol>
+</div>
+
+<p class="small">强化学习大模型路线 · Stage 6 · Agent RL / Tool-use RL / Multi-turn Environment 数学推导版</p>
+
+</body>
+</html>

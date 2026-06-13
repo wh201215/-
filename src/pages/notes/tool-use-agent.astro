@@ -1,0 +1,34 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+---
+
+<BaseLayout title="Tool-use Agent Reading List">
+  <section class="page-intro">
+    <p class="eyebrow">Agent</p>
+    <h1>Tool-use Agent Reading List</h1>
+    <p>
+      Tool-use agents are more than function calling. The real question is whether the model can observe state, call tools, absorb feedback, and revise the next action inside a multi-step environment.
+    </p>
+  </section>
+
+  <section class="section section-split">
+    <article class="content-card">
+      <h2>Suggested reading order</h2>
+      <ol>
+        <li>Start with the agent structure and the roles of planner, memory, and tool router.</li>
+        <li>Then move into tool-use RL to understand environment steps, rewards, and trajectory evaluation.</li>
+        <li>Finish with engineering implementation so the trainers match concrete experiments.</li>
+      </ol>
+    </article>
+
+    <article class="content-card">
+      <h2>Attached material</h2>
+      <ul class="link-list">
+        <li><a href="/archive/html/llm-powered-autonomous-agents.html" target="_blank" rel="noreferrer">LLM Powered Autonomous Agents</a></li>
+        <li><a href="/archive/html/tool-use-agent-post-training.html" target="_blank" rel="noreferrer">Agent RLVR to Tool-use Agent</a></li>
+        <li><a href="/archive/html/rl-stage-6-agent-rl-tool-use.html" target="_blank" rel="noreferrer">RL Stage 6: Agent RL / Tool-use RL</a></li>
+        <li><a href="/archive/html/post-training-engineering.html" target="_blank" rel="noreferrer">Training Engineering Route</a></li>
+      </ul>
+    </article>
+  </section>
+</BaseLayout>

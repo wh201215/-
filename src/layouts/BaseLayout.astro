@@ -1,0 +1,63 @@
+---
+import { navigation, siteMeta } from "../data/site";
+import "../styles/global.css";
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const { title, description } = Astro.props;
+const pageTitle = title ? `${title} | ${siteMeta.title}` : siteMeta.title;
+const pageDescription = description ?? siteMeta.description;
+const pathname = Astro.url.pathname;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{pageTitle}</title>
+    <meta name="description" content={pageDescription} />
+    <meta name="theme-color" content="#efe6d1" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:wght@500;600;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="site-header">
+        <a class="brand" href="/">
+          <span class="brand-mark">JG</span>
+          <span>
+            <strong>{siteMeta.title}</strong>
+            <small>Read anywhere, keep building</small>
+          </span>
+        </a>
+
+        <nav class="site-nav" aria-label="Primary">
+          {navigation.map((item) => (
+            <a class={pathname === item.href || pathname.startsWith(`${item.href}/`) ? "active" : ""} href={item.href}>
+              {item.label}
+            </a>
+          ))}
+        </nav>
+      </header>
+
+      <main class="site-main">
+        <slot />
+      </main>
+
+      <footer class="site-footer">
+        <p>Built for GitHub-backed writing and automatic deployment.</p>
+        <p>Use Markdown for notes and HTML / PDF / PPT for archive files.</p>
+      </footer>
+    </div>
+  </body>
+</html>

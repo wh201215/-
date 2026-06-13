@@ -1,0 +1,35 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+
+const stages = [
+  ["Stage 1", "RL math foundations and derivation intuition", "/archive/html/rl-stage-1-math-derivation.html"],
+  ["Stage 2", "Policy Gradient, Actor-Critic, GAE, and PPO", "/archive/html/rl-stage-2-policy-gradient-ppo.html"],
+  ["Stage 3", "LLM post-training, SFT, reward models, and RLHF", "/archive/html/rl-stage-3-llm-post-training-rlhf.html"],
+  ["Stage 4", "Direct preference optimization", "/archive/html/rl-stage-4-dpo-derivation.html"],
+  ["Stage 5", "GRPO, RLVR, and verifiable reward", "/archive/html/rl-stage-5-grpo-rlvr.html"],
+  ["Stage 6", "Agent RL, tool-use RL, and multi-step environments", "/archive/html/rl-stage-6-agent-rl-tool-use.html"]
+];
+---
+
+<BaseLayout title="RL Stage Map">
+  <section class="page-intro">
+    <p class="eyebrow">Stage Series</p>
+    <h1>RL Stage Map</h1>
+    <p>
+      These pages naturally belong together. They should live behind one stable entry instead of staying scattered across folders.
+    </p>
+  </section>
+
+  <section class="resource-grid">
+    {stages.map(([label, summary, href]) => (
+      <article class="resource-card">
+        <div class="resource-meta">
+          <span>{label}</span>
+          <span>HTML</span>
+        </div>
+        <h2><a href={href} target="_blank" rel="noreferrer">{label}</a></h2>
+        <p>{summary}</p>
+      </article>
+    ))}
+  </section>
+</BaseLayout>

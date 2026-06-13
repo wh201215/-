@@ -1,0 +1,113 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { featuredTracks, notes, resources } from "../data/site";
+
+const latestResources = resources.slice(0, 6);
+---
+
+<BaseLayout title="Home">
+  <section class="hero">
+    <div class="hero-copy">
+      <p class="eyebrow">Personal Knowledge Site</p>
+      <h1>Turn reading routes, paper notes, and experiment material into a site you can open anytime.</h1>
+      <p class="lead">
+        This version is not a classic blog homepage. It is a reading hub built for continuation, quick jumps, source preservation, and mobile access.
+      </p>
+      <div class="hero-actions">
+        <a class="button button-primary" href="/notes">Start Reading</a>
+        <a class="button button-secondary" href="/archive">Open Archive</a>
+      </div>
+    </div>
+
+    <aside class="hero-panel">
+      <div class="hero-stat">
+        <strong>15</strong>
+        <span>Source files already ingested</span>
+      </div>
+      <div class="hero-stat">
+        <strong>3</strong>
+        <span>Curated guide pages</span>
+      </div>
+      <div class="hero-stat">
+        <strong>Auto</strong>
+        <span>Designed for Vercel auto deployment</span>
+      </div>
+    </aside>
+  </section>
+
+  <section class="section">
+    <div class="section-head">
+      <p class="eyebrow">Tracks</p>
+      <h2>Three tracks worth opening first</h2>
+    </div>
+
+    <div class="card-grid">
+      {featuredTracks.map((track) => (
+        <a class={`feature-card feature-card-${track.accent}`} href={track.href}>
+          <p>{track.stats}</p>
+          <h3>{track.title}</h3>
+          <span>{track.summary}</span>
+        </a>
+      ))}
+    </div>
+  </section>
+
+  <section class="section section-split">
+    <div>
+      <div class="section-head">
+        <p class="eyebrow">Notes</p>
+        <h2>Curated reading pages</h2>
+      </div>
+
+      <div class="stack">
+        {notes.map((note) => (
+          <article class="note-card">
+            <div class="note-meta">
+              <span>{note.date}</span>
+              <span>{note.tags.join(" / ")}</span>
+            </div>
+            <h3><a href={note.href}>{note.title}</a></h3>
+            <p>{note.summary}</p>
+          </article>
+        ))}
+      </div>
+    </div>
+
+    <div>
+      <div class="section-head">
+        <p class="eyebrow">Workflow</p>
+        <h2>Keep writing in this loop</h2>
+      </div>
+
+      <div class="workflow-card">
+        <ol>
+          <li>Drop new Markdown, HTML, PDF, or PPT files into the repository.</li>
+          <li>Add one guide page that explains why the material matters.</li>
+          <li>Push to GitHub and let Vercel rebuild the site automatically.</li>
+          <li>Open the site on phone or desktop and keep reading.</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-head">
+      <p class="eyebrow">Archive</p>
+      <h2>Recently ingested material</h2>
+    </div>
+
+    <div class="resource-grid">
+      {latestResources.map((item) => (
+        <article class="resource-card">
+          <div class="resource-meta">
+            <span>{item.type}</span>
+            <span>{item.updated}</span>
+          </div>
+          <h3><a href={item.href} target="_blank" rel="noreferrer">{item.title}</a></h3>
+          <p>{item.summary}</p>
+          <small>{item.category}</small>
+        </article>
+      ))}
+    </div>
+  </section>
+</BaseLayout>
