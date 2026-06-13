@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>推荐广告大模型新范式 Stage 1：RankMixer 与 Ranking Model Scaling</title>
+<script>
+window.MathJax={tex:{inlineMath:[['\\(','\\)'],['$','$']],displayMath:[['\\[','\\]']],processEscapes:true},svg:{fontCache:'global'}};
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<style>
+html{scroll-behavior:smooth}
+body{font-family:"Microsoft YaHei",Arial,sans-serif;line-height:1.85;max-width:1080px;margin:40px auto;padding:0 28px 100px;background:#f7f8fb;color:#1f2937;font-size:17px}
+h1{font-size:34px;line-height:1.35;border-bottom:5px solid #2563eb;padding-bottom:14px}
+h2{margin-top:48px;padding:12px 16px;font-size:27px;background:#eef4ff;border-left:7px solid #2563eb}
+h3{margin-top:28px;font-size:21px}
+h2,h3{scroll-margin-top:24px}
+.box{background:#fff;border:1px solid #d9e2ef;border-radius:12px;padding:18px 22px;margin:18px 0}
+.note{background:#fff7d6;border-left:6px solid #d6a800}
+.train{background:#ecfdf3;border-left:6px solid #16a34a}
+.warn{background:#fff1f1;border-left:6px solid #dc2626}
+.formula{background:#fff;border:1px solid #d9e2ef;border-radius:12px;padding:16px 18px;margin:18px 0;overflow-x:auto}
+table{width:100%;border-collapse:collapse;margin:18px 0;background:#fff}
+th,td{border:1px solid #d9e2ef;padding:11px 13px;vertical-align:top}
+th{background:#f1f5f9}
+pre{background:#111827;color:#e5e7eb;padding:18px;border-radius:10px;overflow-x:auto;line-height:1.55}
+code{font-family:Consolas,Monaco,"Courier New",monospace}
+.small{color:#667085;font-size:14px}
+.tag{display:inline-block;background:#dbeafe;color:#1d4ed8;border-radius:999px;padding:2px 10px;font-size:13px;margin-right:6px}
+.page-toc{position:fixed;top:20px;right:20px;z-index:1000}
+.page-toc-toggle{border:0;border-radius:999px;padding:10px 16px;background:#2563eb;color:#fff;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 10px 24px rgba(37,99,235,.24)}
+.page-toc-toggle:hover{background:#1d4ed8}
+.page-toc-panel{display:none;width:370px;max-height:calc(100vh - 90px);overflow:auto;background:rgba(255,255,255,.96);border:1px solid #d9e2ef;border-radius:14px;padding:16px 18px;margin-top:10px;box-shadow:0 12px 30px rgba(15,23,42,.08);backdrop-filter:blur(8px)}
+.page-toc.is-open .page-toc-panel{display:block}
+.page-toc-title{margin-bottom:12px;font-size:15px;font-weight:700;color:#0f172a}
+.page-toc-list{list-style:none;margin:0;padding:0}
+.page-toc-item+.page-toc-item{margin-top:10px}
+.page-toc-link{display:block;color:#334155;text-decoration:none;font-size:14px;line-height:1.55}
+.page-toc-link:hover{color:#2563eb}
+@media(max-width:760px){body{margin:30px auto;padding:0 18px 80px;font-size:16px}h1{font-size:28px}h2{font-size:23px}table{font-size:15px}.page-toc-panel{width:min(370px,calc(100vw - 24px))}}
+</style>
+</head>
+<body>
+<nav class="page-toc" aria-label="文章目录">
+<button class="page-toc-toggle" onclick="document.querySelector('.page-toc').classList.toggle('is-open')">☰ 目录</button>
+<div class="page-toc-panel">
+<div class="page-toc-title">目录导航</div>
+<ol class="page-toc-list">
+<li class="page-toc-item"><a class="page-toc-link" href="#intro">0. 这一阶段到底学什么</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#why">1. 为什么推荐广告也开始讲 Scaling</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#diff">2. 推荐 Scaling 和 LLM Scaling 的区别</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#old">3. 传统 Ranker 为什么难继续做大</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#rankmixer">4. RankMixer 想解决什么</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#structure">5. RankMixer 核心结构</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#tokenization">6. Feature Tokenization</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#mixing">7. Token Mixing</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#ffn">8. Per-token FFN</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#moe">9. Sparse-MoE 与 Dynamic Routing</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#mfu">10. MFU 与硬件效率</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#map">11. 四篇论文关系图</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#onerec">12. 和 OneRec 的区别</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#read">13. 读论文抓什么</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#project">14. 可以做的小项目</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#summary">15. 一页总结</a></li>
+</ol>
+</div>
+</nav>
+<h1>推荐广告大模型新范式 Stage 1：RankMixer 与 Ranking Model Scaling</h1>
+<p><span class="tag">Recommendation</span><span class="tag">Ads Ranking</span><span class="tag">Scaling</span><span class="tag">RankMixer</span><span class="tag">工业推荐大模型</span></p>
+
+<div class="box note" id="intro">
+<p><strong>学习定位：</strong>这篇不是传统推荐基础，也不是重新讲 FM、DeepFM、DIN、DCN。这里默认你已经理解召回、粗排、精排、CTR/CVR、多任务排序、用户行为序列建模。本文直接进入新的工业趋势：<strong>推荐广告 Ranking Model 的大模型化与 Scaling</strong>。</p>
+<p>这一阶段的核心问题是：</p>
+<div class="formula">\[
+\text{推荐广告排序模型能不能像 LLM 一样，通过扩大模型规模持续提升效果？}
+\]</div>
+<p>但推荐系统的 scaling 不是简单把模型做大，而是要在高 QPS、低延迟、强实时和多目标约束下，把模型有效容量、特征交互能力、序列建模能力和硬件利用率一起做上去。</p>
+</div>
+
+<h2 id="why">1. 为什么推荐广告也开始讲 Scaling</h2>
+<p>LLM 的成功给推荐系统一个启发：如果模型结构、数据规模、计算量可以稳定扩大，模型能力可能会持续提升。</p>
+<pre>LLM scaling:
+更多参数
+更多数据
+更多计算
+  ↓
+更低 loss
+更强能力</pre>
+<p>推荐系统过去的提升方式更像工程模块堆叠：</p>
+<pre>新特征
+新交叉模块
+新行为序列模块
+新多任务结构
+新样本加权
+新 loss 设计</pre>
+<p>典型工业 ranker 可能长这样：</p>
+<pre>Sparse ID Embedding
+        ↓
+User Behavior Sequence Module
+        ↓
+Feature Crossing Module
+        ↓
+Multi-task Tower
+        ↓
+CTR / CVR / WatchTime / GMV</pre>
+<div class="box train"><strong>推荐广告开始讲 Scaling，本质是在问：</strong><br>能不能减少手工模块拼接，让排序模型进入统一架构、统一放大、统一优化的阶段？</div>
+
+<h2 id="diff">2. 推荐 Scaling 和 LLM Scaling 的区别</h2>
+<h3>2.1 LLM Scaling 主要看什么</h3>
+<table>
+<tr><th>维度</th><th>含义</th></tr>
+<tr><td>参数量</td><td>模型有多少参数</td></tr>
+<tr><td>训练 token 数</td><td>训练语料规模</td></tr>
+<tr><td>FLOPs</td><td>训练计算量</td></tr>
+<tr><td>Loss</td><td>语言建模损失</td></tr>
+<tr><td>下游能力</td><td>推理、代码、问答、对齐能力</td></tr>
+</table>
+<p>LLM 的目标相对统一：</p>
+<div class="formula">\[
+\min_\theta -\sum_t\log p_\theta(x_t\mid x_{\lt t})
+\]</div>
+
+<h3>2.2 推荐 Scaling 多了工业约束</h3>
+<table>
+<tr><th>约束</th><th>说明</th></tr>
+<tr><td>高 QPS</td><td>每秒请求量极高</td></tr>
+<tr><td>低延迟</td><td>精排通常有严格毫秒级预算</td></tr>
+<tr><td>大规模稀疏特征</td><td>user、item、author、category、device、context</td></tr>
+<tr><td>强实时</td><td>用户行为和广告状态快速变化</td></tr>
+<tr><td>多目标</td><td>CTR、CVR、GMV、留存、时长、广告收入</td></tr>
+<tr><td>商业约束</td><td>广告预算、出价、ROI、pacing</td></tr>
+<tr><td>在线 A/B</td><td>离线指标提升不等于线上收益</td></tr>
+<tr><td>成本约束</td><td>模型再大，也要能服务全流量</td></tr>
+</table>
+<div class="box warn"><strong>推荐 Scaling 的核心不是“大”，而是“可服务的大”。</strong></div>
+
+<h2 id="old">3. 传统 Ranker 为什么难继续做大</h2>
+<h3>3.1 模块碎片化</h3>
+<p>传统工业排序模型常由多个模块拼接：</p>
+<pre>DIN / SIM
+DCN / CrossNet
+FM / DeepFM
+MMoE / PLE
+MLP
+Auxiliary Loss</pre>
+<p>这种结构工程上灵活，但不容易像 Transformer 那样统一加深、统一加宽、统一扩参数。</p>
+
+<h3>3.2 特征交互模块未必 GPU 友好</h3>
+<p>很多 feature crossing 模块来自传统机器学习或早期深度推荐阶段，本身有效，但不一定充分利用现代 GPU 的大规模矩阵计算能力。RankMixer 把低 MFU、低可扩展性视为工业 ranker scaling 的关键障碍之一。</p>
+
+<h3>3.3 推荐特征高度异质</h3>
+<p>自然语言 token 比较同质：</p>
+<pre>我 / 喜欢 / 这个 / 视频</pre>
+<p>推荐特征高度异质：</p>
+<pre>user_id
+item_id
+author_id
+city
+device
+gender
+category
+history_item
+query
+time
+price</pre>
+<p>因此，推荐模型既要做跨特征交互，又要保留不同特征域的独立建模能力。</p>
+
+<h3>3.4 行为序列和非序列特征分离</h3>
+<pre>用户行为序列 → sequence module
+非序列稀疏特征 → feature interaction module
+二者最后再拼接</pre>
+<p>这种方式会限制序列特征和非序列特征之间的早期信息交换，也使得整体结构难以统一 scaling。</p>
+
+<h2 id="rankmixer">4. RankMixer 想解决什么</h2>
+<p>RankMixer 的定位可以概括为：</p>
+<div class="formula">\[
+\text{面向工业推荐排序的硬件友好、统一、可扩展 feature-interaction 架构}
+\]</div>
+<p>它主要解决三个问题。</p>
+
+<h3>4.1 低 MFU</h3>
+<p>MFU 是 Model FLOPs Utilization，表示模型理论计算量中有多少真正被硬件有效利用。传统手工 feature-crossing 模块可能存在“理论有计算，但 GPU 利用率低”的问题。</p>
+
+<h3>4.2 难以 Scaling</h3>
+<p>如果一个结构不能稳定加深、加宽、加专家，它就很难成为大模型 backbone。RankMixer 试图把 ranker 变成：</p>
+<pre>RankMixer Block × N</pre>
+<p>而不是：</p>
+<pre>DIN + DCN + MLP + 各种手工模块</pre>
+
+<h3>4.3 Latency 约束</h3>
+<p>工业推荐不能只看离线效果。模型扩大后必须满足线上延迟、QPS 和服务成本约束。RankMixer 的贡献之一，是在近似相同 inference latency 下扩大模型规模。</p>
+
+<h2 id="structure">5. RankMixer 核心结构</h2>
+<p>可以把 RankMixer 抽象成：</p>
+<pre>Feature Tokens
+    ↓
+RankMixer Block × N
+    ↓
+Prediction Head
+    ↓
+CTR / CVR / WatchTime / Ads Score</pre>
+<p>一个 RankMixer Block 可以粗略理解为：</p>
+<pre>Input feature tokens
+    ↓
+Token Mixing
+    ↓
+Per-token FFN
+    ↓
+Residual / Normalization
+    ↓
+Output feature tokens</pre>
+<table>
+<tr><th>组件</th><th>作用</th></tr>
+<tr><td>Feature Tokenization</td><td>把推荐特征组织成 token 序列</td></tr>
+<tr><td>Token Mixing</td><td>让不同特征 token 交换信息</td></tr>
+<tr><td>Per-token FFN</td><td>保留不同特征子空间的独立非线性建模</td></tr>
+<tr><td>Sparse-MoE</td><td>扩大参数容量，但每个样本只激活部分专家</td></tr>
+<tr><td>Dynamic Routing</td><td>缓解专家训练不充分和负载不均衡</td></tr>
+</table>
+<div class="box note"><strong>一句话：</strong>RankMixer 不是把 LLM 原样搬进推荐，而是把推荐特征交互模块改造成更适合 scaling 的 Mixer/Transformer-like backbone。</div>
+
+<h2 id="tokenization">6. Feature Tokenization：推荐特征如何 token 化</h2>
+<h3>6.1 传统拼接方式</h3>
+<p>传统排序模型通常会把特征 embedding 拼接：</p>
+<div class="formula">\[
+\mathbf{x}=[\mathbf{e}_1;\mathbf{e}_2;\cdots;\mathbf{e}_n]
+\]</div>
+<p>然后送进 MLP 或交叉网络：</p>
+<div class="formula">\[
+\hat{y}=f_\theta(\mathbf{x})
+\]</div>
+
+<h3>6.2 Token 化方式</h3>
+<p>Token 化后，每个特征不是简单拼进一个长向量，而是成为一个 token：</p>
+<div class="formula">\[
+\mathbf{E}=[\mathbf{e}_1,\mathbf{e}_2,\ldots,\mathbf{e}_n]\in\mathbb{R}^{n\times d}
+\]</div>
+<table>
+<tr><th>符号</th><th>含义</th></tr>
+<tr><td>\(n\)</td><td>特征 token 数</td></tr>
+<tr><td>\(d\)</td><td>每个 token 的 embedding 维度</td></tr>
+<tr><td>\(\mathbf{e}_i\)</td><td>第 \(i\) 个特征 token 表示</td></tr>
+</table>
+<p>例如：</p>
+<pre>e_1 = user_id embedding
+e_2 = item_id embedding
+e_3 = author_id embedding
+e_4 = category embedding
+e_5 = device embedding
+e_6 = city embedding
+e_7 = user_history representation</pre>
+<p>这样做的好处是：保留每个特征的独立位置，方便在 token 维度上做 mixing，也方便堆叠统一 block。</p>
+
+<h2 id="mixing">7. Token Mixing：为什么不用标准 Self-Attention</h2>
+<h3>7.1 Self-Attention 的形式</h3>
+<div class="formula">\[
+\mathrm{Attention}(Q,K,V)=\mathrm{softmax}\left(\frac{QK^\top}{\sqrt{d}}\right)V
+\]</div>
+<p>其中：</p>
+<div class="formula">\[
+Q=XW_Q,\quad K=XW_K,\quad V=XW_V
+\]</div>
+<p>复杂度通常和 token 数平方相关：</p>
+<div class="formula">\[
+O(n^2d)
+\]</div>
+
+<h3>7.2 推荐排序里为什么不一定需要标准 attention</h3>
+<p>工业推荐场景中，虽然特征 token 数可能没有文本长，但 batch 很大、QPS 很高、延迟预算严格。如果每一层都用标准 self-attention，可能带来不必要的开销。</p>
+
+<h3>7.3 Token Mixing 的直觉</h3>
+<p>Token Mixing 的目的不是精细计算所有 token 两两注意力，而是用更便宜、更并行的方式，让不同特征 token 交换信息。</p>
+<div class="formula">\[
+\mathbf{E}'=\mathrm{Mix}(\mathbf{E}),\quad \mathbf{E}\in\mathbb{R}^{n\times d}
+\]</div>
+<p>它希望第 \(i\) 个 token 的新表示包含其他 token 的信息：</p>
+<div class="formula">\[
+\mathbf{e}'_i=g_i(\mathbf{e}_1,\mathbf{e}_2,\ldots,\mathbf{e}_n)
+\]</div>
+<div class="box train"><strong>Token Mixing 的本质：</strong>用更适合工业 serving 的方式做 feature interaction。</div>
+
+<h2 id="ffn">8. Per-token FFN：为什么推荐特征需要自己的子空间</h2>
+<p>推荐特征不是语言 token，而是异质字段。user_id、item_id、city、device、category、history sequence 的语义空间不同。</p>
+<p>如果所有 token 完全共享同一个 FFN，可能无法充分表达不同特征域的差异。因此 RankMixer 使用 Per-token FFN 来保留不同特征子空间的建模能力。</p>
+<pre>Token Mixing：负责跨特征交流
+Per-token FFN：负责每类特征自己的非线性变换</pre>
+<p>可以抽象写成：</p>
+<div class="formula">\[
+\mathbf{e}'_i=\mathrm{FFN}_i(\mathbf{e}_i)
+\]</div>
+<p>如果进一步引入专家，可以写成：</p>
+<div class="formula">\[
+\mathbf{e}'_i=\sum_{k\in\mathcal{K}_i}g_{i,k}(\mathbf{e}_i)\mathrm{Expert}_{i,k}(\mathbf{e}_i)
+\]</div>
+
+<h2 id="moe">9. Sparse-MoE 与 Dynamic Routing</h2>
+<h3>9.1 为什么大 Ranker 需要稀疏专家</h3>
+<p>如果模型所有参数都是 dense 激活，那么参数量扩大通常会带来推理 FLOPs 和延迟上升。Sparse-MoE 的思想是：</p>
+<div class="formula">\[
+\text{总参数很多，但每个样本只激活其中一小部分。}
+\]</div>
+<p>例如：</p>
+<pre>总共有 64 个专家
+每个 token 只选择 top-2 专家</pre>
+<p>MoE 可以写成：</p>
+<div class="formula">\[
+\mathrm{MoE}(x)=\sum_{k\in\mathrm{TopK}(g(x))}g_k(x)E_k(x)
+\]</div>
+
+<h3>9.2 Dynamic Routing 解决什么</h3>
+<p>MoE 的常见问题是专家负载不均衡。</p>
+<pre>某些专家被大量样本选择
+某些专家很少被选择
+  ↓
+热门专家过载
+冷门专家训练不足
+  ↓
+模型容量没有被充分利用</pre>
+<p>推荐系统的数据高度长尾，专家训练不均衡会更明显。因此 dynamic routing 或 load balancing loss 的目标是让专家既能分工，又不严重失衡。</p>
+
+<h2 id="mfu">10. MFU 与硬件效率</h2>
+<p>MFU 是 Model FLOPs Utilization，衡量模型理论计算量中有多少真正转化为硬件有效计算。</p>
+<div class="formula">\[
+\mathrm{MFU}=\frac{\text{实际有效模型计算吞吐}}{\text{硬件理论峰值计算吞吐}}
+\]</div>
+<table>
+<tr><th>低 MFU 问题</th><th>影响</th></tr>
+<tr><td>GPU 利用率低</td><td>服务成本高</td></tr>
+<tr><td>模块碎片化</td><td>kernel 调度和内存访问效率差</td></tr>
+<tr><td>计算不规则</td><td>难以获得大矩阵乘法优势</td></tr>
+<tr><td>模型扩大后吞吐下降</td><td>难以全流量上线</td></tr>
+</table>
+<div class="box train"><strong>RankMixer 的重要性：</strong>它把推荐模型 scaling 从“只看模型结构”推进到“模型结构 + 硬件效率 + 线上服务”的统一问题。</div>
+
+<h2 id="map">11. Wukong / RankMixer / TokenMixer-Large / OneTrans 的关系</h2>
+<table>
+<tr><th>工作</th><th>核心问题</th><th>方法关键词</th><th>理解方式</th></tr>
+<tr><td>Wukong</td><td>推荐模型是否存在 scaling law</td><td>stacked FM、upscaling、FLOPs scaling</td><td>证明推荐 scaling 的可能性</td></tr>
+<tr><td>RankMixer</td><td>工业 ranker 如何高效 scaling</td><td>token mixing、per-token FFN、Sparse-MoE、MFU</td><td>重构 feature interaction backbone</td></tr>
+<tr><td>TokenMixer-Large</td><td>billion-level ranker 如何稳定训练和部署</td><td>mixing-and-reverting、inter-layer residual、Sparse-Pertoken MoE</td><td>RankMixer 之后继续放大</td></tr>
+<tr><td>OneTrans</td><td>序列建模和特征交互如何统一</td><td>unified tokenizer、one Transformer backbone、KV cache</td><td>把 sequence 和 non-sequence 放进一个 backbone</td></tr>
+</table>
+<pre>Wukong：
+证明推荐模型 scaling 的可能性
+
+RankMixer：
+把工业 ranker 的 feature interaction 做成可 scaling backbone
+
+TokenMixer-Large：
+进一步推到 billion-level large ranking model
+
+OneTrans：
+把 user behavior sequence modeling 和 feature interaction 统一到一个 Transformer</pre>
+
+<h2 id="onerec">12. 这条线和 OneRec 的区别</h2>
+<p>OneRec 是生成式推荐路线；RankMixer 是排序模型 scaling 路线。</p>
+<table>
+<tr><th>方向</th><th>核心问题</th><th>代表</th></tr>
+<tr><td>Ranking Model Scaling</td><td>如何把精排模型做大、做统一、做高效</td><td>Wukong、RankMixer、TokenMixer-Large、OneTrans</td></tr>
+<tr><td>Generative Recommendation</td><td>能否直接生成推荐 item / 推荐列表</td><td>TIGER、OneRec、OpenOneRec</td></tr>
+</table>
+<pre>RankMixer:
+手工模块拼接 ranker
+  ↓
+可 scaling 的大 ranking model
+
+OneRec:
+retrieve + rank 级联
+  ↓
+生成式统一推荐</pre>
+<div class="box note"><strong>一句话：</strong>RankMixer 关心“排序模型如何变大”；OneRec 关心“推荐范式能否生成式统一”。</div>
+
+<h2 id="read">13. 读 RankMixer 论文时应该抓什么</h2>
+<ol>
+<li>它为什么说传统 ranking modules 是 low-MFU？</li>
+<li>推荐特征是怎样 token 化的？</li>
+<li>Token Mixing 和 Self-Attention 的本质区别是什么？</li>
+<li>Per-token FFN 为什么适合推荐特征？</li>
+<li>RankMixer Block 的输入输出形状是什么？</li>
+<li>Sparse-MoE 放在哪里？</li>
+<li>Dynamic Routing 解决什么专家训练问题？</li>
+<li>它的 scaling evidence 是什么？</li>
+<li>它如何保证 latency 不明显增加？</li>
+<li>线上 A/B 看的是哪些指标？</li>
+</ol>
+<div class="box train"><strong>最关键三问：</strong><br>低 MFU 是什么问题？<br>为什么 feature 要 token 化？<br>为什么 token mixing 比直接 self-attention 更适合工业 ranker？</div>
+
+<h2 id="project">14. 可以做的小项目</h2>
+<h3>14.1 Toy RankMixer</h3>
+<p>先做一个小型 toy ranker，不追求工业规模，只验证结构思想。</p>
+<pre>输入：
+user_id、item_id、category、device、city、history embedding
+
+模型：
+feature tokenization
+  ↓
+token mixing block
+  ↓
+per-token FFN
+  ↓
+pooling / flatten
+  ↓
+CTR prediction</pre>
+
+<h3>14.2 和 DeepFM / DCN 对比</h3>
+<table>
+<tr><th>模型</th><th>对比点</th></tr>
+<tr><td>DeepFM</td><td>传统特征交叉 baseline</td></tr>
+<tr><td>DCN</td><td>显式交叉 baseline</td></tr>
+<tr><td>Toy TokenMixer</td><td>token 化 + mixing</td></tr>
+<tr><td>Toy MoE TokenMixer</td><td>加入稀疏专家</td></tr>
+</table>
+
+<h3>14.3 观察指标</h3>
+<ul>
+<li>AUC / Logloss 是否提升；</li>
+<li>参数量增加后是否稳定提升；</li>
+<li>推理延迟是否明显增加；</li>
+<li>不同 token 数下效果如何；</li>
+<li>MoE 是否出现专家负载不均衡。</li>
+</ul>
+<div class="box warn"><strong>注意：</strong>toy 项目不可能复现字节工业效果。它的意义是帮助你理解 RankMixer 的结构动机。</div>
+
+<h2 id="summary">15. 一页总结</h2>
+<table>
+<tr><th>概念</th><th>核心理解</th></tr>
+<tr><td>Ranking Model Scaling</td><td>在推荐广告低延迟、高 QPS 约束下扩大 ranker 的有效容量</td></tr>
+<tr><td>传统 Ranker 问题</td><td>模块拼接、低 MFU、难统一放大、特征异质</td></tr>
+<tr><td>Feature Tokenization</td><td>把推荐字段组织成 token 序列，而不是简单拼接长向量</td></tr>
+<tr><td>Token Mixing</td><td>用更高效的方式做跨特征交互，替代昂贵或不必要的标准 attention</td></tr>
+<tr><td>Per-token FFN</td><td>保留不同特征子空间的独立建模能力</td></tr>
+<tr><td>Sparse-MoE</td><td>扩大总参数，但每个样本只激活部分专家</td></tr>
+<tr><td>Dynamic Routing</td><td>缓解专家训练不充分和负载不均衡</td></tr>
+<tr><td>MFU</td><td>衡量模型计算是否真正有效利用硬件</td></tr>
+<tr><td>RankMixer</td><td>面向工业推荐排序的硬件友好可扩展 feature-interaction backbone</td></tr>
+<tr><td>TokenMixer-Large</td><td>进一步把 RankMixer / TokenMixer 思路推到 billion-level ranker</td></tr>
+<tr><td>OneTrans</td><td>统一用户行为序列建模和非序列特征交互</td></tr>
+<tr><td>OneRec</td><td>生成式推荐路线，和 RankMixer 解决不同层面的问题</td></tr>
+</table>
+
+<div class="box train">
+<strong>Stage 1 结束标准：</strong>
+<ol>
+<li>能讲清推荐广告 scaling 和 LLM scaling 的区别；</li>
+<li>能解释为什么传统 ranker 不容易像 Transformer 一样做大；</li>
+<li>能解释 RankMixer 为什么强调 MFU 和 hardware-aware；</li>
+<li>能解释 feature tokenization、token mixing、per-token FFN 分别解决什么；</li>
+<li>能区分 RankMixer、TokenMixer-Large、OneTrans、OneRec。</li>
+</ol>
+</div>
+
+<h2>16. 阅读顺序</h2>
+<ol>
+<li><strong>Wukong: Towards a Scaling Law for Large-Scale Recommendation</strong>：先理解推荐 scaling law 为什么是问题。</li>
+<li><strong>RankMixer: Scaling Up Ranking Models in Industrial Recommenders</strong>：重点理解 feature interaction backbone、token mixing、per-token FFN、Sparse-MoE、MFU。</li>
+<li><strong>TokenMixer-Large: Scaling Up Large Ranking Models in Industrial Recommenders</strong>：重点看 RankMixer 继续放大后，残差、梯度、MoE、部署遇到什么问题。</li>
+<li><strong>OneTrans: Unified Feature Interaction and Sequence Modeling with One Transformer in Industrial Recommender</strong>：重点看 sequence modeling 和 feature interaction 如何统一到一个 Transformer backbone。</li>
+<li><strong>OneRec / TIGER / OpenOneRec</strong>：放到下一阶段看，进入生成式推荐路线。</li>
+</ol>
+<p class="small">资料注：本文是学习讲义式整理，不替代原论文。涉及具体线上指标和实验细节时，请以原论文为准。</p>
+</body>
+</html>

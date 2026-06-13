@@ -1,0 +1,2096 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>强化学习大模型路线｜Stage 5：GRPO / RLVR / Verifiable Reward 数学推导</title>
+
+<script>
+window.MathJax = {
+  tex: {
+    inlineMath: [['\\(', '\\)'], ['$', '$']],
+    displayMath: [['\\[', '\\]']],
+    processEscapes: true
+  },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+
+<style>
+html {
+  scroll-behavior: smooth;
+}
+body {
+  font-family: "Microsoft YaHei", Arial, sans-serif;
+  line-height: 1.85;
+  max-width: 1080px;
+  margin: 40px auto;
+  padding: 0 28px 100px;
+  background: #f7f8fb;
+  color: #1f2937;
+  font-size: 17px;
+}
+h1 {
+  font-size: 34px;
+  line-height: 1.35;
+  border-bottom: 5px solid #2563eb;
+  padding-bottom: 14px;
+}
+h2 {
+  margin-top: 48px;
+  padding: 12px 16px;
+  font-size: 27px;
+  background: #eef4ff;
+  border-left: 7px solid #2563eb;
+}
+h3 {
+  margin-top: 28px;
+  font-size: 21px;
+}
+h4 {
+  margin-top: 24px;
+  font-size: 18px;
+}
+h2, h3 {
+  scroll-margin-top: 24px;
+}
+.box {
+  background: #ffffff;
+  border: 1px solid #d9e2ef;
+  border-radius: 12px;
+  padding: 18px 22px;
+  margin: 18px 0;
+}
+.note {
+  background: #fff7d6;
+  border-left: 6px solid #d6a800;
+}
+.train {
+  background: #ecfdf3;
+  border-left: 6px solid #16a34a;
+}
+.warn {
+  background: #fff1f1;
+  border-left: 6px solid #dc2626;
+}
+.formula {
+  background: #ffffff;
+  border: 1px solid #d9e2ef;
+  border-radius: 12px;
+  padding: 16px 18px;
+  margin: 18px 0;
+  overflow-x: auto;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 18px 0;
+  background: #ffffff;
+}
+th, td {
+  border: 1px solid #d9e2ef;
+  padding: 11px 13px;
+  vertical-align: top;
+}
+th {
+  background: #f1f5f9;
+}
+pre {
+  background: #111827;
+  color: #e5e7eb;
+  padding: 18px;
+  border-radius: 10px;
+  overflow-x: auto;
+  line-height: 1.55;
+}
+code {
+  font-family: Consolas, Monaco, "Courier New", monospace;
+}
+.small {
+  color: #667085;
+  font-size: 14px;
+}
+.page-toc {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+}
+.page-toc-toggle {
+  border: 0;
+  border-radius: 999px;
+  padding: 10px 16px;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.24);
+}
+.page-toc-toggle:hover {
+  background: #1d4ed8;
+}
+.page-toc-panel {
+  display: none;
+  width: 360px;
+  max-height: calc(100vh - 90px);
+  overflow: auto;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid #d9e2ef;
+  border-radius: 14px;
+  padding: 16px 18px;
+  margin-top: 10px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+  backdrop-filter: blur(8px);
+}
+.page-toc.is-open .page-toc-panel {
+  display: block;
+}
+.page-toc-title {
+  margin-bottom: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+}
+.page-toc-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.page-toc-item + .page-toc-item {
+  margin-top: 10px;
+}
+.page-toc-link {
+  display: block;
+  color: #334155;
+  text-decoration: none;
+  font-size: 14px;
+  line-height: 1.55;
+}
+.page-toc-link:hover {
+  color: #2563eb;
+}
+.step {
+  background: #ffffff;
+  border: 1px solid #d9e2ef;
+  border-radius: 12px;
+  padding: 16px 18px;
+  margin: 16px 0;
+}
+.step-title {
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 8px;
+}
+.arrow {
+  text-align: center;
+  color: #2563eb;
+  font-weight: 700;
+  font-size: 22px;
+  margin: 10px 0;
+}
+.hr {
+  height: 1px;
+  background: #d9e2ef;
+  margin: 26px 0;
+}
+@media (max-width: 1100px) {
+  .page-toc {
+    top: 12px;
+    right: 12px;
+  }
+  .page-toc-panel {
+    width: min(360px, calc(100vw - 24px));
+    max-height: calc(100vh - 72px);
+  }
+}
+@media (max-width: 760px) {
+  body {
+    margin: 30px auto;
+    padding: 0 18px 80px;
+    font-size: 16px;
+  }
+  h1 {
+    font-size: 28px;
+  }
+  h2 {
+    font-size: 23px;
+  }
+  table {
+    font-size: 15px;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<nav class="page-toc" aria-label="文章目录">
+  <button class="page-toc-toggle" onclick="document.querySelector('.page-toc').classList.toggle('is-open')">☰ 目录</button>
+  <div class="page-toc-panel">
+    <div class="page-toc-title">目录导航</div>
+    <ol class="page-toc-list">
+      <li class="page-toc-item"><a class="page-toc-link" href="#intro">0. Stage 5 学什么</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#why">1. 为什么 DPO 之后要学 GRPO / RLVR</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#rlvr">2. RLVR：什么是可验证奖励</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#reward">3. Verifiable Reward Function 怎么设计</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#from-ppo">4. 从 PPO 到 GRPO：为什么要去掉 Value Model</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#group">5. Group Sampling：同一题多采样</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#advantage">6. Group Relative Advantage 逐步推导</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#objective">7. GRPO Objective 完整解释</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#kl">8. GRPO 中的 KL 约束</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#math">9. 数学题 RLVR 例子</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#code-task">10. 代码任务 RLVR 例子</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#tool">11. 工具调用 / Agent RLVR 例子</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#format">12. Format Reward 与 Accuracy Reward</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#process">13. Outcome Reward 与 Process Reward</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#compare">14. PPO / DPO / GRPO 对比</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#algorithm">15. GRPO / RLVR 算法流程</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#pitfalls">16. 常见坑：Reward Hacking、全 0 奖励、长度偏置</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#toy">17. 最小 Toy 实验</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#stage6">18. 下一阶段：Agent RL / Tool-use RL</a></li>
+      <li class="page-toc-item"><a class="page-toc-link" href="#summary">19. 一页总结</a></li>
+    </ol>
+  </div>
+</nav>
+
+<h1>强化学习大模型路线｜Stage 5：GRPO / RLVR / Verifiable Reward 数学推导</h1>
+
+<div class="box note" id="intro">
+<p><strong>学习定位：</strong>Stage 4 讲了 DPO，也就是用 chosen / rejected 偏好数据直接优化语言模型。Stage 5 进入 <strong>GRPO / RLVR</strong>，也就是<strong>基于可验证奖励的强化学习</strong>。</p>
+
+<p>这一阶段和前面最大的区别是：</p>
+
+<div class="formula">
+\[
+\text{偏好数据}
+\quad\Longrightarrow\quad
+\text{可验证任务奖励}
+\]
+</div>
+
+<p>在数学、代码、工具调用、SQL、表格问答、Agent 任务中，很多时候不需要人类主观判断哪个回答更好，而是可以用程序自动判断：</p>
+
+<ul>
+<li>最终答案是否正确；</li>
+<li>代码是否通过测试；</li>
+<li>JSON 格式是否可解析；</li>
+<li>工具名称是否正确；</li>
+<li>参数是否完整；</li>
+<li>SQL 执行结果是否匹配；</li>
+<li>网页 Agent 是否完成目标。</li>
+</ul>
+
+<p><strong>Stage 5 目标：</strong></p>
+<ol>
+<li>理解 RLVR 和 RLHF / DPO 的区别；</li>
+<li>掌握 Verifiable Reward Function 的设计方式；</li>
+<li>理解 GRPO 为什么用 group 内相对奖励替代 Value Model；</li>
+<li>推导 group relative advantage；</li>
+<li>理解 GRPO objective 与 PPO objective 的关系；</li>
+<li>学会设计数学、代码、工具调用任务的 reward；</li>
+<li>为 Stage 6 的多轮 Agent RL 做准备。</li>
+</ol>
+</div>
+
+<h2 id="why">1. 为什么 DPO 之后要学 GRPO / RLVR？</h2>
+
+<p>
+DPO 适合这样的数据：
+</p>
+
+<div class="formula">
+\[
+(x,y_w,y_l)
+\]
+</div>
+
+<p>
+也就是 prompt、chosen response、rejected response。
+</p>
+
+<p>
+但很多推理任务的训练信号不是“哪个回答更受偏好”，而是“这个回答是否真的正确”。
+</p>
+
+<table>
+<tr>
+<th>任务</th>
+<th>DPO 的训练信号</th>
+<th>RLVR 的训练信号</th>
+</tr>
+<tr>
+<td>开放式问答</td>
+<td>人类更喜欢哪个回答</td>
+<td>不一定容易验证</td>
+</tr>
+<tr>
+<td>数学推理</td>
+<td>可以比较两个解答好坏</td>
+<td>最终答案可以自动验证</td>
+</tr>
+<tr>
+<td>代码生成</td>
+<td>可以比较代码可读性</td>
+<td>单元测试是否通过</td>
+</tr>
+<tr>
+<td>工具调用</td>
+<td>可以比较回答是否合适</td>
+<td>工具名、参数、执行结果是否正确</td>
+</tr>
+<tr>
+<td>SQL Agent</td>
+<td>可以比较解释质量</td>
+<td>SQL 执行结果是否匹配</td>
+</tr>
+</table>
+
+<div class="box train">
+<strong>一句话：</strong>
+DPO 适合“偏好优化”；GRPO / RLVR 更适合“可验证任务优化”。
+</div>
+
+<h3>1.1 为什么可验证任务很重要？</h3>
+
+<p>
+因为它可以降低人工标注成本。
+</p>
+
+<pre>
+传统偏好优化：
+模型生成回答 A / B
+  ↓
+人类标注哪个更好
+  ↓
+训练 DPO / Reward Model
+
+可验证奖励强化学习：
+模型生成多个回答
+  ↓
+程序自动检查答案是否正确
+  ↓
+直接给 reward
+  ↓
+用 GRPO / RL 更新模型
+</pre>
+
+<div class="box note">
+<strong>关键转变：</strong>
+从“让人判断好坏”转为“让验证器判断成败”。
+</div>
+
+<h2 id="rlvr">2. RLVR：什么是可验证奖励</h2>
+
+<p>
+RLVR 全称：
+</p>
+
+<div class="formula">
+\[
+\text{Reinforcement Learning with Verifiable Reward}
+\]
+</div>
+
+<p>
+中文可以理解为：
+</p>
+
+<div class="box">
+<strong>基于可验证奖励的强化学习。</strong>
+</div>
+
+<p>
+它的核心不是某个特定算法，而是一种训练信号设计方式。
+</p>
+
+<h3>2.1 Verifiable Reward 的定义</h3>
+
+<p>
+给定 prompt \(x\)，模型生成回答 \(y\)，我们写一个验证函数：
+</p>
+
+<div class="formula">
+\[
+R(x,y)\in \mathbb{R}
+\]
+</div>
+
+<p>
+它自动输出 reward。
+</p>
+
+<p>
+例如数学题：
+</p>
+
+<div class="formula">
+\[
+R(x,y)=
+\begin{cases}
+1, & \text{最终答案正确}\\
+0, & \text{最终答案错误}
+\end{cases}
+\]
+</div>
+
+<p>
+代码题：
+</p>
+
+<div class="formula">
+\[
+R(x,y)=
+\begin{cases}
+1, & \text{全部单元测试通过}\\
+0, & \text{部分或全部测试失败}\\
+-1, & \text{代码无法运行}
+\end{cases}
+\]
+</div>
+
+<div class="box train">
+<strong>判断一个任务能不能做 RLVR：</strong>
+问自己一句：我能不能写一个程序，自动判断模型输出是否成功？
+</div>
+
+<h3>2.2 可验证奖励和 Reward Model 的区别</h3>
+
+<table>
+<tr>
+<th>维度</th>
+<th>Reward Model</th>
+<th>Verifiable Reward</th>
+</tr>
+<tr>
+<td>来源</td>
+<td>神经网络模型</td>
+<td>规则、测试器、执行器、验证器</td>
+</tr>
+<tr>
+<td>训练成本</td>
+<td>需要偏好数据训练</td>
+<td>不一定需要人工偏好</td>
+</tr>
+<tr>
+<td>适合任务</td>
+<td>主观偏好、帮助性、安全性</td>
+<td>数学、代码、工具调用、SQL</td>
+</tr>
+<tr>
+<td>风险</td>
+<td>Reward Model 偏差和 reward hacking</td>
+<td>规则漏洞和 reward hacking</td>
+</tr>
+</table>
+
+<div class="box warn">
+<strong>注意：</strong>
+可验证奖励不是万能的。如果验证器设计得很粗糙，模型也会钻漏洞。
+</div>
+
+<h2 id="reward">3. Verifiable Reward Function 怎么设计</h2>
+
+<p>
+一个 reward function 通常包括三层：
+</p>
+
+<table>
+<tr>
+<th>层级</th>
+<th>检查什么</th>
+<th>例子</th>
+</tr>
+<tr>
+<td>格式层</td>
+<td>输出是否可解析</td>
+<td>是否包含 Final Answer，JSON 是否合法</td>
+</tr>
+<tr>
+<td>内容层</td>
+<td>答案或参数是否正确</td>
+<td>数字答案、工具参数、SQL 结果</td>
+</tr>
+<tr>
+<td>行为层</td>
+<td>是否符合任务策略</td>
+<td>是否少调用工具、是否没有编造</td>
+</tr>
+</table>
+
+<h3>3.1 数学题 reward</h3>
+
+<pre><code>def math_reward(output, reference_answer):
+    pred = extract_final_answer(output)
+
+    if pred is None:
+        return -0.2
+
+    if normalize(pred) == normalize(reference_answer):
+        return 1.0
+
+    return 0.0</code></pre>
+
+<h3>3.2 代码题 reward</h3>
+
+<pre><code>def code_reward(generated_code, tests):
+    if not can_compile(generated_code):
+        return -1.0
+
+    passed, total = run_tests(generated_code, tests)
+
+    return passed / total</code></pre>
+
+<h3>3.3 工具调用 reward</h3>
+
+<pre><code>def tool_reward(output, ground_truth):
+    reward = 0.0
+
+    if is_valid_json(output):
+        reward += 0.2
+    else:
+        return -1.0
+
+    if tool_name(output) == ground_truth.tool_name:
+        reward += 0.4
+
+    if required_args_complete(output):
+        reward += 0.2
+
+    if args_match(output, ground_truth.args):
+        reward += 0.4
+
+    return reward</code></pre>
+
+<div class="box note">
+<strong>实践原则：</strong>
+reward 先简单、稳定、可解释，再逐步加细。不要一开始设计十几个复杂奖励项。
+</div>
+
+<h2 id="from-ppo">4. 从 PPO 到 GRPO：为什么要去掉 Value Model</h2>
+
+<p>
+Stage 2 里 PPO 需要 advantage：
+</p>
+
+<div class="formula">
+\[
+\hat{A}_t
+\]
+</div>
+
+<p>
+通常用 Value Model / Critic 来估计：
+</p>
+
+<div class="formula">
+\[
+V_\phi(s_t)
+\]
+</div>
+
+<p>
+然后：
+</p>
+
+<div class="formula">
+\[
+\hat{A}_t
+=
+\hat{R}_t
+-
+V_\phi(s_t)
+\]
+</div>
+
+<h3>4.1 大模型 PPO 的负担</h3>
+
+<table>
+<tr>
+<th>组件</th>
+<th>负担</th>
+</tr>
+<tr>
+<td>Policy Model</td>
+<td>正在训练的大模型</td>
+</tr>
+<tr>
+<td>Reference Model</td>
+<td>计算 KL，需要额外显存或推理</td>
+</tr>
+<tr>
+<td>Reward Model / Reward Function</td>
+<td>给 response 打分</td>
+</tr>
+<tr>
+<td>Value Model / Value Head</td>
+<td>估计每个 token 的 value</td>
+</tr>
+<td>GAE</td>
+<td>需要 token-level value 和 reward</td>
+</tr>
+</table>
+
+<div class="box warn">
+<strong>问题：</strong>
+在大模型 reasoning 任务中，训练一个稳定的 Value Model 很重，而且 value 估计不准会直接影响 PPO。
+</div>
+
+<h3>4.2 GRPO 的核心简化</h3>
+
+<p>
+GRPO 的核心想法：
+</p>
+
+<div class="box train">
+<strong>同一个 prompt 生成多个 response，用这一组 response 的相对 reward 来估计 advantage，不再依赖单独的 Value Model。</strong>
+</div>
+
+<pre>
+同一道题 x
+  ↓
+生成 G 个回答 y1, y2, ..., yG
+  ↓
+验证器分别给 reward R1, R2, ..., RG
+  ↓
+计算组内平均和标准差
+  ↓
+把每个 reward 转成组内相对 advantage
+  ↓
+更新模型
+</pre>
+
+<h2 id="group">5. Group Sampling：同一题多采样</h2>
+
+<p>
+GRPO 里的 Group 指的是：对同一个 prompt 采样多个回答。
+</p>
+
+<div class="formula">
+\[
+y_1,y_2,\ldots,y_G
+\sim
+\pi_{\theta_{\mathrm{old}}}(\cdot\mid x)
+\]
+</div>
+
+<p>
+其中 \(G\) 是 group size。
+</p>
+
+<h3>5.1 为什么要同一题多采样？</h3>
+
+<p>
+因为我们要在同一道题内部比较谁表现更好。
+</p>
+
+<p>
+例如同一道数学题：
+</p>
+
+<pre>
+x: 1497 × 63 = ?
+
+模型采样 4 个回答：
+
+y1: 94311      reward = 1
+y2: 94211      reward = 0
+y3: 94301      reward = 0
+y4: 94311      reward = 1
+</pre>
+
+<p>
+组内平均 reward：
+</p>
+
+<div class="formula">
+\[
+\bar{R}
+=
+\frac{1+0+0+1}{4}
+=
+0.5
+\]
+</div>
+
+<p>
+于是高于平均分的回答是好样本，低于平均分的回答是差样本。
+</p>
+
+<h3>5.2 Group 的意义</h3>
+
+<table>
+<tr>
+<th>如果只采一个回答</th>
+<th>如果采多个回答</th>
+</tr>
+<tr>
+<td>只知道这个回答得多少分</td>
+<td>知道同一道题下哪些回答相对更好</td>
+</tr>
+<tr>
+<td>需要 Value Model 做 baseline</td>
+<td>可以用组内平均作为 baseline</td>
+</tr>
+<tr>
+<td>reward 方差可能大</td>
+<td>组内标准化后更稳定</td>
+</tr>
+</table>
+
+<div class="box note">
+<strong>一句话：</strong>
+GRPO 用同题多采样制造一个“小型比较环境”，用组内相对表现替代 value baseline。
+</div>
+
+<h2 id="advantage">6. Group Relative Advantage 逐步推导</h2>
+
+<p>
+假设对同一个 prompt \(x\)，采样 \(G\) 个回答：
+</p>
+
+<div class="formula">
+\[
+\{y_i\}_{i=1}^{G}
+\]
+</div>
+
+<p>
+每个回答得到一个 reward：
+</p>
+
+<div class="formula">
+\[
+R_i=R(x,y_i)
+\]
+</div>
+
+<h3>6.1 组内平均 reward</h3>
+
+<div class="formula">
+\[
+\bar{R}
+=
+\frac{1}{G}
+\sum_{i=1}^{G}R_i
+\]
+</div>
+
+<p>
+它相当于这一组回答的 baseline。
+</p>
+
+<h3>6.2 最简单的相对 advantage</h3>
+
+<div class="formula">
+\[
+\hat{A}_i
+=
+R_i-\bar{R}
+\]
+</div>
+
+<table>
+<tr>
+<th>情况</th>
+<th>含义</th>
+</tr>
+<tr>
+<td>\(\hat{A}_i \gt 0\)</td>
+<td>回答 \(y_i\) 比同组平均更好，应该提高概率</td>
+</tr>
+<tr>
+<td>\(\hat{A}_i = 0\)</td>
+<td>回答 \(y_i\) 等于同组平均，更新信号弱</td>
+</tr>
+<tr>
+<td>\(\hat{A}_i \lt 0\)</td>
+<td>回答 \(y_i\) 比同组平均更差，应该降低概率</td>
+</tr>
+</table>
+
+<h3>6.3 标准化 advantage</h3>
+
+<p>
+实践中常用标准化：
+</p>
+
+<div class="formula">
+\[
+\hat{A}_i
+=
+\frac{
+R_i-\bar{R}
+}{
+\sigma_R+\epsilon
+}
+\]
+</div>
+
+<p>
+其中：
+</p>
+
+<div class="formula">
+\[
+\sigma_R
+=
+\sqrt{
+\frac{1}{G}
+\sum_{i=1}^{G}
+(R_i-\bar{R})^2
+}
+\]
+</div>
+
+<p>
+\(\epsilon\) 是一个很小的数，防止除以 0。
+</p>
+
+<h3>6.4 为什么要除以标准差？</h3>
+
+<table>
+<tr>
+<th>不标准化</th>
+<th>标准化后</th>
+</tr>
+<tr>
+<td>reward 尺度影响梯度大小</td>
+<td>不同 prompt 的 reward 尺度更可比</td>
+</tr>
+<tr>
+<td>有些题 reward 差异大，更新过猛</td>
+<td>更新更稳定</td>
+</tr>
+<tr>
+<td>有些题 reward 差异小，学习信号弱</td>
+<td>相对差异被放大</td>
+</tr>
+</table>
+
+<div class="box warn">
+<strong>注意：</strong>
+如果同组 reward 全都一样，标准差接近 0，advantage 会没有有效区分。比如全对或全错，都不适合提供组内学习信号。
+</div>
+
+<h3>6.5 一个完整数字例子</h3>
+
+<p>
+假设：
+</p>
+
+<div class="formula">
+\[
+R=[1,0,0,1]
+\]
+</div>
+
+<p>
+平均值：
+</p>
+
+<div class="formula">
+\[
+\bar{R}=0.5
+\]
+</div>
+
+<p>
+不标准化 advantage：
+</p>
+
+<div class="formula">
+\[
+A=[0.5,-0.5,-0.5,0.5]
+\]
+</div>
+
+<p>
+如果 reward 是：
+</p>
+
+<div class="formula">
+\[
+R=[1.0,0.2,0.0,0.8]
+\]
+</div>
+
+<p>
+平均值：
+</p>
+
+<div class="formula">
+\[
+\bar{R}=0.5
+\]
+</div>
+
+<p>
+不标准化 advantage：
+</p>
+
+<div class="formula">
+\[
+A=[0.5,-0.3,-0.5,0.3]
+\]
+</div>
+
+<div class="box train">
+<strong>GRPO 的 advantage 本质：</strong>
+不是问这个回答绝对好不好，而是问它在同一道题的多个回答中相对好不好。
+</div>
+
+<h2 id="objective">7. GRPO Objective 完整解释</h2>
+
+<p>
+GRPO 的 policy objective 和 PPO 很像，也使用新旧策略概率比。
+</p>
+
+<h3>7.1 PPO 的 ratio</h3>
+
+<div class="formula">
+\[
+r_i(\theta)
+=
+\frac{
+\pi_\theta(y_i\mid x)
+}{
+\pi_{\theta_{\mathrm{old}}}(y_i\mid x)
+}
+\]
+</div>
+
+<p>
+如果按 token 级别写：
+</p>
+
+<div class="formula">
+\[
+r_{i,t}(\theta)
+=
+\frac{
+\pi_\theta(y_{i,t}\mid x,y_{i,\lt t})
+}{
+\pi_{\theta_{\mathrm{old}}}(y_{i,t}\mid x,y_{i,\lt t})
+}
+\]
+</div>
+
+<h3>7.2 GRPO 的 clipped objective</h3>
+
+<p>
+一种常见形式可以写成：
+</p>
+
+<div class="formula">
+\[
+L_{\mathrm{GRPO}}(\theta)
+=
+\mathbb{E}_{x,\{y_i\}}
+\left[
+\frac{1}{G}
+\sum_{i=1}^{G}
+\frac{1}{|y_i|}
+\sum_{t=1}^{|y_i|}
+\min
+\left(
+r_{i,t}(\theta)\hat{A}_i,
+\mathrm{clip}
+\left(
+r_{i,t}(\theta),
+1-\epsilon,
+1+\epsilon
+\right)
+\hat{A}_i
+\right)
+\right]
+\]
+</div>
+
+<p>
+其中：
+</p>
+
+<table>
+<tr>
+<th>符号</th>
+<th>含义</th>
+</tr>
+<tr>
+<td>\(G\)</td>
+<td>每个 prompt 采样的回答数量</td>
+</tr>
+<tr>
+<td>\(y_i\)</td>
+<td>第 \(i\) 个回答</td>
+</tr>
+<tr>
+<td>\(|y_i|\)</td>
+<td>第 \(i\) 个回答的 token 长度</td>
+</tr>
+<tr>
+<td>\(r_{i,t}(\theta)\)</td>
+<td>新旧策略对第 \(i\) 个回答第 \(t\) 个 token 的概率比</td>
+</tr>
+<tr>
+<td>\(\hat{A}_i\)</td>
+<td>第 \(i\) 个回答的组内相对 advantage</td>
+</tr>
+<td>\(\epsilon\)</td>
+<td>clip 范围参数</td>
+</tr>
+</table>
+
+<h3>7.3 为什么 \(\hat{A}_i\) 对同一回答的所有 token 相同？</h3>
+
+<p>
+在很多 RLVR 任务中，reward 是 response-level 的。例如一个数学答案最后对不对。
+</p>
+
+<p>
+所以对同一个回答 \(y_i\)，它的所有 token 共享同一个 group advantage：
+</p>
+
+<div class="formula">
+\[
+\hat{A}_{i,1}
+=
+\hat{A}_{i,2}
+=
+\cdots
+=
+\hat{A}_{i,|y_i|}
+=
+\hat{A}_i
+\]
+</div>
+
+<div class="box warn">
+<strong>这也是局限：</strong>
+如果只有最终答案奖励，那么模型知道整段回答好或坏，但不知道具体哪个 token 或哪一步推理导致好坏。
+</div>
+
+<h3>7.4 和 PPO 的关系</h3>
+
+<table>
+<tr>
+<th>部分</th>
+<th>PPO</th>
+<th>GRPO</th>
+</tr>
+<tr>
+<td>ratio</td>
+<td>新旧策略概率比</td>
+<td>仍然使用</td>
+</tr>
+<tr>
+<td>clip</td>
+<td>限制更新幅度</td>
+<td>仍然使用</td>
+</tr>
+<tr>
+<td>advantage</td>
+<td>通常由 Value Model + GAE 得到</td>
+<td>由组内 reward 相对比较得到</td>
+</tr>
+<tr>
+<td>Value Model</td>
+<td>通常需要</td>
+<td>通常不需要</td>
+</tr>
+</table>
+
+<div class="box note">
+<strong>一句话：</strong>
+GRPO 可以看成“去掉 Value Model，用 group reward 估计 advantage 的 PPO 类方法”。
+</div>
+
+<h2 id="kl">8. GRPO 中的 KL 约束</h2>
+
+<p>
+和 RLHF-PPO 一样，GRPO 也需要防止模型偏离 reference model 太远。
+</p>
+
+<h3>8.1 为什么还需要 KL？</h3>
+
+<p>
+如果只最大化可验证 reward，模型可能学会：
+</p>
+
+<ul>
+<li>输出很奇怪但能骗过格式检查的文本；</li>
+<li>过度延长推理过程；</li>
+<li>只学会套答案格式；</li>
+<li>利用验证器漏洞；</li>
+<li>语言能力和对话能力退化。</li>
+</ul>
+
+<p>
+所以通常要加 reference model 约束：
+</p>
+
+<div class="formula">
+\[
+\mathrm{KL}
+\left(
+\pi_\theta
+\|
+\pi_{\mathrm{ref}}
+\right)
+\]
+</div>
+
+<h3>8.2 token-level KL penalty</h3>
+
+<p>
+对于第 \(i\) 个回答第 \(t\) 个 token：
+</p>
+
+<div class="formula">
+\[
+\mathrm{kl}_{i,t}
+=
+\log
+\pi_\theta(y_{i,t}\mid x,y_{i,\lt t})
+-
+\log
+\pi_{\mathrm{ref}}(y_{i,t}\mid x,y_{i,\lt t})
+\]
+</div>
+
+<p>
+可以把 GRPO objective 写成带 KL 惩罚的形式：
+</p>
+
+<div class="formula">
+\[
+L(\theta)
+=
+L_{\mathrm{GRPO}}(\theta)
+-
+\beta
+\mathbb{E}
+\left[
+\mathrm{KL}
+\left(
+\pi_\theta
+\|
+\pi_{\mathrm{ref}}
+\right)
+\right]
+\]
+</div>
+
+<p>
+如果深度学习框架做 loss 最小化，则通常写成负的 policy objective 加 KL penalty。
+</p>
+
+<div class="box train">
+<strong>一句话：</strong>
+GRPO 负责朝高可验证 reward 的方向走；KL 负责不让模型走得太偏。
+</div>
+
+<h2 id="math">9. 数学题 RLVR 例子</h2>
+
+<h3>9.1 任务设定</h3>
+
+<pre>
+Prompt:
+请计算 1497 × 63，并把最终答案写成：
+Final Answer: 数字
+</pre>
+
+<p>
+模型生成多个回答：
+</p>
+
+<table>
+<tr>
+<th>回答</th>
+<th>最终答案</th>
+<th>reward</th>
+</tr>
+<tr>
+<td>\(y_1\)</td>
+<td>94311</td>
+<td>1</td>
+</tr>
+<tr>
+<td>\(y_2\)</td>
+<td>94211</td>
+<td>0</td>
+</tr>
+<tr>
+<td>\(y_3\)</td>
+<td>94301</td>
+<td>0</td>
+</tr>
+<tr>
+<td>\(y_4\)</td>
+<td>94311</td>
+<td>1</td>
+</tr>
+</table>
+
+<h3>9.2 Reward Function</h3>
+
+<pre><code>import re
+
+def extract_answer(output):
+    match = re.search(r"Final Answer:\s*(-?\d+)", output)
+    if match is None:
+        return None
+    return int(match.group(1))
+
+def reward_fn(output, answer):
+    pred = extract_answer(output)
+    if pred is None:
+        return -0.2
+    if pred == answer:
+        return 1.0
+    return 0.0</code></pre>
+
+<h3>9.3 Group Advantage</h3>
+
+<div class="formula">
+\[
+R=[1,0,0,1]
+\]
+</div>
+
+<div class="formula">
+\[
+\bar{R}=0.5
+\]
+</div>
+
+<div class="formula">
+\[
+\hat{A}=[0.5,-0.5,-0.5,0.5]
+\]
+</div>
+
+<p>
+训练时，\(y_1,y_4\) 的 token 概率会被提高，\(y_2,y_3\) 的 token 概率会被降低。
+</p>
+
+<div class="box note">
+<strong>注意：</strong>
+这里 reward 只看最终答案，不保证中间推理一定正确。如果需要更高质量推理，后面要引入 process reward 或验证中间步骤。
+</div>
+
+<h2 id="code-task">10. 代码任务 RLVR 例子</h2>
+
+<h3>10.1 任务设定</h3>
+
+<pre>
+Prompt:
+写一个 Python 函数，判断一个字符串是否是回文。
+</pre>
+
+<p>
+模型生成代码后，用测试用例验证：
+</p>
+
+<pre><code>tests = [
+    ("aba", True),
+    ("abc", False),
+    ("", True),
+    ("a", True),
+    ("abba", True)
+]</code></pre>
+
+<h3>10.2 Reward Function</h3>
+
+<pre><code>def code_reward(code, tests):
+    try:
+        fn = compile_and_load_function(code)
+    except Exception:
+        return -1.0
+
+    passed = 0
+    for inp, expected in tests:
+        try:
+            pred = fn(inp)
+            if pred == expected:
+                passed += 1
+        except Exception:
+            pass
+
+    return passed / len(tests)</code></pre>
+
+<h3>10.3 为什么代码任务很适合 RLVR？</h3>
+
+<table>
+<tr>
+<th>特点</th>
+<th>说明</th>
+</tr>
+<tr>
+<td>答案不唯一</td>
+<td>同一个需求可以有多种正确代码</td>
+</tr>
+<tr>
+<td>可执行</td>
+<td>代码可以直接运行</td>
+</tr>
+<tr>
+<td>可验证</td>
+<td>单元测试可以自动判断对错</td>
+</tr>
+<tr>
+<td>reward 可细分</td>
+<td>通过多少测试就给多少分</td>
+</tr>
+</table>
+
+<div class="box warn">
+<strong>代码任务的坑：</strong>
+如果测试用例太少，模型可能学会硬编码测试样例，而不是真正解决问题。
+</div>
+
+<h2 id="tool">11. 工具调用 / Agent RLVR 例子</h2>
+
+<h3>11.1 Function Calling 任务</h3>
+
+<p>
+给模型一个用户请求和可用工具，让它判断应该调用哪个工具。
+</p>
+
+<pre>
+User:
+帮我查一下今天北京天气。
+
+Available tools:
+get_weather(city, date)
+calculator(expression)
+search_web(query)
+</pre>
+
+<p>
+正确调用应该是：
+</p>
+
+<pre><code>{
+  "tool": "get_weather",
+  "arguments": {
+    "city": "北京",
+    "date": "today"
+  }
+}</code></pre>
+
+<h3>11.2 工具调用 reward</h3>
+
+<pre><code>def tool_call_reward(output, gold):
+    reward = 0.0
+
+    obj = parse_json(output)
+    if obj is None:
+        return -1.0
+
+    reward += 0.2
+
+    if obj.get("tool") == gold["tool"]:
+        reward += 0.4
+
+    if has_required_args(obj, gold):
+        reward += 0.2
+
+    if args_exact_or_equivalent(obj, gold):
+        reward += 0.4
+
+    return reward</code></pre>
+
+<h3>11.3 不该调用工具的情况</h3>
+
+<p>
+有时正确行为是“不调用工具”，比如用户信息不足。
+</p>
+
+<pre>
+User:
+帮我算一下从 A 到 B 的距离。
+
+Tool:
+calculate_distance(start_lat, start_lon, end_lat, end_lon)
+</pre>
+
+<p>
+如果用户没有提供经纬度，正确行为可能是：
+</p>
+
+<pre><code>&lt;no_function_call&gt;</code></pre>
+
+<p>
+这时 reward 要能惩罚“乱调用工具”：
+</p>
+
+<pre><code>if should_not_call_tool and model_called_tool:
+    reward -= 1.0</code></pre>
+
+<div class="box train">
+<strong>Agent RLVR 核心：</strong>
+工具是否调用、何时调用、调用哪个、参数是否正确、执行结果是否成功，都可以成为可验证 reward。
+</div>
+
+<h2 id="format">12. Format Reward 与 Accuracy Reward</h2>
+
+<p>
+RLVR 中常见两类奖励：
+</p>
+
+<table>
+<tr>
+<th>奖励类型</th>
+<th>中文</th>
+<th>检查什么</th>
+</tr>
+<tr>
+<td>Format Reward</td>
+<td>格式奖励</td>
+<td>是否按指定格式输出，是否可解析</td>
+</tr>
+<tr>
+<td>Accuracy Reward</td>
+<td>准确性奖励</td>
+<td>答案是否正确，工具执行是否成功</td>
+</tr>
+</table>
+
+<h3>12.1 Format Reward</h3>
+
+<p>
+例如要求模型输出：
+</p>
+
+<pre><code>Final Answer: 94311</code></pre>
+
+<p>
+如果模型输出：
+</p>
+
+<pre><code>答案应该是 94311。</code></pre>
+
+<p>
+虽然内容对，但格式不符合，抽取器可能失败。因此可以设置：
+</p>
+
+<div class="formula">
+\[
+R_{\mathrm{format}}=
+\begin{cases}
+0.2, & \text{格式正确}\\
+-0.2, & \text{格式错误}
+\end{cases}
+\]
+</div>
+
+<h3>12.2 Accuracy Reward</h3>
+
+<div class="formula">
+\[
+R_{\mathrm{accuracy}}=
+\begin{cases}
+1.0, & \text{答案正确}\\
+0.0, & \text{答案错误}
+\end{cases}
+\]
+</div>
+
+<h3>12.3 总 reward</h3>
+
+<div class="formula">
+\[
+R
+=
+R_{\mathrm{accuracy}}
++
+\alpha R_{\mathrm{format}}
+\]
+</div>
+
+<p>
+其中 \(\alpha\) 控制格式奖励权重。
+</p>
+
+<div class="box warn">
+<strong>注意：</strong>
+格式奖励不能太大。如果格式奖励超过准确性奖励，模型可能只学会格式，而不是学会解题。
+</div>
+
+<h2 id="process">13. Outcome Reward 与 Process Reward</h2>
+
+<h3>13.1 Outcome Reward</h3>
+
+<p>
+Outcome Reward 只看最终结果。
+</p>
+
+<div class="formula">
+\[
+R_{\mathrm{outcome}}(x,y)
+=
+\mathbb{I}
+[
+\text{final answer correct}
+]
+\]
+</div>
+
+<p>
+优点是简单，缺点是中间过程没有直接监督。
+</p>
+
+<h3>13.2 Process Reward</h3>
+
+<p>
+Process Reward 会评价中间步骤。
+</p>
+
+<div class="formula">
+\[
+R_{\mathrm{process}}
+=
+\sum_{k=1}^{K}
+r_k
+\]
+</div>
+
+<p>
+其中 \(r_k\) 是第 \(k\) 个推理步骤的奖励。
+</p>
+
+<table>
+<tr>
+<th>奖励类型</th>
+<th>优点</th>
+<th>缺点</th>
+</tr>
+<tr>
+<td>Outcome Reward</td>
+<td>简单、便宜、容易规模化</td>
+<td>信用分配粗糙</td>
+</tr>
+<tr>
+<td>Process Reward</td>
+<td>能指导中间推理</td>
+<td>需要过程标注或过程验证器</td>
+</tr>
+</table>
+
+<div class="box note">
+<strong>Stage 5 先掌握 Outcome Reward。</strong>
+等进入 Agent 和复杂推理后，再系统学习 Process Reward、step verifier、trajectory reward。
+</div>
+
+<h2 id="compare">14. PPO / DPO / GRPO 对比</h2>
+
+<table>
+<tr>
+<th>方法</th>
+<th>训练信号</th>
+<th>是否在线采样</th>
+<th>是否需要 Value Model</th>
+<th>适合任务</th>
+</tr>
+<tr>
+<td>PPO</td>
+<td>Reward Model 或环境 reward</td>
+<td>需要</td>
+<td>通常需要</td>
+<td>通用 RLHF</td>
+</tr>
+<tr>
+<td>DPO</td>
+<td>chosen / rejected 偏好对</td>
+<td>不需要</td>
+<td>不需要</td>
+<td>离线偏好优化</td>
+</tr>
+<tr>
+<td>GRPO</td>
+<td>同题多样本 reward</td>
+<td>需要</td>
+<td>通常不需要</td>
+<td>数学、代码、可验证推理</td>
+</tr>
+</table>
+
+<h3>14.1 PPO 和 GRPO 的关键差异</h3>
+
+<div class="formula">
+\[
+\text{PPO: }
+\hat{A}_t
+=
+\text{GAE}(R_t,V_\phi)
+\]
+</div>
+
+<div class="formula">
+\[
+\text{GRPO: }
+\hat{A}_i
+=
+\frac{R_i-\bar{R}}{\sigma_R+\epsilon}
+\]
+</div>
+
+<p>
+PPO 用 Value Model 做 baseline；GRPO 用同组平均 reward 做 baseline。
+</p>
+
+<h3>14.2 DPO 和 GRPO 的关键差异</h3>
+
+<table>
+<tr>
+<th>维度</th>
+<th>DPO</th>
+<th>GRPO</th>
+</tr>
+<tr>
+<td>数据</td>
+<td>已有 chosen / rejected</td>
+<td>模型在线生成多个回答</td>
+</tr>
+<tr>
+<td>奖励</td>
+<td>偏好隐式 reward</td>
+<td>验证器显式 reward</td>
+</tr>
+<tr>
+<td>探索</td>
+<td>较弱，依赖离线数据</td>
+<td>更强，模型可采样新解法</td>
+</tr>
+<tr>
+<td>典型任务</td>
+<td>风格、偏好、对齐</td>
+<td>数学、代码、工具调用</td>
+</tr>
+</table>
+
+<div class="box train">
+<strong>一句话：</strong>
+DPO 是“从偏好对学习”；GRPO 是“从同题多次尝试的验证结果中学习”。
+</div>
+
+<h2 id="algorithm">15. GRPO / RLVR 算法流程</h2>
+
+<h3>15.1 输入</h3>
+
+<ul>
+<li>一批 prompt：\(\{x_j\}\)</li>
+<li>当前 policy model：\(\pi_\theta\)</li>
+<li>旧 policy model：\(\pi_{\theta_{\mathrm{old}}}\)</li>
+<li>reference model：\(\pi_{\mathrm{ref}}\)</li>
+<li>reward function：\(R(x,y)\)</li>
+<li>group size：\(G\)</li>
+</ul>
+
+<h3>15.2 流程</h3>
+
+<pre><code>for each training iteration:
+
+    1. 采样一批 prompts
+
+    2. 对每个 prompt x:
+           用 old policy 生成 G 个回答:
+           y1, y2, ..., yG
+
+    3. 对每个回答 yi:
+           reward_i = R(x, yi)
+
+    4. 对同一个 prompt 的 G 个 rewards:
+           mean_reward = mean(rewards)
+           std_reward = std(rewards)
+           advantage_i = (reward_i - mean_reward) / (std_reward + eps)
+
+    5. 对每个 token 计算:
+           ratio = πθ(token | context) / πold(token | context)
+
+    6. 使用 PPO-like clipped objective 更新 policy
+
+    7. 加入 KL penalty，限制 policy 偏离 reference model</code></pre>
+
+<h3>15.3 数学形式简化版</h3>
+
+<div class="formula">
+\[
+y_i\sim \pi_{\theta_{\mathrm{old}}}(\cdot\mid x),
+\quad
+i=1,\ldots,G
+\]
+</div>
+
+<div class="formula">
+\[
+R_i=R(x,y_i)
+\]
+</div>
+
+<div class="formula">
+\[
+\hat{A}_i
+=
+\frac{
+R_i-\frac{1}{G}\sum_{j=1}^{G}R_j
+}{
+\sqrt{\frac{1}{G}\sum_{j=1}^{G}(R_j-\bar{R})^2}+\epsilon
+}
+\]
+</div>
+
+<div class="formula">
+\[
+r_{i,t}(\theta)
+=
+\frac{
+\pi_\theta(y_{i,t}\mid x,y_{i,\lt t})
+}{
+\pi_{\theta_{\mathrm{old}}}(y_{i,t}\mid x,y_{i,\lt t})
+}
+\]
+</div>
+
+<div class="formula">
+\[
+L_{\mathrm{clip}}
+=
+\mathbb{E}
+\left[
+\min
+(
+r_{i,t}\hat{A}_i,
+\mathrm{clip}(r_{i,t},1-\epsilon,1+\epsilon)\hat{A}_i
+)
+\right]
+\]
+</div>
+
+<div class="box note">
+<strong>注意：</strong>
+不同框架对 GRPO objective 的细节可能略有不同，但“同 prompt 多采样、组内 reward 相对 advantage、PPO-like ratio 更新”是核心结构。
+</div>
+
+<h2 id="pitfalls">16. 常见坑：Reward Hacking、全 0 奖励、长度偏置</h2>
+
+<h3>16.1 Reward Hacking</h3>
+
+<p>
+模型会优化 reward，但不一定优化真实目标。
+</p>
+
+<table>
+<tr>
+<th>真实目标</th>
+<th>错误 reward</th>
+<th>模型可能学到</th>
+</tr>
+<tr>
+<td>正确解题</td>
+<td>只检查是否出现数字</td>
+<td>随便输出一个数字</td>
+</tr>
+<tr>
+<td>正确代码</td>
+<td>测试太少</td>
+<td>硬编码测试样例</td>
+</tr>
+<tr>
+<td>正确工具调用</td>
+<td>只检查工具名</td>
+<td>工具名对但参数乱写</td>
+</tr>
+<tr>
+<td>格式稳定</td>
+<td>格式奖励太高</td>
+<td>只学格式，不学内容</td>
+</tr>
+</table>
+
+<h3>16.2 全 0 或全 1 奖励</h3>
+
+<p>
+GRPO 依赖组内差异。
+</p>
+
+<table>
+<tr>
+<th>reward 情况</th>
+<th>问题</th>
+</tr>
+<tr>
+<td>全是 0</td>
+<td>没有哪个回答相对更好</td>
+</tr>
+<tr>
+<td>全是 1</td>
+<td>没有进一步学习信号</td>
+</tr>
+<tr>
+<td>有 0 有 1</td>
+<td>最适合组内比较</td>
+</tr>
+</table>
+
+<div class="box warn">
+<strong>任务难度要适中：</strong>
+太难全错，太简单全对，都会让 GRPO 缺少有效信号。
+</div>
+
+<h3>16.3 长度偏置</h3>
+
+<p>
+如果 reward 不惩罚冗长，模型可能输出越来越长的推理。
+</p>
+
+<p>
+解决方式包括：
+</p>
+
+<ul>
+<li>加入长度惩罚；</li>
+<li>设置最大生成长度；</li>
+<li>对过长无效推理扣分；</li>
+<li>区分有用推理和重复废话。</li>
+</ul>
+
+<h3>16.4 格式过拟合</h3>
+
+<p>
+如果验证器只会抽取固定格式，模型可能过度学习模板。
+</p>
+
+<h3>16.5 数据污染</h3>
+
+<p>
+数学题或代码题如果训练集和评测集泄漏，reward 提升不代表真实泛化能力提升。
+</p>
+
+<h2 id="toy">17. 最小 Toy 实验</h2>
+
+<p>
+先不用训练大模型，可以用 Python 模拟 GRPO 的核心逻辑。
+</p>
+
+<h3>17.1 输入</h3>
+
+<pre><code>responses = [
+    "Final Answer: 94311",
+    "Final Answer: 94211",
+    "I think it is 94311",
+    "Final Answer: 94301"
+]
+
+answer = 94311</code></pre>
+
+<h3>17.2 Reward</h3>
+
+<pre><code>def reward_fn(output, answer):
+    pred = extract_answer(output)
+    if pred is None:
+        return -0.2
+    if pred == answer:
+        return 1.0
+    return 0.0
+
+rewards = [reward_fn(r, answer) for r in responses]</code></pre>
+
+<h3>17.3 Advantage</h3>
+
+<pre><code>import numpy as np
+
+rewards = np.array(rewards)
+mean = rewards.mean()
+std = rewards.std()
+
+advantages = (rewards - mean) / (std + 1e-8)</code></pre>
+
+<h3>17.4 Policy 更新的直觉</h3>
+
+<pre><code>for response, reward, adv in zip(responses, rewards, advantages):
+    if adv &gt; 0:
+        print("提高这个回答的概率", response)
+    elif adv &lt; 0:
+        print("降低这个回答的概率", response)
+    else:
+        print("几乎不更新", response)</code></pre>
+
+<div class="box train">
+<strong>你先把这个 toy 逻辑跑通，再去看 TRL、verl、OpenRLHF 里的 GRPO Trainer。</strong>
+</div>
+
+<h2 id="stage6">18. 下一阶段：Agent RL / Tool-use RL</h2>
+
+<p>
+Stage 5 解决的是单轮可验证任务：
+</p>
+
+<pre>
+prompt
+  ↓
+response
+  ↓
+reward
+</pre>
+
+<p>
+但真实 Agent 更复杂：
+</p>
+
+<pre>
+user request
+  ↓
+plan
+  ↓
+tool call
+  ↓
+observation
+  ↓
+next action
+  ↓
+more observations
+  ↓
+final answer
+  ↓
+trajectory reward
+</pre>
+
+<p>
+下一阶段 Stage 6 要学：
+</p>
+
+<ul>
+<li>多轮工具调用轨迹；</li>
+<li>环境反馈；</li>
+<li>trajectory-level reward；</li>
+<li>tool-use reward；</li>
+<li>search / code / browser Agent；</li>
+<li>长轨迹 credit assignment；</li>
+<li>multi-turn RL。</li>
+</ul>
+
+<div class="box note">
+<strong>Stage 6 的核心问题：</strong>
+当模型不是生成一个答案，而是连续调用工具、观察结果、再行动时，如何定义状态、动作、奖励和训练轨迹？
+</div>
+
+<h2 id="summary">19. 一页总结</h2>
+
+<table>
+<tr>
+<th>概念</th>
+<th>核心公式或理解</th>
+<th>你要掌握什么</th>
+</tr>
+<tr>
+<td>RLVR</td>
+<td>\(R(x,y)\) 由验证器给出</td>
+<td>用规则、测试、执行结果自动给 reward</td>
+</tr>
+<tr>
+<td>Group Sampling</td>
+<td>\(y_1,\ldots,y_G\sim\pi_{\theta_{\mathrm{old}}}(\cdot\mid x)\)</td>
+<td>同一个 prompt 多采样</td>
+</tr>
+<tr>
+<td>Group Mean</td>
+<td>\(\bar{R}=\frac{1}{G}\sum_i R_i\)</td>
+<td>作为组内 baseline</td>
+</tr>
+<tr>
+<td>Group Advantage</td>
+<td>\(\hat{A}_i=\frac{R_i-\bar{R}}{\sigma_R+\epsilon}\)</td>
+<td>回答相对同组平均好多少</td>
+</tr>
+<tr>
+<td>GRPO Ratio</td>
+<td>\(\frac{\pi_\theta(y_{i,t}\mid x,y_{i,\lt t})}{\pi_{\theta_{\mathrm{old}}}(y_{i,t}\mid x,y_{i,\lt t})}\)</td>
+<td>新旧策略 token 概率比</td>
+</tr>
+<tr>
+<td>Clip Objective</td>
+<td>\(\min(r\hat{A},\mathrm{clip}(r,1-\epsilon,1+\epsilon)\hat{A})\)</td>
+<td>限制更新幅度</td>
+</tr>
+<tr>
+<td>KL Penalty</td>
+<td>\(\mathrm{KL}(\pi_\theta\|\pi_{\mathrm{ref}})\)</td>
+<td>防止模型偏离 reference</td>
+</tr>
+<tr>
+<td>Format Reward</td>
+<td>检查输出格式</td>
+<td>保证答案可解析</td>
+</tr>
+<tr>
+<td>Accuracy Reward</td>
+<td>检查答案是否正确</td>
+<td>提供核心任务信号</td>
+</tr>
+<tr>
+<td>Outcome Reward</td>
+<td>只看最终结果</td>
+<td>简单但信用分配粗糙</td>
+</tr>
+<tr>
+<td>Process Reward</td>
+<td>评价中间步骤</td>
+<td>更细但更难设计</td>
+</tr>
+</table>
+
+<div class="box train">
+<strong>进入 Stage 6 前的标准：</strong>
+你应该能解释清楚：
+<ol>
+<li>RLVR 和 RLHF / DPO 的区别；</li>
+<li>为什么 GRPO 不需要 Value Model；</li>
+<li>为什么同一个 prompt 要生成多个回答；</li>
+<li>group relative advantage 怎么计算；</li>
+<li>format reward 和 accuracy reward 的区别；</li>
+<li>为什么全 0 或全 1 reward 都不适合 GRPO；</li>
+<li>为什么 Agent RL 比单轮 RLVR 更难。</li>
+</ol>
+</div>
+
+<h2>20. 本阶段练习</h2>
+
+<h3>20.1 手推练习</h3>
+
+<ol>
+<li>给定 rewards \([1,0,0,1]\)，计算组内平均、标准差和标准化 advantage。</li>
+<li>写出 GRPO 的 token-level ratio，并解释每一项。</li>
+<li>解释为什么 group mean 可以看作 baseline。</li>
+<li>比较 PPO 的 advantage 和 GRPO 的 advantage 来源。</li>
+<li>解释为什么 KL penalty 在 GRPO 中仍然重要。</li>
+</ol>
+
+<h3>20.2 编程练习</h3>
+
+<pre><code>实现一个最小 GRPO reward simulator：
+
+1. 准备 10 道简单算术题。
+2. 每道题模拟 4 个模型输出。
+3. 写 extract_answer。
+4. 写 reward_fn。
+5. 计算 group advantage。
+6. 打印哪些回答应该提高概率，哪些应该降低概率。</code></pre>
+
+<h3>20.3 大模型思考题</h3>
+
+<div class="box note">
+<ol>
+<li>如果数学题只看最终答案，模型会不会学会跳过推理？</li>
+<li>如果 reward 给格式太多分，会发生什么？</li>
+<li>如果同一个 prompt 的 8 个回答全部错误，GRPO 有没有学习信号？</li>
+<li>代码任务中，测试用例太少会导致什么 reward hacking？</li>
+<li>工具调用任务中，怎样奖励“不该调用工具时不调用”？</li>
+</ol>
+</div>
+
+<p class="small">强化学习大模型路线 · Stage 5 · GRPO / RLVR / Verifiable Reward 数学推导版</p>
+
+</body>
+</html>

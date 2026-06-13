@@ -1,0 +1,1275 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claude 公开架构与源码精读：第二部分 工具系统源码</title>
+<style>
+html { scroll-behavior: smooth; }
+body {
+  font-family: "Microsoft YaHei", Arial, sans-serif;
+  line-height: 1.85;
+  max-width: 1080px;
+  margin: 40px auto;
+  padding: 0 28px 100px;
+  background: #f7f8fb;
+  color: #1f2937;
+}
+h1 {
+  font-size: 34px;
+  line-height: 1.35;
+  border-bottom: 5px solid #2563eb;
+  padding-bottom: 14px;
+}
+h2 {
+  margin-top: 48px;
+  padding: 12px 16px;
+  font-size: 27px;
+  background: #eef4ff;
+  border-left: 7px solid #2563eb;
+}
+h3 { margin-top: 28px; font-size: 21px; }
+h4 { margin-top: 22px; font-size: 18px; }
+h2, h3 { scroll-margin-top: 24px; }
+a { color: #2563eb; }
+.box {
+  background: #ffffff;
+  border: 1px solid #d9e2ef;
+  border-radius: 12px;
+  padding: 18px 22px;
+  margin: 18px 0;
+}
+.note { background: #fff7d6; border-left: 6px solid #d6a800; }
+.train { background: #ecfdf3; border-left: 6px solid #16a34a; }
+.warn { background: #fff1f1; border-left: 6px solid #dc2626; }
+.source { background: #f8fafc; border-left: 6px solid #64748b; }
+.figure {
+  background: #ffffff;
+  border: 1px solid #d9e2ef;
+  border-radius: 14px;
+  padding: 16px;
+  margin: 22px 0;
+}
+.figure img {
+  width: 100%;
+  max-height: 680px;
+  object-fit: contain;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+}
+.caption {
+  color: #667085;
+  font-size: 14px;
+  margin-top: 10px;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 18px 0;
+  background: #ffffff;
+}
+th, td {
+  border: 1px solid #d9e2ef;
+  padding: 11px 13px;
+  vertical-align: top;
+}
+th { background: #f1f5f9; }
+pre {
+  background: #111827;
+  color: #e5e7eb;
+  padding: 18px;
+  border-radius: 10px;
+  overflow-x: auto;
+  line-height: 1.55;
+  font-size: 14px;
+}
+code { font-family: Consolas, Menlo, Monaco, monospace; }
+.inline-code { background: #eef2ff; color: #3730a3; padding: 2px 6px; border-radius: 6px; }
+hr { border: 0; border-top: 1px solid #d9e2ef; margin: 38px 0; }
+.page-toc {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+}
+.page-toc-toggle {
+  border: 0;
+  border-radius: 999px;
+  padding: 10px 16px;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.24);
+}
+.page-toc-toggle:hover { background: #1d4ed8; }
+.page-toc-panel {
+  display: none;
+  width: 330px;
+  max-height: calc(100vh - 90px);
+  overflow: auto;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid #d9e2ef;
+  border-radius: 14px;
+  padding: 16px 18px;
+  margin-top: 10px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+  backdrop-filter: blur(8px);
+}
+.page-toc.is-open .page-toc-panel { display: block; }
+.page-toc-title {
+  margin-bottom: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+}
+.page-toc-list,
+.page-toc-sublist { list-style: none; margin: 0; padding: 0; }
+.page-toc-item + .page-toc-item { margin-top: 10px; }
+.page-toc-sublist {
+  margin-top: 8px;
+  padding-left: 14px;
+  border-left: 2px solid #e5e7eb;
+}
+.page-toc-subitem + .page-toc-subitem { margin-top: 6px; }
+.page-toc-link {
+  display: block;
+  color: #334155;
+  text-decoration: none;
+  font-size: 14px;
+  line-height: 1.55;
+}
+.page-toc-link:hover { color: #2563eb; }
+.svg-diagram {
+  width: 100%;
+  min-height: 260px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fff;
+}
+@media (max-width: 1100px) {
+  .page-toc { top: 12px; right: 12px; }
+  .page-toc-panel {
+    width: min(330px, calc(100vw - 24px));
+    max-height: calc(100vh - 72px);
+  }
+}
+</style>
+</head>
+<body>
+
+<nav class="page-toc" aria-label="文章目录">
+  <button class="page-toc-toggle" type="button">☰ 目录</button>
+  <div class="page-toc-panel">
+    <div class="page-toc-title">目录导航</div>
+    <ol class="page-toc-list" id="page-toc-list"></ol>
+  </div>
+</nav>
+
+<h1>Claude 公开架构与源码精读<br>第二部分：Claude Code 工具系统源码</h1>
+
+<div class="box source">
+<p><strong>本篇定位：</strong>这不是 Claude 模型源码，也不是 Anthropic 内部服务源码。Claude 模型权重、训练代码、推理服务端实现并未公开。本篇写的是<strong>公开资料可还原的 Claude Code 工具系统架构</strong>：Read、Write、Edit、Bash、Glob、Grep、Todo / Task、权限规则、Hooks、Agent SDK allowed tools。</p>
+<p><strong>核心来源：</strong></p>
+<ul>
+  <li>Anthropic 官方 Claude Code Overview：<a href="https://code.claude.com/docs/en/overview" target="_blank">https://code.claude.com/docs/en/overview</a></li>
+  <li>Claude Code Tools reference：<a href="https://code.claude.com/docs/en/tools-reference" target="_blank">https://code.claude.com/docs/en/tools-reference</a></li>
+  <li>Claude Code Agent SDK overview：<a href="https://code.claude.com/docs/en/agent-sdk/overview" target="_blank">https://code.claude.com/docs/en/agent-sdk/overview</a></li>
+  <li>Claude Code Settings / permissions：<a href="https://code.claude.com/docs/en/settings" target="_blank">https://code.claude.com/docs/en/settings</a></li>
+  <li>Claude Code Hooks：<a href="https://code.claude.com/docs/en/hooks-guide" target="_blank">https://code.claude.com/docs/en/hooks-guide</a></li>
+  <li>Anthropic《Building effective agents》：<a href="https://www.anthropic.com/engineering/building-effective-agents" target="_blank">https://www.anthropic.com/engineering/building-effective-agents</a></li>
+</ul>
+</div>
+
+<div class="box warn">
+<strong>先说明边界：</strong>
+本文中的“源码”是根据公开 Claude API / Claude Code 文档写出的<strong>教学复现源码</strong>，用于理解 Claude Code 的工具系统设计。它不是 Anthropic 内部源码。这样写反而更适合学习：你能看到每个模块为什么存在、如何相互连接、怎样迁移到自己的 Agent 项目里。
+</div>
+
+<h2 id="sec0">0. 这一篇要解决什么问题？</h2>
+
+<p>
+第一部分我们已经把 Claude / Claude Code 理解成一个 Agent Loop：模型看到上下文，决定回答或调用工具；工具执行后把结果返回给模型；模型继续判断下一步。
+这一篇继续往下拆：<strong>Claude Code 的工具系统到底由哪些部件组成？为什么 Read / Edit / Bash / Grep / Glob / Todo 不是随便堆出来的工具，而是一套 Agent-Computer Interface？</strong>
+</p>
+
+<pre>用户任务
+  ↓
+Claude Code Agent Loop
+  ↓
+工具选择：Read / Edit / Bash / Glob / Grep / Todo / MCP
+  ↓
+权限检查：是否允许读、写、执行、联网、调用外部服务
+  ↓
+工具执行：文件系统 / shell / 搜索 / 后台任务 / MCP server
+  ↓
+工具结果：Observation 返回给 Claude
+  ↓
+Claude 继续计划、修改、验证、总结</pre>
+
+<div class="box note">
+<strong>一句话理解：</strong>
+Claude Code 的关键不是“模型会写代码”这么简单，而是把模型放进一个受控的开发环境中：模型负责决策，工具负责执行，权限系统负责边界，Hooks 负责拦截和自动化，Agent Loop 负责多轮推进。
+</div>
+
+<h3>0.1 为什么工具系统比模型回答更重要？</h3>
+
+<p>
+普通聊天模型只能说“你可以修改这个文件”。Coding Agent 不一样，它必须真的去读文件、定位代码、修改代码、运行测试、根据报错再修复。因此，代码 Agent 的能力来自两部分：
+</p>
+
+<table>
+<tr><th>能力来源</th><th>具体含义</th><th>Claude Code 中的体现</th></tr>
+<tr><td>模型能力</td><td>理解任务、规划步骤、选择工具、解释结果。</td><td>Claude 判断应该读哪个文件、改哪里、跑什么命令。</td></tr>
+<tr><td>工具能力</td><td>把模型意图变成真实环境动作。</td><td>Read 读文件，Edit 改文件，Bash 跑测试，Grep 搜索代码。</td></tr>
+<tr><td>权限能力</td><td>限制工具动作，避免越权或危险操作。</td><td>读写路径规则、Bash 命令规则、Hooks 审批。</td></tr>
+<tr><td>反馈能力</td><td>把环境结果返回给模型，形成闭环。</td><td>工具结果、测试输出、报错、diff、日志。</td></tr>
+</table>
+
+<h2 id="sec1">1. 官方原图：Claude Code 工具系统在 Agent 架构中的位置</h2>
+
+<div class="figure">
+<img src="https://www.anthropic.com/_next/image?q=75&url=https%3A%2F%2Fwww-cdn.anthropic.com%2Fimages%2F4zrzovbb%2Fwebsite%2Fd3083d3f40bb2b6f477901cc9a240738d3dd1371-2401x1000.png&w=3840" alt="The augmented LLM from Anthropic Building effective agents">
+<div class="caption">
+图 1：The augmented LLM。来源：Anthropic 官方博客《Building effective agents》。原文链接：
+<a href="https://www.anthropic.com/engineering/building-effective-agents" target="_blank">https://www.anthropic.com/engineering/building-effective-agents</a>。
+这张图说明，Agentic system 的基础不是裸 LLM，而是增强过的 LLM：它能接入 retrieval、tools 和 memory。Claude Code 的 Read / Bash / Edit / Grep 等工具，就属于这里的 tools 和 memory / environment 接口。
+</div>
+</div>
+
+<h3>1.1 这张图怎么迁移到 Claude Code？</h3>
+
+<table>
+<tr><th>图中元素</th><th>在普通 Agent 中</th><th>在 Claude Code 中</th></tr>
+<tr><td>LLM</td><td>负责推理、计划、选择工具。</td><td>Claude 模型本身。</td></tr>
+<tr><td>Retrieval</td><td>检索外部信息或上下文。</td><td>Grep、Glob、Read、LSP、WebFetch、MCP resources。</td></tr>
+<tr><td>Tools</td><td>执行外部动作。</td><td>Bash、Edit、Write、NotebookEdit、MCP tools、GitHub action。</td></tr>
+<tr><td>Memory</td><td>保留偏好、项目规则、任务状态。</td><td>CLAUDE.md、settings、session transcript、Todo / Task、auto memory。</td></tr>
+<tr><td>Read / Write</td><td>和环境双向交互。</td><td>读取项目文件、修改代码、运行测试、提交 Git。</td></tr>
+</table>
+
+<div class="figure">
+<img src="https://www.anthropic.com/_next/image?q=75&url=https%3A%2F%2Fwww-cdn.anthropic.com%2Fimages%2F4zrzovbb%2Fwebsite%2F4b9a1f4eb63d5962a6e1746ac26bbc857cf3474f-2400x1666.png&w=3840" alt="High-level flow of a coding agent from Anthropic Building effective agents">
+<div class="caption">
+图 2：High-level flow of a coding agent。来源：Anthropic 官方博客《Building effective agents》。这张图最适合解释 Claude Code：人类给任务，Interface 组织上下文，LLM 搜索文件、写代码、测试，直到任务完成。
+</div>
+</div>
+
+<h3>1.2 这张图真正重要的地方</h3>
+
+<p>
+图里最关键的不是“LLM”三个字，而是右侧环境反馈循环：Search files → Return paths → Write code → Status → Test → Results。也就是说，代码 Agent 的真正训练和工程重点是：
+</p>
+
+<pre>不是一次性生成完整代码
+而是：
+搜索 → 阅读 → 修改 → 测试 → 看结果 → 再修改</pre>
+
+<div class="box train">
+<strong>学习启发：</strong>
+如果你后面想做自己的 Code Agent 或 Tool-use Agent，不要一开始就追求复杂“自主规划”。先把最基础的工具链做稳定：文件读写、搜索、命令执行、权限规则、工具结果截断、错误恢复。这些比 prompt 花活更重要。
+</div>
+
+<h2 id="sec2">2. Claude Code 工具总览：不是只有 Read / Edit / Bash</h2>
+
+<p>
+Claude Code 官方 Tools reference 列出了内置工具，并说明这些工具名会出现在 permission rules、subagent tool lists 和 hook matchers 中。也就是说，工具不只是“能不能调用”，还会进入权限、子代理、Hooks、技能系统。
+</p>
+
+<h3>2.1 按功能分类理解 Claude Code 工具</h3>
+
+<table>
+<tr><th>工具类别</th><th>典型工具</th><th>用途</th><th>是否高风险</th></tr>
+<tr><td>文件读取</td><td>Read</td><td>读取文件内容，是后续 Edit 的基础。</td><td>低到中，取决于路径。</td></tr>
+<tr><td>文件创建/修改</td><td>Write、Edit、NotebookEdit</td><td>创建文件、精确替换、修改 Notebook。</td><td>高，需要权限控制。</td></tr>
+<tr><td>代码搜索</td><td>Glob、Grep、LSP</td><td>按文件名、内容、符号搜索项目。</td><td>低到中。</td></tr>
+<tr><td>命令执行</td><td>Bash、PowerShell、Monitor</td><td>运行测试、构建、git、脚本、后台监控。</td><td>最高，需要强权限边界。</td></tr>
+<tr><td>任务管理</td><td>TodoWrite、TaskCreate、TaskList、TaskUpdate</td><td>维护多步任务计划和状态。</td><td>低。</td></tr>
+<tr><td>子代理</td><td>Agent、TeamCreate、SendMessage</td><td>把任务分给独立上下文或 agent team。</td><td>中到高，取决于子代理工具权限。</td></tr>
+<tr><td>外部连接</td><td>MCP tools、WebFetch、WebSearch</td><td>接外部数据、API、文档、网页。</td><td>中到高。</td></tr>
+<tr><td>自动化扩展</td><td>Skill、Workflow、Hooks</td><td>封装重复流程，拦截工具调用，自动执行脚本。</td><td>取决于具体动作。</td></tr>
+</table>
+
+<div class="box note">
+<strong>关键理解：</strong>
+Claude Code 的工具系统不是一个“函数列表”，而是一套可治理的执行环境。工具名同时服务于三个系统：模型选择工具、权限系统限制工具、Hooks 系统监听工具。
+</div>
+
+<h3>2.2 工具调用在 Agent Loop 中的位置</h3>
+
+<div class="figure">
+<svg class="svg-diagram" viewBox="0 0 1050 320" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#64748b" />
+    </marker>
+  </defs>
+  <rect x="40" y="105" width="130" height="64" rx="16" fill="#eef4ff" stroke="#2563eb"/>
+  <text x="105" y="132" text-anchor="middle" font-size="16" fill="#1e3a8a">User Task</text>
+  <text x="105" y="154" text-anchor="middle" font-size="13" fill="#475569">自然语言任务</text>
+  <line x1="170" y1="137" x2="260" y2="137" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+  <rect x="260" y="90" width="150" height="95" rx="16" fill="#ecfdf3" stroke="#16a34a"/>
+  <text x="335" y="122" text-anchor="middle" font-size="16" fill="#166534">Claude</text>
+  <text x="335" y="146" text-anchor="middle" font-size="13" fill="#475569">计划 / 决策</text>
+  <text x="335" y="166" text-anchor="middle" font-size="13" fill="#475569">选择工具</text>
+  <line x1="410" y1="137" x2="500" y2="137" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+  <rect x="500" y="72" width="170" height="130" rx="16" fill="#fff7d6" stroke="#d6a800"/>
+  <text x="585" y="105" text-anchor="middle" font-size="16" fill="#92400e">Permission</text>
+  <text x="585" y="130" text-anchor="middle" font-size="13" fill="#475569">allow / deny</text>
+  <text x="585" y="150" text-anchor="middle" font-size="13" fill="#475569">user / hook</text>
+  <text x="585" y="170" text-anchor="middle" font-size="13" fill="#475569">path / command</text>
+  <line x1="670" y1="137" x2="760" y2="137" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+  <rect x="760" y="76" width="180" height="122" rx="16" fill="#fff" stroke="#94a3b8"/>
+  <text x="850" y="105" text-anchor="middle" font-size="16" fill="#0f172a">Tool Executor</text>
+  <text x="850" y="130" text-anchor="middle" font-size="13" fill="#475569">Read / Edit / Bash</text>
+  <text x="850" y="150" text-anchor="middle" font-size="13" fill="#475569">Glob / Grep / MCP</text>
+  <text x="850" y="170" text-anchor="middle" font-size="13" fill="#475569">返回 Observation</text>
+  <path d="M850 198 C850 265, 335 265, 335 188" fill="none" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="590" y="286" text-anchor="middle" font-size="14" fill="#475569">tool_result / stdout / diff / test result 回到上下文</text>
+</svg>
+<div class="caption">图 3：Claude Code 工具调用闭环示意图。根据 Claude Code Tools reference、Tool Use 文档和 Anthropic Agent 架构图整理。</div>
+</div>
+
+<h2 id="sec3">3. 源码复现一：工具基类与统一返回格式</h2>
+
+<p>
+为了写清楚工具系统，先不要急着写 Read / Edit / Bash。我们先设计一个统一接口：每个工具都要有名字、描述、输入 schema、权限需求、执行函数、返回结果。这样才能对应 Claude Code 的真实工程逻辑。
+</p>
+
+<pre><code>from __future__ import annotations
+
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any, Dict, Optional, Protocol, List
+import json
+import time
+
+
+@dataclass
+class ToolResult:
+    """
+    所有工具统一返回这个结构。
+
+    为什么要统一？
+    1. Claude 需要看到稳定的 Observation。
+    2. Agent Loop 需要知道工具是否成功。
+    3. 权限系统 / 日志系统 / Hooks 都要读这个结构。
+    """
+    ok: bool
+    tool_name: str
+    content: Any = None
+    error: Optional[str] = None
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+    def to_text(self, max_chars: int = 8000) -> str:
+        payload = {
+            "ok": self.ok,
+            "tool_name": self.tool_name,
+            "content": self.content,
+            "error": self.error,
+            "metadata": self.metadata,
+        }
+        text = json.dumps(payload, ensure_ascii=False, indent=2)
+        if len(text) > max_chars:
+            return text[:max_chars] + "\n... [truncated]"
+        return text
+
+
+class Tool(Protocol):
+    name: str
+    description: str
+    input_schema: Dict[str, Any]
+    requires_permission: bool
+
+    def run(self, tool_input: Dict[str, Any]) -> ToolResult:
+        ...</code></pre>
+
+<h3>3.1 这段源码对应 Claude Code 哪一层？</h3>
+
+<table>
+<tr><th>源码结构</th><th>对应 Claude Code 概念</th><th>为什么重要</th></tr>
+<tr><td><code>ToolResult</code></td><td>tool_result / Observation</td><td>工具执行结果必须结构化返回给模型。</td></tr>
+<tr><td><code>ok</code></td><td>工具是否成功</td><td>模型下一步要根据成功/失败选择继续、修复或放弃。</td></tr>
+<tr><td><code>metadata</code></td><td>路径、耗时、截断标记、权限来源</td><td>帮助 Agent 理解环境状态。</td></tr>
+<tr><td><code>requires_permission</code></td><td>Permission required</td><td>有些工具低风险，有些工具必须询问或检查规则。</td></tr>
+<tr><td><code>input_schema</code></td><td>tool schema</td><td>告诉模型这个工具需要哪些字段。</td></tr>
+</table>
+
+<div class="box train">
+<strong>实践启发：</strong>
+你自己写 Agent 时，不要让工具随便返回字符串。最好所有工具都返回统一 JSON：<code>ok</code>、<code>content</code>、<code>error</code>、<code>metadata</code>。这样 reward、日志、错误恢复都会简单很多。
+</div>
+
+<h2 id="sec4">4. 源码复现二：Read 工具</h2>
+
+<p>
+Read 是 Claude Code 最基础的工具。没有 Read，模型不知道项目真实内容；没有稳定的 Read，后续 Edit 就容易乱改。官方工具参考中也把 Read 作为读取文件内容的工具。
+</p>
+
+<pre><code>class ReadTool:
+    name = "Read"
+    description = "Read the content of a UTF-8 text file."
+    requires_permission = False
+    input_schema = {
+        "type": "object",
+        "properties": {
+            "path": {"type": "string", "description": "File path to read"},
+            "offset": {"type": "integer", "description": "Start line, optional"},
+            "limit": {"type": "integer", "description": "Maximum number of lines, optional"},
+        },
+        "required": ["path"],
+    }
+
+    def __init__(self, project_root: str):
+        self.project_root = Path(project_root).resolve()
+
+    def _resolve_path(self, path: str) -> Path:
+        target = Path(path).expanduser()
+        if not target.is_absolute():
+            target = self.project_root / target
+        return target.resolve()
+
+    def run(self, tool_input: Dict[str, Any]) -> ToolResult:
+        path = tool_input.get("path")
+        offset = int(tool_input.get("offset", 1))
+        limit = int(tool_input.get("limit", 200))
+
+        if not path:
+            return ToolResult(False, self.name, error="Missing required field: path")
+
+        target = self._resolve_path(path)
+
+        if not target.exists():
+            return ToolResult(False, self.name, error=f"File does not exist: {target}")
+        if not target.is_file():
+            return ToolResult(False, self.name, error=f"Path is not a file: {target}")
+
+        try:
+            lines = target.read_text(encoding="utf-8").splitlines()
+        except UnicodeDecodeError:
+            return ToolResult(False, self.name, error="Only UTF-8 text files are supported.")
+
+        start = max(offset - 1, 0)
+        end = min(start + limit, len(lines))
+        selected = lines[start:end]
+
+        numbered = [f"{i + 1}: {line}" for i, line in enumerate(selected, start=start)]
+
+        return ToolResult(
+            ok=True,
+            tool_name=self.name,
+            content="\n".join(numbered),
+            metadata={
+                "path": str(target),
+                "total_lines": len(lines),
+                "returned_lines": [start + 1, end],
+                "truncated": end < len(lines),
+            },
+        )</code></pre>
+
+<h3>4.1 Read 工具为什么要支持 offset / limit？</h3>
+
+<table>
+<tr><th>设计点</th><th>原因</th><th>不这样做的后果</th></tr>
+<tr><td>行号</td><td>让模型能精确定位代码位置。</td><td>模型只能模糊说“上面那里”。</td></tr>
+<tr><td>offset</td><td>读取长文件的一部分。</td><td>一次塞入太多 token，浪费上下文。</td></tr>
+<tr><td>limit</td><td>控制返回长度。</td><td>工具结果过长，冲掉对话上下文。</td></tr>
+<tr><td>metadata</td><td>告诉模型是否被截断。</td><td>模型可能误以为文件已经读完。</td></tr>
+<tr><td>UTF-8 检查</td><td>避免二进制文件污染上下文。</td><td>模型看到乱码，后续判断失真。</td></tr>
+</table>
+
+<div class="box note">
+<strong>一句话理解：</strong>
+Read 不是简单 <code>cat file</code>。一个好的 Read 工具要服务于模型推理：行号、截断、路径、错误信息都要清楚。
+</div>
+
+<h2 id="sec5">5. 源码复现三：Glob 与 Grep 搜索工具</h2>
+
+<p>
+Claude Code 不能一上来就把整个仓库读进上下文。它通常先用 Glob 找文件，再用 Grep 找内容，再用 Read 读目标文件。官方工具参考中，Glob 用于按文件名 pattern 找文件，Grep 用于按内容 pattern 找匹配。
+</p>
+
+<h3>5.1 Glob：按文件名找文件</h3>
+
+<pre><code>class GlobTool:
+    name = "Glob"
+    description = "Find files by glob pattern, such as **/*.py or src/**/*.ts."
+    requires_permission = False
+    input_schema = {
+        "type": "object",
+        "properties": {
+            "pattern": {"type": "string"},
+            "path": {"type": "string", "description": "Base directory, optional"},
+            "limit": {"type": "integer", "description": "Maximum results"},
+        },
+        "required": ["pattern"],
+    }
+
+    def __init__(self, project_root: str):
+        self.project_root = Path(project_root).resolve()
+
+    def run(self, tool_input: Dict[str, Any]) -> ToolResult:
+        pattern = tool_input.get("pattern")
+        base = Path(tool_input.get("path", "."))
+        limit = int(tool_input.get("limit", 100))
+
+        if not pattern:
+            return ToolResult(False, self.name, error="Missing required field: pattern")
+
+        if not base.is_absolute():
+            base = self.project_root / base
+        base = base.resolve()
+
+        matches = []
+        for item in base.glob(pattern):
+            if item.is_file():
+                matches.append(item)
+
+        matches.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+        shown = matches[:limit]
+
+        return ToolResult(
+            ok=True,
+            tool_name=self.name,
+            content=[str(p.relative_to(self.project_root)) for p in shown],
+            metadata={
+                "pattern": pattern,
+                "base": str(base),
+                "total_matches": len(matches),
+                "returned": len(shown),
+                "truncated": len(matches) > limit,
+            },
+        )</code></pre>
+
+<h3>5.2 Grep：按内容找匹配</h3>
+
+<pre><code>import re
+
+class GrepTool:
+    name = "Grep"
+    description = "Search file contents with a regex pattern."
+    requires_permission = False
+    input_schema = {
+        "type": "object",
+        "properties": {
+            "pattern": {"type": "string"},
+            "glob": {"type": "string", "description": "File glob, e.g. **/*.py"},
+            "output_mode": {"type": "string", "enum": ["files_with_matches", "content", "count"]},
+            "limit": {"type": "integer"},
+        },
+        "required": ["pattern"],
+    }
+
+    def __init__(self, project_root: str):
+        self.project_root = Path(project_root).resolve()
+
+    def run(self, tool_input: Dict[str, Any]) -> ToolResult:
+        pattern = tool_input.get("pattern")
+        file_glob = tool_input.get("glob", "**/*")
+        output_mode = tool_input.get("output_mode", "files_with_matches")
+        limit = int(tool_input.get("limit", 100))
+
+        if not pattern:
+            return ToolResult(False, self.name, error="Missing required field: pattern")
+
+        try:
+            regex = re.compile(pattern)
+        except re.error as e:
+            return ToolResult(False, self.name, error=f"Invalid regex: {e}")
+
+        results = []
+        for path in self.project_root.glob(file_glob):
+            if not path.is_file():
+                continue
+            if ".git" in path.parts or "node_modules" in path.parts:
+                continue
+
+            try:
+                lines = path.read_text(encoding="utf-8", errors="ignore").splitlines()
+            except Exception:
+                continue
+
+            hits = []
+            for line_no, line in enumerate(lines, start=1):
+                if regex.search(line):
+                    hits.append({"line": line_no, "text": line[:300]})
+
+            if hits:
+                rel = str(path.relative_to(self.project_root))
+                if output_mode == "files_with_matches":
+                    results.append(rel)
+                elif output_mode == "count":
+                    results.append({"path": rel, "count": len(hits)})
+                else:
+                    for hit in hits[:5]:
+                        results.append({"path": rel, **hit})
+
+            if len(results) >= limit:
+                break
+
+        return ToolResult(
+            ok=True,
+            tool_name=self.name,
+            content=results[:limit],
+            metadata={
+                "pattern": pattern,
+                "glob": file_glob,
+                "output_mode": output_mode,
+                "returned": min(len(results), limit),
+                "truncated": len(results) >= limit,
+            },
+        )</code></pre>
+
+<h3>5.3 Glob / Grep / Read 的协作关系</h3>
+
+<pre>任务：修复登录模块 bug
+  ↓
+Glob("**/*auth*.ts")
+  ↓
+Grep("login|token|session", glob="src/**/*.ts")
+  ↓
+Read("src/auth/session.ts")
+  ↓
+Edit("src/auth/session.ts", old_string=..., new_string=...)
+  ↓
+Bash("npm test")</pre>
+
+<table>
+<tr><th>工具</th><th>解决的问题</th><th>模型什么时候用</th></tr>
+<tr><td>Glob</td><td>文件在哪里？</td><td>不知道具体文件名，但知道大概 pattern。</td></tr>
+<tr><td>Grep</td><td>代码片段在哪里？</td><td>知道关键词、函数名、错误信息。</td></tr>
+<tr><td>Read</td><td>目标文件具体内容是什么？</td><td>准备分析或修改文件之前。</td></tr>
+<tr><td>Edit</td><td>如何精确修改？</td><td>已经读过文件，并定位到唯一片段。</td></tr>
+<tr><td>Bash</td><td>修改是否有效？</td><td>需要测试、构建、lint、git。</td></tr>
+</table>
+
+<h2 id="sec6">6. 源码复现四：Edit 工具与 read-before-edit</h2>
+
+<p>
+Edit 是代码 Agent 中最容易出事故的工具，所以它不能像普通字符串替换那样随便执行。Claude Code 官方工具参考强调，Edit 是精确字符串替换，并要求读取过文件、匹配旧字符串、旧字符串唯一等检查。
+</p>
+
+<pre><code>class EditTool:
+    name = "Edit"
+    description = "Make a precise edit by replacing an exact old_string with new_string."
+    requires_permission = True
+    input_schema = {
+        "type": "object",
+        "properties": {
+            "path": {"type": "string"},
+            "old_string": {"type": "string"},
+            "new_string": {"type": "string"},
+            "replace_all": {"type": "boolean"},
+        },
+        "required": ["path", "old_string", "new_string"],
+    }
+
+    def __init__(self, project_root: str, read_cache: Dict[str, float]):
+        self.project_root = Path(project_root).resolve()
+        self.read_cache = read_cache
+
+    def _resolve_path(self, path: str) -> Path:
+        target = Path(path).expanduser()
+        if not target.is_absolute():
+            target = self.project_root / target
+        return target.resolve()
+
+    def run(self, tool_input: Dict[str, Any]) -> ToolResult:
+        path = tool_input.get("path")
+        old = tool_input.get("old_string")
+        new = tool_input.get("new_string")
+        replace_all = bool(tool_input.get("replace_all", False))
+
+        if not path or old is None or new is None:
+            return ToolResult(False, self.name, error="Missing path, old_string, or new_string")
+
+        target = self._resolve_path(path)
+        if not target.exists() or not target.is_file():
+            return ToolResult(False, self.name, error=f"File not found: {target}")
+
+        cache_key = str(target)
+        last_read_mtime = self.read_cache.get(cache_key)
+        current_mtime = target.stat().st_mtime
+
+        if last_read_mtime is None:
+            return ToolResult(False, self.name, error="Read-before-edit check failed: file was not read in this session.")
+        if abs(last_read_mtime - current_mtime) > 1e-6:
+            return ToolResult(False, self.name, error="Read-before-edit check failed: file changed after it was read.")
+
+        text = target.read_text(encoding="utf-8")
+        count = text.count(old)
+
+        if count == 0:
+            return ToolResult(False, self.name, error="old_string not found exactly. Whitespace must match.")
+        if count > 1 and not replace_all:
+            return ToolResult(False, self.name, error=f"old_string appears {count} times. Provide more context or set replace_all=true.")
+
+        updated = text.replace(old, new) if replace_all else text.replace(old, new, 1)
+        target.write_text(updated, encoding="utf-8")
+
+        return ToolResult(
+            ok=True,
+            tool_name=self.name,
+            content="Edit applied successfully.",
+            metadata={
+                "path": str(target),
+                "replacements": count if replace_all else 1,
+                "old_length": len(old),
+                "new_length": len(new),
+            },
+        )</code></pre>
+
+<h3>6.1 为什么 Edit 要这么严格？</h3>
+
+<table>
+<tr><th>检查</th><th>作用</th><th>没有它会怎样</th></tr>
+<tr><td>read-before-edit</td><td>确保模型看过最新文件内容。</td><td>模型根据旧上下文乱改。</td></tr>
+<tr><td>old_string 精确匹配</td><td>避免模糊替换。</td><td>误伤相似代码。</td></tr>
+<tr><td>唯一性检查</td><td>确保只改目标位置。</td><td>把多个重复片段都改坏。</td></tr>
+<tr><td>replace_all 显式开关</td><td>全局替换必须明确。</td><td>模型无意中大范围修改。</td></tr>
+<tr><td>权限检查</td><td>写操作必须可审计。</td><td>Agent 可以随意改项目文件。</td></tr>
+</table>
+
+<div class="box warn">
+<strong>重要：</strong>
+Edit 工具的设计思路不是“让模型更自由”，而是“让模型难以犯低级破坏性错误”。这就是 Anthropic 博客里说的 Agent-Computer Interface：给模型设计工具时，要像给人设计 HCI 一样认真。
+</div>
+
+<h2 id="sec7">7. 源码复现五：Bash 工具与命令权限</h2>
+
+<p>
+Bash 是 Claude Code 中风险最高但也最有价值的工具。它能跑测试、构建、git、脚本、安装依赖，也可能删除文件、泄露环境变量、执行危险命令。因此 Bash 必须接权限系统。
+</p>
+
+<h3>7.1 先写一个危险命令分类器</h3>
+
+<pre><code>import shlex
+import subprocess
+
+DANGEROUS_PATTERNS = [
+    "rm -rf /",
+    "sudo rm",
+    "mkfs",
+    "shutdown",
+    "reboot",
+    ":(){",      # fork bomb 片段
+    "curl | sh",
+    "wget | sh",
+]
+
+WRITE_COMMANDS = ["rm", "mv", "cp", "chmod", "chown", "git", "npm", "pip", "python", "node"]
+
+
+def classify_bash_command(command: str) -> Dict[str, Any]:
+    """
+    简化版命令分类器。
+    真实系统可以更复杂：规则 + LLM classifier + user permission + hooks。
+    """
+    normalized = command.strip().lower()
+
+    for pattern in DANGEROUS_PATTERNS:
+        if pattern in normalized:
+            return {
+                "risk": "deny",
+                "reason": f"Command contains dangerous pattern: {pattern}",
+            }
+
+    try:
+        tokens = shlex.split(command)
+    except ValueError as e:
+        return {"risk": "deny", "reason": f"Shell parse error: {e}"}
+
+    if not tokens:
+        return {"risk": "allow", "reason": "Empty command"}
+
+    first = tokens[0]
+
+    if first in ["ls", "pwd", "cat", "head", "tail", "grep", "rg", "find"]:
+        return {"risk": "allow", "reason": "Read-only inspection command"}
+
+    if first in WRITE_COMMANDS:
+        return {"risk": "ask", "reason": "Command may modify files or environment"}
+
+    return {"risk": "ask", "reason": "Unknown command, ask for permission"}</code></pre>
+
+<h3>7.2 Bash 执行器</h3>
+
+<pre><code>class BashTool:
+    name = "Bash"
+    description = "Run a shell command in the project directory."
+    requires_permission = True
+    input_schema = {
+        "type": "object",
+        "properties": {
+            "command": {"type": "string"},
+            "timeout": {"type": "integer", "description": "Timeout in seconds"},
+        },
+        "required": ["command"],
+    }
+
+    def __init__(self, project_root: str, permission_engine: "PermissionEngine"):
+        self.project_root = Path(project_root).resolve()
+        self.permission_engine = permission_engine
+
+    def run(self, tool_input: Dict[str, Any]) -> ToolResult:
+        command = tool_input.get("command")
+        timeout = int(tool_input.get("timeout", 120))
+
+        if not command:
+            return ToolResult(False, self.name, error="Missing required field: command")
+
+        decision = self.permission_engine.check(tool_name="Bash", specifier=command)
+        if decision["behavior"] == "deny":
+            return ToolResult(False, self.name, error=f"Permission denied: {decision['reason']}")
+        if decision["behavior"] == "ask":
+            return ToolResult(False, self.name, error=f"Permission required: {decision['reason']}")
+
+        started = time.time()
+        try:
+            completed = subprocess.run(
+                command,
+                cwd=self.project_root,
+                shell=True,
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+            )
+        except subprocess.TimeoutExpired:
+            return ToolResult(False, self.name, error=f"Command timed out after {timeout}s")
+
+        stdout = completed.stdout[-12000:]
+        stderr = completed.stderr[-12000:]
+
+        return ToolResult(
+            ok=completed.returncode == 0,
+            tool_name=self.name,
+            content={
+                "stdout": stdout,
+                "stderr": stderr,
+                "returncode": completed.returncode,
+            },
+            error=None if completed.returncode == 0 else "Command exited with non-zero status.",
+            metadata={
+                "command": command,
+                "cwd": str(self.project_root),
+                "duration_sec": round(time.time() - started, 3),
+                "timeout_sec": timeout,
+                "output_truncated": len(completed.stdout) > 12000 or len(completed.stderr) > 12000,
+            },
+        )</code></pre>
+
+<h3>7.3 Bash 工具为什么要返回 returncode？</h3>
+
+<table>
+<tr><th>返回字段</th><th>模型如何使用</th></tr>
+<tr><td><code>stdout</code></td><td>看测试输出、构建结果、命令正常信息。</td></tr>
+<tr><td><code>stderr</code></td><td>定位报错、栈信息、依赖缺失、类型错误。</td></tr>
+<tr><td><code>returncode</code></td><td>判断命令是否成功。</td></tr>
+<tr><td><code>duration_sec</code></td><td>判断命令是否异常慢。</td></tr>
+<tr><td><code>output_truncated</code></td><td>提醒模型必要时读取完整日志。</td></tr>
+</table>
+
+<div class="box note">
+<strong>一句话理解：</strong>
+Bash 不是“给模型一个终端”。Bash 是一个可审计、可截断、可超时、可权限控制的执行环境。
+</div>
+
+<h2 id="sec8">8. 源码复现六：权限系统 PermissionEngine</h2>
+
+<p>
+官方 Tools reference 说明，工具可以通过 permission rules、CLI flags、Agent SDK allowedTools / disallowedTools、subagent frontmatter、skill frontmatter 和 hook matcher 进行控制。我们可以写一个简化版权限引擎来理解这套机制。
+</p>
+
+<pre><code>import fnmatch
+
+@dataclass
+class PermissionRule:
+    behavior: str   # allow / deny / ask
+    tool_name: str
+    pattern: str = "*"
+    reason: str = ""
+
+
+class PermissionEngine:
+    """
+    简化版权限系统。
+
+    支持：
+    - deny 优先
+    - allow 其次
+    - 未命中则 ask
+    - Bash 按命令 pattern
+    - Read/Edit 按路径 pattern
+    """
+    def __init__(self, rules: List[PermissionRule]):
+        self.rules = rules
+
+    def check(self, tool_name: str, specifier: str) -> Dict[str, str]:
+        matched_allow = None
+
+        for rule in self.rules:
+            if rule.tool_name != tool_name:
+                continue
+            if fnmatch.fnmatch(specifier, rule.pattern):
+                if rule.behavior == "deny":
+                    return {
+                        "behavior": "deny",
+                        "reason": rule.reason or f"Denied by rule: {tool_name}({rule.pattern})",
+                    }
+                if rule.behavior == "allow":
+                    matched_allow = rule
+
+        if matched_allow:
+            return {
+                "behavior": "allow",
+                "reason": matched_allow.reason or "Allowed by matching rule",
+            }
+
+        # Bash 再走命令风险分类
+        if tool_name == "Bash":
+            classified = classify_bash_command(specifier)
+            if classified["risk"] == "deny":
+                return {"behavior": "deny", "reason": classified["reason"]}
+            if classified["risk"] == "allow":
+                return {"behavior": "allow", "reason": classified["reason"]}
+            return {"behavior": "ask", "reason": classified["reason"]}
+
+        return {
+            "behavior": "ask",
+            "reason": f"No explicit allow rule for {tool_name}({specifier})",
+        }
+
+
+# 示例权限配置
+rules = [
+    PermissionRule("allow", "Read", "src/**", "Can read project source files"),
+    PermissionRule("allow", "Edit", "src/**", "Can edit source files"),
+    PermissionRule("deny", "Read", "**/.env", "Never read secrets"),
+    PermissionRule("deny", "Edit", "**/.env", "Never modify secrets"),
+    PermissionRule("allow", "Bash", "npm test*", "Tests are safe to run"),
+    PermissionRule("allow", "Bash", "git diff*", "Read-only git inspection"),
+    PermissionRule("deny", "Bash", "rm -rf*", "Dangerous deletion command"),
+]
+
+permission_engine = PermissionEngine(rules)</code></pre>
+
+<h3>8.1 权限系统的层级</h3>
+
+<table>
+<tr><th>控制入口</th><th>作用</th><th>适合场景</th></tr>
+<tr><td>settings.json permissions</td><td>项目或用户级默认权限。</td><td>长期项目规则。</td></tr>
+<tr><td>CLI flags</td><td>启动会话时临时限制工具。</td><td>一次性任务。</td></tr>
+<tr><td>Agent SDK allowed_tools</td><td>在代码里限制可用工具。</td><td>自己写 Agent 应用。</td></tr>
+<tr><td>Subagent tools</td><td>限制子代理工具范围。</td><td>代码审查 agent 只能 Read/Grep，不能 Edit/Bash。</td></tr>
+<tr><td>Hooks</td><td>在工具调用前后拦截。</td><td>自动格式化、安全检查、审批流。</td></tr>
+</table>
+
+<div class="box train">
+<strong>实践建议：</strong>
+如果你自己做 Code Agent，默认不要给 Bash 全权限。更稳的方式是白名单：允许 <code>pytest</code>、<code>npm test</code>、<code>git diff</code>、<code>ruff check</code> 等低风险命令；其他命令进入 ask 或 deny。
+</div>
+
+<h2 id="sec9">9. 源码复现七：Todo / Task 工具</h2>
+
+<p>
+很多人忽视 Todo，但它是 Agent 长任务稳定性的关键。Agent 如果没有任务列表，很容易做着做着忘记目标。Claude Code 旧版常见 TodoWrite，新版工具参考里也出现 TaskCreate、TaskList、TaskUpdate 等任务工具。
+</p>
+
+<pre><code>@dataclass
+class TaskItem:
+    id: int
+    content: str
+    status: str = "pending"  # pending / in_progress / done / blocked
+    notes: str = ""
+
+
+class TaskManager:
+    def __init__(self):
+        self.items: List[TaskItem] = []
+        self.next_id = 1
+
+    def create(self, content: str) -> TaskItem:
+        item = TaskItem(id=self.next_id, content=content)
+        self.next_id += 1
+        self.items.append(item)
+        return item
+
+    def update(self, task_id: int, status: Optional[str] = None, notes: Optional[str] = None) -> ToolResult:
+        for item in self.items:
+            if item.id == task_id:
+                if status:
+                    item.status = status
+                if notes is not None:
+                    item.notes = notes
+                return ToolResult(True, "TaskUpdate", content=item.__dict__)
+        return ToolResult(False, "TaskUpdate", error=f"Task not found: {task_id}")
+
+    def list(self) -> ToolResult:
+        return ToolResult(
+            ok=True,
+            tool_name="TaskList",
+            content=[item.__dict__ for item in self.items],
+            metadata={"count": len(self.items)},
+        )
+
+
+tasks = TaskManager()
+tasks.create("Locate the auth module")
+tasks.create("Read the failing test")
+tasks.create("Patch session validation")
+tasks.create("Run unit tests")
+print(tasks.list().to_text())</code></pre>
+
+<h3>9.1 Todo 对 Agent 的价值</h3>
+
+<table>
+<tr><th>没有 Todo</th><th>有 Todo / Task</th></tr>
+<tr><td>Agent 可能读了几个文件后忘记目标。</td><td>每一步都能回到任务列表。</td></tr>
+<tr><td>用户不知道 Agent 进展。</td><td>用户能看到 pending / in_progress / done。</td></tr>
+<tr><td>失败后不知道卡在哪里。</td><td>blocked 任务记录原因。</td></tr>
+<tr><td>长任务容易循环。</td><td>任务完成条件更明确。</td></tr>
+</table>
+
+<div class="box note">
+<strong>后训练启发：</strong>
+如果你做 Agent RLVR，Todo 也可以进入 reward：是否建立了合理任务列表、是否按顺序推进、是否完成后更新状态、是否避免无意义循环。
+</div>
+
+<h2 id="sec10">10. Hooks：工具调用前后的拦截器</h2>
+
+<p>
+Hooks 是 Claude Code 工具系统里的一个高级部件。它可以在工具调用前后运行命令，用于审批、格式化、记录日志、修改权限、阻止危险动作。官方 Hooks 文档里给了 PermissionRequest 等事件的配置示例。
+</p>
+
+<h3>10.1 Hook 在工具系统中的位置</h3>
+
+<pre>Claude 准备调用工具
+  ↓
+PreToolUse Hook
+  ↓
+权限系统判断 allow / deny / ask
+  ↓
+执行工具
+  ↓
+PostToolUse Hook
+  ↓
+把工具结果返回 Claude</pre>
+
+<h3>10.2 一个简化版 Hook 管线</h3>
+
+<pre><code>class Hook:
+    def before_tool(self, tool_name: str, tool_input: Dict[str, Any]) -> Optional[ToolResult]:
+        return None
+
+    def after_tool(self, tool_name: str, tool_input: Dict[str, Any], result: ToolResult) -> ToolResult:
+        return result
+
+
+class BlockEnvReadHook(Hook):
+    """阻止读取 .env 文件。"""
+    def before_tool(self, tool_name: str, tool_input: Dict[str, Any]) -> Optional[ToolResult]:
+        if tool_name in ["Read", "Edit", "Write"]:
+            path = str(tool_input.get("path", ""))
+            if path.endswith(".env") or "/.env" in path:
+                return ToolResult(False, tool_name, error="Hook blocked access to .env files.")
+        return None
+
+
+class FormatAfterEditHook(Hook):
+    """Edit 后自动提示应该运行 formatter。教学版只记录，不真实执行。"""
+    def after_tool(self, tool_name: str, tool_input: Dict[str, Any], result: ToolResult) -> ToolResult:
+        if tool_name == "Edit" and result.ok:
+            result.metadata["suggested_next_action"] = "Run formatter or tests after editing."
+        return result
+
+
+class ToolRunner:
+    def __init__(self, tools: Dict[str, Tool], hooks: List[Hook]):
+        self.tools = tools
+        self.hooks = hooks
+
+    def run(self, tool_name: str, tool_input: Dict[str, Any]) -> ToolResult:
+        if tool_name not in self.tools:
+            return ToolResult(False, tool_name, error="Unknown tool")
+
+        for hook in self.hooks:
+            blocked = hook.before_tool(tool_name, tool_input)
+            if blocked is not None:
+                return blocked
+
+        result = self.tools[tool_name].run(tool_input)
+
+        for hook in self.hooks:
+            result = hook.after_tool(tool_name, tool_input, result)
+
+        return result</code></pre>
+
+<h3>10.3 Hooks 适合做什么？</h3>
+
+<table>
+<tr><th>Hook 类型</th><th>用途</th><th>例子</th></tr>
+<tr><td>安全拦截</td><td>阻止危险工具调用。</td><td>禁止读取 .env、禁止删除目录、禁止外发 token。</td></tr>
+<tr><td>自动格式化</td><td>在 Edit 后运行 formatter。</td><td>Prettier、Black、Ruff format。</td></tr>
+<tr><td>审计日志</td><td>记录每次工具调用。</td><td>写入 session log。</td></tr>
+<tr><td>权限增强</td><td>动态允许或拒绝某些动作。</td><td>测试命令自动允许，部署命令必须询问。</td></tr>
+<tr><td>质量检查</td><td>工具执行后自动触发检查。</td><td>Edit 后自动提示运行 test。</td></tr>
+</table>
+
+<div class="box warn">
+<strong>注意：</strong>
+Hooks 很强，但也可能增加复杂度。对学习者来说，先理解 PreToolUse / PostToolUse 两个位置就够了：一个在工具执行前拦截，一个在工具执行后处理结果。
+</div>
+
+<h2 id="sec11">11. 把所有工具接进一个最小 Claude Code Runtime</h2>
+
+<p>
+现在我们把 Read、Glob、Grep、Edit、Bash、Task、Permission、Hooks 接到一起，形成一个最小 Claude Code Runtime。真实 Claude Code 当然更复杂，但核心思路就是这样。
+</p>
+
+<pre><code>class MiniClaudeCodeRuntime:
+    def __init__(self, project_root: str):
+        self.project_root = Path(project_root).resolve()
+        self.read_cache: Dict[str, float] = {}
+
+        self.permission_engine = PermissionEngine([
+            PermissionRule("allow", "Read", "*"),
+            PermissionRule("allow", "Glob", "*"),
+            PermissionRule("allow", "Grep", "*"),
+            PermissionRule("allow", "Edit", "src/**"),
+            PermissionRule("allow", "Bash", "pytest*"),
+            PermissionRule("allow", "Bash", "npm test*"),
+            PermissionRule("allow", "Bash", "git diff*"),
+            PermissionRule("deny", "Bash", "rm -rf*"),
+        ])
+
+        self.read_tool = ReadTool(project_root)
+
+        # 给 Read 增加 read_cache 记录
+        original_read_run = self.read_tool.run
+        def cached_read(tool_input: Dict[str, Any]) -> ToolResult:
+            result = original_read_run(tool_input)
+            if result.ok and result.metadata.get("path"):
+                path = result.metadata["path"]
+                self.read_cache[path] = Path(path).stat().st_mtime
+            return result
+        self.read_tool.run = cached_read
+
+        tools = {
+            "Read": self.read_tool,
+            "Glob": GlobTool(project_root),
+            "Grep": GrepTool(project_root),
+            "Edit": EditTool(project_root, self.read_cache),
+            "Bash": BashTool(project_root, self.permission_engine),
+        }
+
+        self.runner = ToolRunner(
+            tools=tools,
+            hooks=[BlockEnvReadHook(), FormatAfterEditHook()],
+        )
+
+    def run_tool(self, tool_name: str, tool_input: Dict[str, Any]) -> str:
+        result = self.runner.run(tool_name, tool_input)
+        return result.to_text()
+
+
+# 使用示例
+runtime = MiniClaudeCodeRuntime(project_root=".")
+print(runtime.run_tool("Glob", {"pattern": "**/*.py", "limit": 20}))
+print(runtime.run_tool("Grep", {"pattern": "class .*Tool", "glob": "**/*.py", "output_mode": "content"}))</code></pre>
+
+<h3>11.1 这个 Runtime 和真实 Claude Code 的差距</h3>
+
+<table>
+<tr><th>模块</th><th>教学版</th><th>真实 Claude Code 可能更复杂的地方</th></tr>
+<tr><td>工具执行</td><td>Python 函数直接执行。</td><td>跨平台 shell、后台任务、IDE、MCP、LSP、Notebook、Web。</td></tr>
+<tr><td>权限系统</td><td>简单 allow / deny / ask。</td><td>多来源 settings、session permission、managed settings、hooks、subagent 权限。</td></tr>
+<tr><td>Bash 安全</td><td>规则匹配。</td><td>命令分类、用户确认、沙箱、输出截断、工作目录策略。</td></tr>
+<tr><td>Edit</td><td>精确字符串替换。</td><td>diff 展示、冲突处理、IDE 可视化、checkpoint。</td></tr>
+<tr><td>上下文管理</td><td>没有压缩。</td><td>session transcript、context compaction、memory、CLAUDE.md。</td></tr>
+<tr><td>Agent Loop</td><td>只写工具 runtime。</td><td>还要接 Claude Messages API / streaming / tool_use / tool_result。</td></tr>
+</table>
+
+<h2 id="sec12">12. 为什么 Claude Code 工具系统适合后训练 Agent 学习？</h2>
+
+<p>
+你前面学的 Agent RLVR，本质上就是把工具调用轨迹变成可奖励、可筛选、可优化的数据。Claude Code 工具系统刚好是最好的样例，因为每一步都可以转成 reward。
+</p>
+
+<table>
+<tr><th>Claude Code 行为</th><th>Agent RLVR 奖励设计</th><th>示例</th></tr>
+<tr><td>是否选择正确工具</td><td>tool selection reward</td><td>查代码应该先 Grep / Glob，而不是直接 Bash。</td></tr>
+<tr><td>参数是否完整</td><td>parameter completeness reward</td><td>Read 必须有 path，Edit 必须有 old_string / new_string。</td></tr>
+<tr><td>是否先读后改</td><td>read-before-edit reward</td><td>Edit 前必须 Read 当前文件。</td></tr>
+<tr><td>是否执行成功</td><td>execution success reward</td><td>Bash returncode == 0。</td></tr>
+<tr><td>是否利用结果</td><td>observation usage reward</td><td>根据 pytest 报错修改，而不是忽略报错。</td></tr>
+<tr><td>轨迹是否高效</td><td>trajectory length penalty</td><td>避免无意义重复 Grep 或反复读同一文件。</td></tr>
+<tr><td>是否遵守权限</td><td>safety reward</td><td>不读取 .env，不运行危险命令。</td></tr>
+</table>
+
+<div class="box train">
+<strong>迁移到你自己的学习路线：</strong>
+Claude Code 工具系统可以作为 Agent RLVR 的样板。你可以先做一个 mini coding agent，然后给每条轨迹打分：工具选对了吗？参数合法了吗？有没有 read-before-edit？测试过了吗？有没有根据测试失败修复？这比抽象讲 Agent 更有用。
+</div>
+
+<h2 id="sec13">13. 可直接写进 HTML 总结的核心句</h2>
+
+<div class="box note">
+<p><strong>第一，Claude Code 的工具系统不是工具列表，而是 Agent 执行环境。</strong>Read、Glob、Grep 负责感知项目；Edit、Write 负责修改环境；Bash、PowerShell、Monitor 负责执行和验证；Todo / Task 负责维持长任务状态；MCP 负责扩展外部工具。</p>
+<p><strong>第二，工具系统必须和权限系统绑定。</strong>如果没有权限控制，Bash 和 Edit 会变成高风险能力；如果权限太死，Agent 又无法完成任务。Claude Code 的设计重点就在于把工具名、路径、命令、settings、hooks、subagent tools 统一纳入可治理机制。</p>
+<p><strong>第三，Code Agent 的能力来自环境反馈循环。</strong>它不是一次性写答案，而是不断搜索、读取、编辑、运行测试、根据结果修复。这个循环正是 Agent RLVR 可以训练和奖励的对象。</p>
+</div>
+
+<h2 id="sec14">14. 下一部分怎么继续写？</h2>
+
+<p>下一篇建议继续写：</p>
+
+<pre>第三部分：Claude Code 上下文系统与记忆架构
+0. 为什么 Code Agent 最容易爆上下文
+1. CLAUDE.md 是什么
+2. settings.json / project memory / user memory
+3. session transcript 怎么理解
+4. context compaction 为什么必要
+5. Todo / Task 如何帮助压缩长期任务状态
+6. Subagent 为什么需要独立上下文
+7. 源码复现：一个最小 Context Manager
+8. 源码复现：摘要压缩器 / 文件索引器
+9. 和 Agent RLVR 的关系：上下文使用 reward</pre>
+
+<div class="box train">
+<strong>建议顺序：</strong>
+第二部分工具系统 → 第三部分上下文与记忆 → 第四部分 MCP 源码 → 第五部分 Claude Code GitHub Action / CI Agent。这样就能形成完整 Claude Code 公开架构精读路线。
+</div>
+
+<script>
+(function () {
+  const toc = document.querySelector('.page-toc');
+  const btn = document.querySelector('.page-toc-toggle');
+  const list = document.getElementById('page-toc-list');
+  const headings = Array.from(document.querySelectorAll('h2'));
+
+  headings.forEach((h, index) => {
+    if (!h.id) h.id = 'section-' + index;
+    const li = document.createElement('li');
+    li.className = 'page-toc-item';
+    const a = document.createElement('a');
+    a.className = 'page-toc-link';
+    a.href = '#' + h.id;
+    a.textContent = h.textContent;
+    li.appendChild(a);
+    list.appendChild(li);
+  });
+
+  btn.addEventListener('click', function () {
+    toc.classList.toggle('is-open');
+  });
+
+  document.addEventListener('click', function (e) {
+    if (!toc.contains(e.target)) toc.classList.remove('is-open');
+  });
+})();
+</script>
+
+</body>
+</html>

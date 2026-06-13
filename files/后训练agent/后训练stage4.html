@@ -1,0 +1,1564 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第四篇：TRL / OpenRLHF / verl 后训练工程路线中文精读</title>
+<style>
+html { scroll-behavior: smooth; }
+body {
+  font-family: "Microsoft YaHei", Arial, sans-serif;
+  line-height: 1.88;
+  max-width: 1080px;
+  margin: 40px auto;
+  padding: 0 28px 120px;
+  background: #f7f8fb;
+  color: #1f2937;
+}
+h1 {
+  font-size: 34px;
+  line-height: 1.35;
+  border-bottom: 5px solid #2563eb;
+  padding-bottom: 14px;
+  margin-bottom: 24px;
+}
+h2 {
+  margin-top: 52px;
+  padding: 12px 16px;
+  font-size: 27px;
+  background: #eef4ff;
+  border-left: 7px solid #2563eb;
+  border-radius: 0 10px 10px 0;
+}
+h3 {
+  margin-top: 30px;
+  font-size: 21px;
+  color: #0f172a;
+}
+h4 {
+  margin-top: 24px;
+  font-size: 18px;
+  color: #1e3a8a;
+}
+h2, h3, h4 { scroll-margin-top: 30px; }
+p { margin: 12px 0; }
+a { color: #2563eb; text-decoration: none; }
+a:hover { text-decoration: underline; }
+.box {
+  background: #ffffff;
+  border: 1px solid #d9e2ef;
+  border-radius: 12px;
+  padding: 18px 22px;
+  margin: 18px 0;
+}
+.note { background: #fff7d6; border-left: 6px solid #d6a800; }
+.train { background: #ecfdf3; border-left: 6px solid #16a34a; }
+.warn { background: #fff1f1; border-left: 6px solid #dc2626; }
+.deep { background: #eef2ff; border-left: 6px solid #4f46e5; }
+.sourcebox { background: #f8fafc; border-left: 6px solid #64748b; }
+.figure {
+  background: #ffffff;
+  border: 1px solid #d9e2ef;
+  border-radius: 14px;
+  padding: 16px;
+  margin: 24px 0;
+}
+.figure img {
+  width: 100%;
+  max-height: 680px;
+  object-fit: contain;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+}
+.caption { color: #667085; font-size: 14px; margin-top: 10px; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 18px 0;
+  background: #ffffff;
+}
+th, td {
+  border: 1px solid #d9e2ef;
+  padding: 11px 13px;
+  vertical-align: top;
+}
+th { background: #f1f5f9; color:#0f172a; }
+pre {
+  background: #111827;
+  color: #e5e7eb;
+  padding: 18px;
+  border-radius: 10px;
+  overflow-x: auto;
+  line-height: 1.55;
+  font-size: 14px;
+}
+code { font-family: Consolas, Monaco, "Courier New", monospace; }
+.inline-code {
+  font-family: Consolas, Monaco, "Courier New", monospace;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  padding: 1px 5px;
+  border-radius: 5px;
+}
+hr { border: 0; border-top: 1px solid #d9e2ef; margin: 34px 0; }
+.kbd {
+  display: inline-block;
+  padding: 1px 7px;
+  border: 1px solid #cbd5e1;
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  background: #f8fafc;
+  font-family: Consolas, Monaco, monospace;
+  font-size: 13px;
+}
+.tag {
+  display: inline-block;
+  margin: 3px 4px 3px 0;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #e0ecff;
+  color: #1e40af;
+  font-size: 13px;
+  font-weight: 700;
+}
+.flow {
+  display: grid;
+  gap: 12px;
+  margin: 18px 0;
+}
+.flow-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+.flow-row.three { grid-template-columns: repeat(3, 1fr); }
+.flow-row.five { grid-template-columns: repeat(5, 1fr); }
+.flow-card {
+  background: #ffffff;
+  border: 1px solid #d9e2ef;
+  border-radius: 12px;
+  padding: 14px 12px;
+  min-height: 86px;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
+}
+.flow-card strong { display:block; color:#0f172a; margin-bottom:6px; }
+.arrow { text-align:center; font-weight:800; color:#2563eb; font-size:22px; margin: -2px 0; }
+.mermaid-like {
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+  border: 1px solid #d9e2ef;
+  border-radius: 14px;
+  padding: 18px;
+  margin: 20px 0;
+}
+.diagram-title { font-weight: 800; color:#0f172a; margin-bottom: 12px; }
+.diagram-line { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:10px 0; }
+.node {
+  background:#eff6ff;
+  border:1px solid #bfdbfe;
+  color:#1e3a8a;
+  padding:10px 12px;
+  border-radius:10px;
+  font-weight:700;
+}
+.node.green { background:#ecfdf3; border-color:#bbf7d0; color:#166534; }
+.node.yellow { background:#fff7d6; border-color:#fde68a; color:#854d0e; }
+.node.red { background:#fff1f1; border-color:#fecaca; color:#991b1b; }
+.node.gray { background:#f1f5f9; border-color:#cbd5e1; color:#334155; }
+.connector { color:#64748b; font-weight:800; }
+.grid2 { display:grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid3 { display:grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.small { font-size: 14px; color: #475569; }
+.checklist li { margin: 8px 0; }
+.page-toc {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+}
+.page-toc-toggle {
+  border: 0;
+  border-radius: 999px;
+  padding: 10px 16px;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.24);
+}
+.page-toc-toggle:hover { background: #1d4ed8; }
+.page-toc-panel {
+  display: none;
+  width: 330px;
+  max-height: calc(100vh - 90px);
+  overflow: auto;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid #d9e2ef;
+  border-radius: 14px;
+  padding: 16px 18px;
+  margin-top: 10px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+  backdrop-filter: blur(8px);
+}
+.page-toc.is-open .page-toc-panel { display: block; }
+.page-toc-title {
+  margin-bottom: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+}
+.page-toc-list, .page-toc-sublist { list-style: none; margin: 0; padding: 0; }
+.page-toc-item + .page-toc-item { margin-top: 10px; }
+.page-toc-sublist { margin-top: 8px; padding-left: 14px; border-left: 2px solid #e5e7eb; }
+.page-toc-subitem + .page-toc-subitem { margin-top: 6px; }
+.page-toc-link { display: block; color: #334155; text-decoration: none; font-size: 14px; line-height: 1.55; }
+.page-toc-link:hover { color: #2563eb; }
+@media (max-width: 1100px) {
+  body { margin: 28px auto; padding: 0 18px 100px; }
+  h1 { font-size: 28px; }
+  h2 { font-size: 24px; }
+  .page-toc { top: 12px; right: 12px; }
+  .page-toc-panel { width: min(320px, calc(100vw - 24px)); max-height: calc(100vh - 72px); }
+  .grid2, .grid3, .flow-row, .flow-row.three, .flow-row.five { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<nav class="page-toc" aria-label="文章目录">
+  <button class="page-toc-toggle" type="button">☰ 目录</button>
+  <div class="page-toc-panel">
+    <div class="page-toc-title">目录导航</div>
+    <ol class="page-toc-list" id="page-toc-list"></ol>
+  </div>
+</nav>
+
+<h1>第四篇：TRL / OpenRLHF / verl 后训练工程路线中文精读<br>从 Trainer 到 Rollout、Reward、GRPO 与 Agent RL</h1>
+
+<div class="box note">
+<p><strong>本篇定位：</strong>前面几篇已经把后训练的理论主线讲完：SFT、Rejection Sampling、RLHF、DPO、PPO、GRPO、RLVR、DeepSeek-R1。第四篇开始不再只讲概念，而是把这些概念放进真实工程框架里理解。</p>
+<p><strong>核心问题：</strong>当你看到 <span class="inline-code">SFTTrainer</span>、<span class="inline-code">DPOTrainer</span>、<span class="inline-code">GRPOTrainer</span>、<span class="inline-code">train_ppo_ray</span>、<span class="inline-code">actor_rollout_ref</span>、<span class="inline-code">reward_func.py</span>、<span class="inline-code">vLLM</span>、<span class="inline-code">SGLang</span>、<span class="inline-code">Ray</span>、<span class="inline-code">DeepSpeed ZeRO-3</span> 时，应该知道它们分别对应后训练链路中的哪一步。</p>
+<p><strong>学习方式：</strong>这不是安装手册，而是工程精读：先建立框架地图，再拆 Trainer、Rollout、Reward、Advantage、KL、配置文件、Agent loop，最后给出 Mini Math RLVR 和 Tool-use Agent 的实践路线。</p>
+</div>
+
+<div class="box sourcebox">
+<p><strong>主要来源：</strong></p>
+<ul>
+<li>Hugging Face TRL 官方文档：<a href="https://huggingface.co/docs/trl/en/index" target="_blank">TRL Documentation</a>、<a href="https://huggingface.co/docs/trl/en/sft_trainer" target="_blank">SFT Trainer</a>、<a href="https://huggingface.co/docs/trl/en/dpo_trainer" target="_blank">DPO Trainer</a>、<a href="https://huggingface.co/docs/trl/en/grpo_trainer" target="_blank">GRPO Trainer</a>。</li>
+<li>OpenRLHF 官方文档：<a href="https://openrlhf.readthedocs.io/en/latest/" target="_blank">OpenRLHF Documentation</a>、<a href="https://openrlhf.readthedocs.io/en/latest/architecture.html" target="_blank">Architecture Foundation: Ray + vLLM Distribution</a>、<a href="https://openrlhf.readthedocs.io/en/latest/agent_training.html" target="_blank">RL Training Guide</a>。</li>
+<li>verl 官方文档：<a href="https://verl.readthedocs.io/en/latest/" target="_blank">verl Documentation</a>、<a href="https://verl.readthedocs.io/en/latest/algo/grpo.html" target="_blank">GRPO</a>、<a href="https://verl.readthedocs.io/en/latest/examples/config.html" target="_blank">Config Explanation</a>、<a href="https://verl.readthedocs.io/en/latest/advance/agent_loop.html" target="_blank">Agent Loop</a>、<a href="https://verl.readthedocs.io/en/latest/advance/reward_loop.html" target="_blank">Reward Loop</a>。</li>
+</ul>
+</div>
+
+<h2>0. 这一篇为什么必须写“工程路线”？</h2>
+
+<p>
+学后训练很容易卡在一个地方：理论上知道 SFT、DPO、PPO、GRPO 分别是什么，但一打开代码仓库就看不懂。
+原因不是你没懂算法，而是你还没有把算法词汇翻译成工程词汇。
+</p>
+
+<pre>
+理论词汇：
+SFT / DPO / PPO / GRPO / RLVR / Reward / Advantage / KL / Rollout
+
+工程词汇：
+Trainer / Dataset / Reward Function / Inference Engine / Actor / Reference / Critic / Ray Worker / Config YAML / CLI Flags
+</pre>
+
+<div class="box deep">
+<p><strong>这篇的核心目标：</strong>不是让你背三个框架的 API，而是建立一个“后训练工程地图”。以后你看到任何 RLHF / RLVR 框架，都能快速判断：</p>
+<ul>
+<li>它的数据入口在哪里？</li>
+<li>模型在哪里生成 rollout？</li>
+<li>reward 是规则函数、reward model，还是环境反馈？</li>
+<li>advantage 是 critic 算出来的，还是 group baseline 算出来的？</li>
+<li>KL 是怎么约束 policy 不要跑飞的？</li>
+<li>vLLM / SGLang 为什么参与训练，而不是只用于推理？</li>
+</ul>
+</div>
+
+<h3>0.1 为什么只看博客还不够？</h3>
+
+<p>
+前几篇的理论路线可以让你知道：SFT 是模仿，DPO 是偏好优化，GRPO 是组内相对奖励，RLVR 是可验证奖励。
+但是工程里不会只写这些词。工程里会写：
+</p>
+
+<table>
+<tr><th>你在理论里看到的词</th><th>你在工程里实际看到的东西</th><th>你应该怎么理解</th></tr>
+<tr><td>SFT</td><td><span class="inline-code">SFTTrainer</span>、<span class="inline-code">messages</span>、<span class="inline-code">chat_template</span>、<span class="inline-code">completion_only_loss</span></td><td>把指令数据变成模型可训练的 token 序列，并只让模型学习 assistant 该生成的部分。</td></tr>
+<tr><td>DPO</td><td><span class="inline-code">prompt / chosen / rejected</span>、reference model、beta、preference dataset</td><td>不训练显式 reward model，而是让 policy 相对 reference 更偏向 chosen。</td></tr>
+<tr><td>PPO</td><td>actor、critic、reward model、reference model、GAE、clip range、KL coef</td><td>一套完整在线 RLHF 系统，至少要同时协调 4 类模型。</td></tr>
+<tr><td>GRPO</td><td><span class="inline-code">num_generations</span>、group rewards、reward normalization、KL penalty</td><td>同一 prompt 采样多条回答，用组内平均奖励当 baseline，不再训练 critic。</td></tr>
+<tr><td>RLVR</td><td><span class="inline-code">reward_func.py</span>、math checker、unit test、JSON validator、tool success</td><td>用可验证任务结果替代主观人类偏好，尤其适合数学、代码和工具调用。</td></tr>
+<tr><td>Agent RL</td><td>agent loop、environment feedback、tool response mask、multi-turn rollout</td><td>优化的不再是一段回答，而是一整条“动作—观察—再动作”的轨迹。</td></tr>
+</table>
+
+<h3>0.2 三个框架分别应该怎么读？</h3>
+
+<div class="figure">
+<div class="mermaid-like">
+  <div class="diagram-title">图 1：三个框架的学习定位</div>
+  <div class="diagram-line">
+    <span class="node">TRL</span><span class="connector">→</span><span>小实验 / Trainer 入门 / Hugging Face 生态</span>
+  </div>
+  <div class="diagram-line">
+    <span class="node green">OpenRLHF</span><span class="connector">→</span><span>Ray + vLLM + DeepSpeed 的大规模 RLHF / RLVR 训练</span>
+  </div>
+  <div class="diagram-line">
+    <span class="node yellow">verl</span><span class="connector">→</span><span>面向复杂 RL post-training dataflow 的模块化工程框架</span>
+  </div>
+</div>
+<div class="caption">
+图 1：本文自绘。依据 Hugging Face TRL、OpenRLHF、verl 官方文档的功能定位整理。来源链接见文首“主要来源”。
+</div>
+</div>
+
+<p>
+最稳的学习顺序不是先上 verl，也不是一开始就折腾多机多卡。建议顺序是：
+</p>
+
+<pre>
+第一步：TRL
+理解 Trainer、dataset format、reward function、GRPO 的最小闭环。
+
+第二步：OpenRLHF
+理解真实大规模 RLHF 系统里 actor / critic / reward / reference / vLLM / Ray / DeepSpeed 怎么协作。
+
+第三步：verl
+理解更通用的 RL dataflow：rollout、reward、trainer、worker、agent loop、multi-turn、SGLang。
+</pre>
+
+<div class="box train">
+<strong>一句话路线：</strong>
+TRL 负责“看懂和跑通”，OpenRLHF 负责“理解规模化训练系统”，verl 负责“理解复杂 RL post-training 数据流”。
+</div>
+
+<h2>1. 后训练工程总图：从 Prompt 到 Policy Update</h2>
+
+<p>
+不管是 TRL、OpenRLHF 还是 verl，真正的在线后训练链路都可以拆成 7 个环节。
+这个总图非常重要，因为后面所有框架只是把这些环节用不同方式实现。
+</p>
+
+<div class="figure">
+<div class="mermaid-like">
+  <div class="diagram-title">图 2：LLM 后训练工程闭环</div>
+  <div class="diagram-line">
+    <span class="node gray">Prompt Dataset</span>
+    <span class="connector">→</span>
+    <span class="node">Policy / Actor</span>
+    <span class="connector">→</span>
+    <span class="node green">Rollout Engine</span>
+    <span class="connector">→</span>
+    <span class="node yellow">Responses / Trajectories</span>
+  </div>
+  <div class="diagram-line">
+    <span class="node yellow">Responses / Trajectories</span>
+    <span class="connector">→</span>
+    <span class="node red">Reward Function / RM</span>
+    <span class="connector">→</span>
+    <span class="node">Advantage</span>
+    <span class="connector">→</span>
+    <span class="node green">Policy Update</span>
+  </div>
+  <div class="diagram-line">
+    <span class="node gray">Reference Model</span>
+    <span class="connector">→</span>
+    <span>计算 KL 约束，防止 policy 偏离太远</span>
+  </div>
+</div>
+<div class="caption">
+图 2：本文自绘。用于解释 TRL / OpenRLHF / verl 都会涉及的通用后训练闭环。
+</div>
+</div>
+
+<h3>1.1 这张图每一步在真实代码里对应什么？</h3>
+
+<table>
+<tr><th>后训练环节</th><th>工程模块</th><th>在 TRL 中常见形态</th><th>在 OpenRLHF / verl 中常见形态</th></tr>
+<tr><td>Prompt Dataset</td><td>训练数据读取</td><td><span class="inline-code">datasets.load_dataset()</span>，字段为 <span class="inline-code">prompt</span>、<span class="inline-code">messages</span>、<span class="inline-code">chosen</span>、<span class="inline-code">rejected</span></td><td>Parquet / JSONL / HF dataset，配置里指定 <span class="inline-code">data.prompt_dataset</span>、<span class="inline-code">data.input_key</span>、<span class="inline-code">data.label_key</span></td></tr>
+<tr><td>Policy / Actor</td><td>被训练模型</td><td><span class="inline-code">model="Qwen/..."</span> 或本地模型路径</td><td>Actor model，通常和 Reference / Critic / Reward 分开调度</td></tr>
+<tr><td>Rollout Engine</td><td>生成回答</td><td>小规模可直接用 Transformers；TRL 的部分 online trainer 支持 vLLM</td><td>vLLM、SGLang、TGI 等高吞吐推理后端</td></tr>
+<tr><td>Responses / Trajectories</td><td>模型输出</td><td>一批 completions</td><td>token-level trajectory：prompt ids、response ids、logprobs、masks、tool feedback</td></tr>
+<tr><td>Reward</td><td>奖励信号</td><td>Python reward function 列表；或 reward model</td><td>本地 reward function、HTTP reward model、分布式 reward loop、环境反馈</td></tr>
+<tr><td>Advantage</td><td>把 reward 变成更新方向</td><td>GRPO 中用 group rewards；PPO 中用 value / GAE</td><td>PPO / RLOO / REINFORCE++ / GRPO / Dr. GRPO 等 estimator</td></tr>
+<tr><td>Policy Update</td><td>参数更新</td><td>Transformers Trainer / Accelerate / DeepSpeed / PEFT</td><td>Ray workers + DeepSpeed ZeRO / FSDP / Megatron-LM</td></tr>
+</table>
+
+<h3>1.2 为什么后训练工程比普通微调复杂？</h3>
+
+<p>
+普通 SFT 的训练链路很短：读数据 → tokenize → forward → loss → backward。
+但是 RLHF / RLVR 的链路中间多了一段“模型自己生成数据”的过程，这就使工程复杂度暴涨。
+</p>
+
+<pre>
+普通 SFT：
+数据已经写好 → 模型模仿 → 计算 cross entropy loss
+
+Online RL：
+当前模型先生成 → 评估器打分 → 计算 advantage → 约束 KL → 再更新当前模型
+</pre>
+
+<p>
+这也是为什么 vLLM、SGLang、Ray、DeepSpeed 会同时出现。它们不是“炫技组件”，而是为了解决在线 RL 的三个现实瓶颈：生成慢、模型多、显存大。
+</p>
+
+<table>
+<tr><th>瓶颈</th><th>为什么出现</th><th>常见解决组件</th></tr>
+<tr><td>生成慢</td><td>RL 每一步都需要当前模型生成大量 samples；reasoning 任务还会生成很长答案。</td><td>vLLM、SGLang、continuous batching、KV cache 管理。</td></tr>
+<tr><td>模型多</td><td>PPO 至少涉及 actor、critic、reward、reference；再加 rollout engine，调度复杂。</td><td>Ray、placement group、worker、resource pool。</td></tr>
+<tr><td>显存大</td><td>大模型训练要存参数、梯度、优化器状态；rollout 还要用 KV cache。</td><td>DeepSpeed ZeRO-3、FSDP、Megatron-LM、offload、sleep mode。</td></tr>
+</table>
+
+<h2>2. TRL：最适合入门的 Trainer 框架</h2>
+
+<p>
+TRL 的全称是 Transformers Reinforcement Learning。它的最大优点是：和 Hugging Face 生态结合紧密，适合用较少代码跑通 SFT、DPO、GRPO、PPO 等后训练方法。
+对初学者来说，TRL 的价值不是大规模性能，而是帮你把“后训练算法”变成“可运行的 Trainer”。
+</p>
+
+<div class="figure">
+<div class="mermaid-like">
+  <div class="diagram-title">图 3：TRL 的 Trainer 地图</div>
+  <div class="diagram-line"><span class="node gray">Offline Methods</span><span class="connector">→</span><span class="node">SFTTrainer</span><span class="node">DPOTrainer</span><span class="node">KTO / ORPO / CPO</span></div>
+  <div class="diagram-line"><span class="node green">Online Methods</span><span class="connector">→</span><span class="node">GRPOTrainer</span><span class="node">PPOTrainer</span><span class="node">RLOOTrainer</span></div>
+  <div class="diagram-line"><span class="node yellow">Reward Modeling</span><span class="connector">→</span><span class="node">RewardTrainer</span><span class="node">PRMTrainer</span></div>
+</div>
+<div class="caption">
+图 3：本文自绘。依据 Hugging Face TRL 官方文档 Taxonomy 整理：TRL 将 Trainer 分为 online methods、offline methods、reward modeling 等类型。
+</div>
+</div>
+
+<h3>2.1 TRL 适合解决什么问题？</h3>
+
+<table>
+<tr><th>你想做的事</th><th>TRL 中应该先看什么</th><th>学习重点</th></tr>
+<tr><td>把模型调成会按格式回答</td><td><span class="inline-code">SFTTrainer</span></td><td>messages 格式、chat template、loss mask、packing、LoRA。</td></tr>
+<tr><td>让模型偏向好回答</td><td><span class="inline-code">DPOTrainer</span></td><td>preference dataset、chosen / rejected、reference model、beta。</td></tr>
+<tr><td>做数学 RLVR</td><td><span class="inline-code">GRPOTrainer</span></td><td>同一 prompt 多采样、reward functions、group advantage、KL。</td></tr>
+<tr><td>理解传统 RLHF</td><td><span class="inline-code">PPOTrainer</span></td><td>actor、critic、reward model、value function、clip。</td></tr>
+<tr><td>做低显存实验</td><td>PEFT / LoRA / QLoRA</td><td>只训练 adapter，而不是全参数训练。</td></tr>
+</table>
+
+<div class="box note">
+<strong>学习建议：</strong>
+TRL 不应该只看 README。你要按 Trainer 学：先看数据格式，再看最小代码，再看配置参数，最后看日志指标。这样才不会停留在“会跑命令”，而是知道每个字段在训练链路里做什么。
+</div>
+
+<h3>2.2 SFTTrainer：工程中的“监督微调”</h3>
+
+<p>
+SFTTrainer 的核心作用是把指令数据变成语言模型训练任务。TRL 官方文档说明 SFTTrainer 支持 standard 和 conversational 两类数据格式；如果给的是 conversational dataset，它会自动应用 chat template。
+</p>
+
+<pre><code>from trl import SFTTrainer
+from datasets import load_dataset
+
+trainer = SFTTrainer(
+    model="Qwen/Qwen3-0.6B",
+    train_dataset=load_dataset("trl-lib/Capybara", split="train"),
+)
+trainer.train()</code></pre>
+
+<p>
+这段代码表面很短，但背后做了很多事：
+</p>
+
+<table>
+<tr><th>代码</th><th>背后含义</th></tr>
+<tr><td><span class="inline-code">model="Qwen/Qwen3-0.6B"</span></td><td>加载一个待微调的 causal language model。SFT 阶段训练的是“在给定 prompt 后生成 assistant response”。</td></tr>
+<tr><td><span class="inline-code">load_dataset(...)</span></td><td>读取指令数据。数据可能是普通 text，也可能是 messages 格式。</td></tr>
+<tr><td><span class="inline-code">SFTTrainer(...)</span></td><td>把数据预处理、tokenization、collator、loss computation 封装成 Trainer。</td></tr>
+<tr><td><span class="inline-code">trainer.train()</span></td><td>执行训练循环：forward、loss、backward、optimizer step、save checkpoint。</td></tr>
+</table>
+
+<h4>2.2.1 SFT 数据格式应该怎么看？</h4>
+
+<p>
+TRL 支持的 SFT 数据大体可以分成四类。你需要重点记住：普通文本训练和对话训练不是一回事；prompt-completion 和 full text 也不是一回事。
+</p>
+
+<pre><code># 1. Standard language modeling
+{"text": "The sky is blue."}
+
+# 2. Conversational language modeling
+{"messages": [
+  {"role": "user", "content": "What color is the sky?"},
+  {"role": "assistant", "content": "It is blue."}
+]}
+
+# 3. Standard prompt-completion
+{"prompt": "The sky is", "completion": " blue."}
+
+# 4. Conversational prompt-completion
+{"prompt": [{"role": "user", "content": "What color is the sky?"}],
+ "completion": [{"role": "assistant", "content": "It is blue."}]}</code></pre>
+
+<div class="box warn">
+<strong>常见坑：</strong>
+很多 SFT 训练效果差，不是模型不行，而是 chat template 错了。比如训练时用了 A 模板，推理时用了 B 模板；或者把 user token 也算进 loss；或者 assistant 结束符没有处理好。后训练里，格式错误会直接变成行为错误。
+</div>
+
+<h4>2.2.2 SFT 在 Agent 里意味着什么？</h4>
+
+<p>
+Agent SFT 不是让模型“自由探索”，而是先让模型学会稳定的轨迹格式。
+例如一个工具调用样本可以写成：
+</p>
+
+<pre><code>{
+  "messages": [
+    {"role": "user", "content": "请计算 27 * 19。"},
+    {"role": "assistant", "content": "Thought: 这是精确计算问题，需要调用 calculator。\nAction: calculator({\"expression\": \"27 * 19\"})"},
+    {"role": "tool", "content": "513"},
+    {"role": "assistant", "content": "Final Answer: 27 * 19 = 513。"}
+  ]
+}</code></pre>
+
+<table>
+<tr><th>Agent SFT 学到什么</th><th>为什么重要</th></tr>
+<tr><td>什么时候调用工具</td><td>避免模型明明需要计算却直接瞎猜。</td></tr>
+<tr><td>工具调用格式</td><td>Action 必须能被程序解析，不然无法执行。</td></tr>
+<tr><td>如何使用 Observation</td><td>工具返回后要基于结果回答，不能忽略工具。</td></tr>
+<tr><td>什么时候结束</td><td>避免无意义循环调用工具。</td></tr>
+</table>
+
+<h3>2.3 DPOTrainer：工程中的“偏好优化”</h3>
+
+<p>
+DPOTrainer 的输入不是单个标准答案，而是偏好数据。TRL 官方文档说明 DPO 需要 preference dataset，常见字段是 <span class="inline-code">prompt</span>、<span class="inline-code">chosen</span>、<span class="inline-code">rejected</span>。
+</p>
+
+<pre><code>from trl import DPOTrainer
+from datasets import load_dataset
+
+trainer = DPOTrainer(
+    model="Qwen/Qwen3-0.6B",
+    train_dataset=load_dataset("trl-lib/ultrafeedback_binarized", split="train"),
+)
+trainer.train()</code></pre>
+
+<p>
+DPO 的工程重点不是“怎么写一个好答案”，而是“怎么构造好坏对”。
+</p>
+
+<table>
+<tr><th>DPO 字段</th><th>含义</th><th>Agent 场景示例</th></tr>
+<tr><td><span class="inline-code">prompt</span></td><td>同一个用户任务</td><td>“查找文档中 RLHF 的定义。”</td></tr>
+<tr><td><span class="inline-code">chosen</span></td><td>更好的回答或轨迹</td><td>调用 search_doc，找到证据后回答。</td></tr>
+<tr><td><span class="inline-code">rejected</span></td><td>更差的回答或轨迹</td><td>不调用工具，直接编造定义。</td></tr>
+</table>
+
+<div class="box deep">
+<p><strong>DPO 的核心理解：</strong>它不是简单地让 chosen 概率变大，而是让 policy 相对于 reference model 更偏向 chosen、远离 rejected。reference model 的作用是保留原模型分布作为“锚点”，避免模型为了偏好数据过度偏移。</p>
+</div>
+
+<h4>2.3.1 Agent DPO 的三类好坏对</h4>
+
+<table>
+<tr><th>偏好类型</th><th>Chosen</th><th>Rejected</th><th>为什么适合 DPO</th></tr>
+<tr><td>工具选择</td><td>计算题调用 calculator</td><td>计算题调用 search</td><td>差异清楚，容易自动构造。</td></tr>
+<tr><td>参数合法性</td><td><span class="inline-code">{"query":"RLHF definition"}</span></td><td><span class="inline-code">{"keyword":"RLHF definition"}</span></td><td>schema 对错明确。</td></tr>
+<tr><td>轨迹效率</td><td>2 步完成任务</td><td>8 步绕远路</td><td>都可能成功，但成本不同。</td></tr>
+</table>
+
+<pre><code># Agent DPO 偏好对示意
+{
+  "prompt": "计算 125 * 37。",
+  "chosen": "Action: calculator({\"expression\": \"125 * 37\"})\nFinal Answer: 4625",
+  "rejected": "Action: search({\"query\": \"125 * 37\"})\nFinal Answer: 我查到结果是 4625"
+}</code></pre>
+
+<h3>2.4 GRPOTrainer：工程中的“组内相对奖励”</h3>
+
+<p>
+GRPOTrainer 是理解 RLVR 的关键入口。它适合数学、代码、格式检查、工具调用等“可以自动判断好坏”的任务。和 DPO 不同，GRPO 不只吃固定 chosen / rejected 数据，而是让当前模型对同一个 prompt 生成多条回答，再用 reward function 给每条回答打分。
+</p>
+
+<div class="figure">
+<div class="mermaid-like">
+  <div class="diagram-title">图 4：GRPO 的组内比较</div>
+  <div class="diagram-line"><span class="node gray">同一个 Prompt</span><span class="connector">→</span><span class="node">Response A</span><span class="node">Response B</span><span class="node">Response C</span><span class="node">Response D</span></div>
+  <div class="diagram-line"><span class="node red">Reward</span><span class="connector">→</span><span class="node">1.0</span><span class="node">0.0</span><span class="node">0.8</span><span class="node">0.2</span></div>
+  <div class="diagram-line"><span class="node yellow">Group Baseline</span><span class="connector">→</span><span>比组内平均更好的回答被强化，比组内平均更差的回答被压低。</span></div>
+</div>
+<div class="caption">
+图 4：本文自绘。依据 GRPO 的 group sampling 与 relative rewards 思路绘制。
+</div>
+</div>
+
+<pre><code>from trl import GRPOTrainer, GRPOConfig
+from datasets import load_dataset
+
+# 一个极简奖励函数：答案中出现正确结果就给 1，否则 0
+def accuracy_reward(completions, answer, **kwargs):
+    rewards = []
+    for completion, gold in zip(completions, answer):
+        text = completion[0]["content"] if isinstance(completion, list) else completion
+        rewards.append(1.0 if str(gold) in text else 0.0)
+    return rewards
+
+config = GRPOConfig(
+    output_dir="./grpo_math_demo",
+    num_generations=4,
+    per_device_train_batch_size=2,
+    max_completion_length=512,
+)
+
+trainer = GRPOTrainer(
+    model="Qwen/Qwen2.5-1.5B-Instruct",
+    args=config,
+    train_dataset=load_dataset("your_math_dataset", split="train"),
+    reward_funcs=[accuracy_reward],
+)
+trainer.train()</code></pre>
+
+<table>
+<tr><th>参数 / 代码</th><th>作用</th><th>为什么重要</th></tr>
+<tr><td><span class="inline-code">num_generations=4</span></td><td>每个 prompt 生成 4 条回答</td><td>GRPO 要有“组”，否则没法做组内比较。</td></tr>
+<tr><td><span class="inline-code">reward_funcs=[...]</span></td><td>把回答变成奖励分数</td><td>RLVR 的关键。奖励函数质量决定训练方向。</td></tr>
+<tr><td><span class="inline-code">max_completion_length</span></td><td>限制回答长度</td><td>reasoning 任务很容易越写越长，必须控制显存和上下文。</td></tr>
+<tr><td>KL penalty</td><td>约束 policy 不要偏离 reference</td><td>没有约束时，模型可能为了 reward 变得格式怪异或语言退化。</td></tr>
+</table>
+
+<div class="box warn">
+<strong>GRPO 最大的坑：</strong>
+如果同一组里所有回答 reward 都一样，例如全是 0 或全是 1，那么组内相对优势几乎没有信息。训练会变慢，甚至没有有效学习信号。所以 RLVR 数据要有难度梯度，不能太容易，也不能太难。
+</div>
+
+<h2>3. OpenRLHF：理解大规模 RLHF / RLVR 系统</h2>
+
+<p>
+如果说 TRL 是入门 Trainer，那么 OpenRLHF 更像是真实训练系统。它关注的不是“十几行代码跑通”，而是如何在多 GPU / 多节点环境中协调 actor、critic、reward、reference、vLLM、DeepSpeed、Ray。
+</p>
+
+<div class="figure">
+<img src="https://openrlhf.readthedocs.io/en/latest/_images/openrlhf-arch.png" alt="OpenRLHF Architecture">
+<div class="caption">
+图 5：OpenRLHF 官方架构图。来源：OpenRLHF Documentation，Architecture Foundation: Ray + vLLM Distribution。原图链接：<a href="https://openrlhf.readthedocs.io/en/latest/_images/openrlhf-arch.png" target="_blank">https://openrlhf.readthedocs.io/en/latest/_images/openrlhf-arch.png</a>
+</div>
+</div>
+
+<h3>3.1 这张官方架构图应该怎么看？</h3>
+
+<p>
+这张图的关键不是 logo，而是它把 RLHF 的计算拆成了几个不同角色：
+</p>
+
+<table>
+<tr><th>图中组件</th><th>中文解释</th><th>后训练中的作用</th></tr>
+<tr><td>Ray</td><td>分布式调度器和控制器</td><td>决定 actor、critic、reward、reference、vLLM 等组件跑在哪些 GPU 上，如何提交任务、同步数据。</td></tr>
+<tr><td>vLLM</td><td>高吞吐推理引擎</td><td>负责 rollout generation。RL 训练中大量时间花在生成样本上，所以需要专门推理引擎。</td></tr>
+<tr><td>Transformers</td><td>模型权重格式与状态</td><td>提供 Hugging Face 模型加载、权重管理、tokenizer、checkpoint 接口。</td></tr>
+<tr><td>DeepSpeed</td><td>显存高效训练框架</td><td>用 ZeRO / AutoTP / RingAttention 等方式训练 actor、critic、reward、reference。</td></tr>
+<tr><td>NCCL / CUDA IPC</td><td>GPU 间通信</td><td>用于权重同步、梯度通信、跨 GPU 数据传输。</td></tr>
+</table>
+
+<div class="box deep">
+<strong>关键理解：</strong>
+OpenRLHF 不是只实现一个 PPO loss。它实现的是一个“训练系统”：谁负责生成，谁负责打分，谁负责训练，谁负责同步权重，谁负责释放显存，谁负责调度 GPU。
+</div>
+
+<h3>3.2 为什么 OpenRLHF 强调 Ray + vLLM + DeepSpeed？</h3>
+
+<p>
+LLM 的 RLHF 训练不是单模型训练，而是多模型协作。以 PPO 为例，常见组件包括：
+</p>
+
+<table>
+<tr><th>模型 / 组件</th><th>作用</th><th>是否训练</th><th>显存压力</th></tr>
+<tr><td>Actor / Policy</td><td>当前要优化的模型，生成回答</td><td>训练</td><td>高</td></tr>
+<tr><td>Critic / Value Model</td><td>估计 value，用于计算 advantage</td><td>训练</td><td>高</td></tr>
+<tr><td>Reward Model / Reward Function</td><td>给回答或轨迹打分</td><td>可能训练，也可能固定</td><td>中到高</td></tr>
+<tr><td>Reference Model</td><td>提供 KL 参照，约束 actor 不偏离太远</td><td>固定</td><td>中</td></tr>
+<tr><td>vLLM Engine</td><td>快速生成 rollout</td><td>不训练，但要加载权重</td><td>高，尤其 KV cache</td></tr>
+</table>
+
+<p>
+如果这些东西都朴素地各占一套 GPU，会非常浪费。OpenRLHF 的重点就是调度和复用。
+</p>
+
+<h3>3.3 Hybrid Engine：为什么要 sleep mode？</h3>
+
+<p>
+OpenRLHF 文档里非常关键的概念是 Hybrid Engine。直觉上，它解决的是“生成和训练不能同时充分利用同一批 GPU”的问题。
+</p>
+
+<div class="figure">
+<div class="mermaid-like">
+  <div class="diagram-title">图 6：Hybrid Engine 的时间片复用</div>
+  <div class="diagram-line"><span class="node green">阶段 A：生成 rollout</span><span class="connector">→</span><span class="node">vLLM awake</span><span class="node gray">DeepSpeed sleep</span></div>
+  <div class="diagram-line"><span class="node yellow">权重同步</span><span class="connector">→</span><span>NCCL 把训练后的 actor 权重同步给 vLLM</span></div>
+  <div class="diagram-line"><span class="node red">阶段 B：训练更新</span><span class="connector">→</span><span class="node gray">vLLM sleep</span><span class="node">DeepSpeed awake</span></div>
+</div>
+<div class="caption">
+图 6：本文自绘。依据 OpenRLHF 官方文档中 Hybrid Engine / sleep-mode time-sharing 的说明整理。
+</div>
+</div>
+
+<p>
+这件事非常工程化，但你要理解它背后的训练逻辑：
+</p>
+
+<pre>
+1. 当前 actor 权重交给 vLLM。
+2. vLLM 批量生成 responses / trajectories。
+3. reward function / RM 给这些 responses 打分。
+4. DeepSpeed 唤醒，使用这些样本更新 actor / critic。
+5. 更新后的 actor 权重再同步给 vLLM。
+6. 进入下一轮 rollout。
+</pre>
+
+<div class="box note">
+<strong>为什么重要：</strong>
+大规模 RLHF 最耗时的部分往往不是 backward，而是 sample generation。OpenRLHF 把 vLLM 放进训练系统，就是为了加速 rollout；把 sleep mode 放进系统，是为了让生成和训练共享 GPU 资源。
+</div>
+
+<h3>3.4 OpenRLHF 的 RL Training Guide 怎么读？</h3>
+
+<p>
+OpenRLHF 文档把 RL 训练拆成三个相互独立的选择轴：execution mode、RL algorithm、pipeline。
+这比背命令更重要。
+</p>
+
+<table>
+<tr><th>选择轴</th><th>可选项</th><th>你应该怎么理解</th></tr>
+<tr><td>Execution Mode</td><td>Single-turn / Multi-turn</td><td>一次回答给一次 reward，还是一条多步交互轨迹给 reward。</td></tr>
+<tr><td>RL Algorithm</td><td>PPO / REINFORCE++ / RLOO / GRPO / Dr. GRPO</td><td>reward 如何变成 advantage，是否需要 critic，是否组内归一化。</td></tr>
+<tr><td>Pipeline</td><td>Sync Hybrid Engine / Async / Partial Rollout</td><td>生成和训练是交替进行，还是并行重叠。</td></tr>
+</table>
+
+<h4>3.4.1 Single-turn Mode</h4>
+
+<p>
+Single-turn 是最常见的 RLVR 形式：一个 prompt，模型生成一个 response，然后 reward function 给出一个分数。
+</p>
+
+<pre>
+Prompt: 计算 13 * 17
+Response: 13 * 17 = 221
+Reward: 1.0
+</pre>
+
+<p>
+OpenRLHF 支持三种 reward 来源：训练好的 reward model、远程 HTTP reward server、本地 Python reward function。对于数学、代码、格式检查，最适合先用本地 Python reward function。
+</p>
+
+<pre><code># reward_func.py 示例：OpenRLHF 风格的本地奖励函数
+import torch
+
+def reward_func(queries, prompts, labels):
+    rewards = torch.zeros(len(queries))
+    for i, (query, label) in enumerate(zip(queries, labels)):
+        # query 通常是 prompt + response 的完整文本
+        pred_ok = extract_final_answer(query) == str(label)
+        rewards[i] = 1.0 if pred_ok else 0.0
+    return {
+        "rewards": rewards,
+        "scores": rewards,
+        "extra_logs": {"accuracy": rewards.mean().item()},
+    }</code></pre>
+
+<table>
+<tr><th>返回字段</th><th>作用</th></tr>
+<tr><td><span class="inline-code">rewards</span></td><td>真正用于 advantage 计算的奖励。</td></tr>
+<tr><td><span class="inline-code">scores</span></td><td>可用于动态过滤、日志或额外指标。</td></tr>
+<tr><td><span class="inline-code">extra_logs</span></td><td>写入 WandB / TensorBoard，便于观察准确率、格式通过率等。</td></tr>
+</table>
+
+<h4>3.4.2 Multi-turn Mode</h4>
+
+<p>
+Multi-turn 是 Agent 后训练的入口。它不再是“一个 prompt → 一个 answer”，而是：
+</p>
+
+<pre>
+reset environment
+  ↓
+model generates action
+  ↓
+environment returns feedback / observation / reward / done
+  ↓
+model continues
+  ↓
+until done=True
+</pre>
+
+<p>
+这非常适合工具调用、代码调试、网页操作、数据库查询等任务。
+</p>
+
+<table>
+<tr><th>任务</th><th>Multi-turn 中的 environment</th><th>reward 可以怎么设计</th></tr>
+<tr><td>代码 Agent</td><td>代码沙箱、单元测试器</td><td>测试通过给 1，编译错误给 0，部分测试通过给中间分。</td></tr>
+<tr><td>搜索 Agent</td><td>搜索 API、文档检索器</td><td>找到证据、引用正确、回答准确给分。</td></tr>
+<tr><td>工具调用 Agent</td><td>函数执行器</td><td>工具选择正确、参数合法、执行成功、最终答案正确。</td></tr>
+<tr><td>网页 Agent</td><td>浏览器环境</td><td>最终页面状态达到目标，步数越少奖励越高。</td></tr>
+</table>
+
+<h3>3.5 OpenRLHF 命令不要死背，要拆结构</h3>
+
+<p>
+OpenRLHF 的命令通常很长。初学者最容易被命令吓住，其实可以按模块拆。
+</p>
+
+<pre><code>python3 -m openrlhf.cli.train_ppo_ray \
+  --actor.model_name_or_path Qwen/Qwen3-4B-Thinking-2507 \
+  --reward.remote_url examples/python/math_reward_func.py \
+  --data.prompt_dataset zhuzilin/dapo-math-17k \
+  --data.input_key prompt \
+  --data.label_key label \
+  --data.apply_chat_template \
+  \
+  --ref.num_nodes 1 \
+  --ref.num_gpus_per_node 4 \
+  --actor.num_nodes 1 \
+  --actor.num_gpus_per_node 4 \
+  --vllm.num_engines 2 \
+  --vllm.tensor_parallel_size 2 \
+  --train.colocate_all \
+  --vllm.enable_sleep \
+  --ds.enable_sleep \
+  --vllm.sync_backend nccl \
+  \
+  --algo.advantage.estimator reinforce_baseline \
+  --algo.kl.use_loss \
+  --algo.kl.init_coef 1e-5 \
+  --rollout.batch_size 128 \
+  --rollout.n_samples_per_prompt 8 \
+  --train.batch_size 1024 \
+  --ds.zero_stage 3 \
+  --actor.gradient_checkpointing_enable</code></pre>
+
+<table>
+<tr><th>命令块</th><th>含义</th></tr>
+<tr><td><span class="inline-code">--actor.model_name_or_path</span></td><td>被训练的 policy / actor 模型。</td></tr>
+<tr><td><span class="inline-code">--reward.remote_url</span></td><td>奖励来源，可以是 HTTP RM，也可以是本地 Python reward function。</td></tr>
+<tr><td><span class="inline-code">--data.*</span></td><td>数据集路径、输入字段、标签字段、是否应用 chat template。</td></tr>
+<tr><td><span class="inline-code">--ref.* / --actor.*</span></td><td>reference model 和 actor model 的 GPU 资源。</td></tr>
+<tr><td><span class="inline-code">--vllm.*</span></td><td>rollout engine 的数量、并行度、显存比例、权重同步方式。</td></tr>
+<tr><td><span class="inline-code">--train.colocate_all</span></td><td>把多个组件尽量 colocate 到同一组 GPU，通过 sleep mode 复用资源。</td></tr>
+<tr><td><span class="inline-code">--algo.advantage.estimator</span></td><td>选择 advantage 估计方式，例如 PPO 的 GAE、GRPO 的 group_norm、REINFORCE++ 等。</td></tr>
+<tr><td><span class="inline-code">--rollout.n_samples_per_prompt</span></td><td>每个 prompt 采样多少条回答；GRPO / RLOO / reasoning RLVR 常需要大于 1。</td></tr>
+<tr><td><span class="inline-code">--ds.zero_stage 3</span></td><td>使用 DeepSpeed ZeRO-3 切分训练状态，降低显存。</td></tr>
+</table>
+
+<div class="box train">
+<strong>读命令的方法：</strong>
+不要从上到下逐行背。先问五件事：模型是谁？数据在哪里？reward 怎么来？rollout 怎么生成？advantage 用什么算法？这五个问题答出来，命令就基本读懂了。
+</div>
+
+<h2>4. verl：把 RL 后训练看成可组合的数据流</h2>
+
+<p>
+verl 的定位更偏 RL post-training infrastructure。它强调把复杂 RL 数据流拆成模块：actor、rollout、reference、reward、trainer、worker、config。
+如果你想理解更复杂的推理 RL、Agent RL、多轮工具调用和大规模集群训练，verl 很值得读。
+</p>
+
+<h3>4.1 verl 最应该先看什么？</h3>
+
+<table>
+<tr><th>学习入口</th><th>你要看什么</th><th>解决什么问题</th></tr>
+<tr><td>Config Explanation</td><td><span class="inline-code">actor_rollout_ref</span>、<span class="inline-code">rollout</span>、<span class="inline-code">engine_kwargs</span></td><td>理解一个 YAML 配置如何描述训练链路。</td></tr>
+<tr><td>GRPO 文档</td><td>group sampling、relative rewards、critic-less</td><td>理解 reasoning RL 里为什么不一定要 critic。</td></tr>
+<tr><td>Reward Loop</td><td>distributed reward manager、rule-based reward、DisRM、GenRM、hybrid reward</td><td>理解 reward 不是一个简单函数，而可能是分布式系统。</td></tr>
+<tr><td>Agent Loop</td><td>user-defined loop、LLM generate API、tools、environment interaction</td><td>理解 Agent RL 的轨迹如何进入训练。</td></tr>
+<tr><td>Multi-turn Rollout</td><td>SGLang、多轮 tokenization、tool configuration</td><td>理解工具调用和多轮交互如何做 rollout。</td></tr>
+</table>
+
+<h3>4.2 actor_rollout_ref 是什么意思？</h3>
+
+<p>
+verl 配置里常见 <span class="inline-code">actor_rollout_ref</span> 这个名字。它看起来有点长，但其实很直白：把 actor、rollout、reference 放在同一个配置域里，因为它们共享很多模型和数据流关系。
+</p>
+
+<div class="figure">
+<div class="mermaid-like">
+  <div class="diagram-title">图 7：verl 中 actor_rollout_ref 的直觉</div>
+  <div class="diagram-line"><span class="node">Actor</span><span>正在训练的 policy，负责学习。</span></div>
+  <div class="diagram-line"><span class="node green">Rollout</span><span>用 vLLM / SGLang / HF backend 生成 responses。</span></div>
+  <div class="diagram-line"><span class="node yellow">Reference</span><span>冻结的参考模型，用于计算 KL。</span></div>
+</div>
+<div class="caption">
+图 7：本文自绘。依据 verl 配置文档中 actor_rollout_ref 与 rollout 配置项整理。
+</div>
+</div>
+
+<pre><code>actor_rollout_ref:
+  rollout:
+    name: vllm
+    do_sample: True
+    val_kwargs:
+      top_k: -1
+      top_p: 1.0
+      temperature: 0
+      n: 1
+    engine_kwargs:
+      vllm: {}
+      sglang: {}</code></pre>
+
+<table>
+<tr><th>配置项</th><th>含义</th><th>实践解释</th></tr>
+<tr><td><span class="inline-code">rollout.name</span></td><td>选择 rollout 后端</td><td>常见为 vLLM 或 SGLang。vLLM 偏高吞吐，SGLang 常用于多轮 / 工具调用场景。</td></tr>
+<tr><td><span class="inline-code">do_sample</span></td><td>训练时是否采样</td><td>GRPO / RLVR 需要探索，一般需要采样；如果 greedy，组内多样性会不足。</td></tr>
+<tr><td><span class="inline-code">top_p / temperature</span></td><td>采样参数</td><td>控制多样性。太低没探索，太高输出乱。</td></tr>
+<tr><td><span class="inline-code">n</span></td><td>验证时生成条数</td><td>不是训练组大小本身，但帮助理解每个 prompt 可以生成多条。</td></tr>
+<tr><td><span class="inline-code">engine_kwargs.vllm</span></td><td>传给 vLLM 的额外参数</td><td>用于控制推理引擎行为。</td></tr>
+<tr><td><span class="inline-code">engine_kwargs.sglang</span></td><td>传给 SGLang 的额外参数</td><td>多轮工具调用时经常需要。</td></tr>
+</table>
+
+<h3>4.3 verl 的 GRPO 怎么理解？</h3>
+
+<p>
+verl 官方 GRPO 文档把 GRPO 拆成四步：group sampling、reward assignment、baseline calculation、policy update。这个解释非常适合初学者。
+</p>
+
+<pre>
+同一个问题 q
+  ↓
+模型生成 G 个回答：o1, o2, ..., oG
+  ↓
+每个回答得到 reward：r1, r2, ..., rG
+  ↓
+计算组内平均 reward 作为 baseline
+  ↓
+ri 高于 baseline 的回答被强化；低于 baseline 的回答被削弱
+</pre>
+
+<table>
+<tr><th>GRPO 环节</th><th>中文解释</th><th>工程上要注意什么</th></tr>
+<tr><td>Group Sampling</td><td>同一 prompt 采多条</td><td>采样参数必须有多样性；batch size 和显存要能承受。</td></tr>
+<tr><td>Reward Assignment</td><td>每条 completion 打分</td><td>reward function 要稳定，不能大量解析失败。</td></tr>
+<tr><td>Baseline Calculation</td><td>组内平均或归一化</td><td>同一组全 0 或全 1 会导致信号弱。</td></tr>
+<tr><td>Policy Update</td><td>用相对优势更新 actor</td><td>仍要 KL 约束，避免模型跑飞。</td></tr>
+</table>
+
+<h3>4.4 Reward Loop：reward 不是一个小函数那么简单</h3>
+
+<p>
+在玩具实验里，reward 可能只是一个 Python 函数。但在真实系统里，reward 可能很重：
+</p>
+
+<ul>
+<li>数学任务：需要调用 math-verify 或符号计算。</li>
+<li>代码任务：需要运行单元测试，可能很慢。</li>
+<li>对话偏好：需要 reward model 推理。</li>
+<li>复杂任务：可能需要 rule-based reward + generative reward model 混合。</li>
+</ul>
+
+<p>
+verl 的 Reward Loop 文档强调 distributed reward manager、rule-based reward、discriminative reward model、generative reward model、hybrid reward。你要把它理解成：reward 本身也可以是一套并行计算系统。
+</p>
+
+<table>
+<tr><th>reward 类型</th><th>例子</th><th>优点</th><th>风险</th></tr>
+<tr><td>Rule-based Reward</td><td>答案字符串匹配、JSON schema 检查</td><td>快、可控、成本低</td><td>容易被钻漏洞；语义等价难处理。</td></tr>
+<tr><td>Discriminative RM</td><td>输入 prompt + response，输出分数</td><td>适合偏好判断</td><td>RM 本身可能有偏差，会被 reward hacking。</td></tr>
+<tr><td>Generative RM</td><td>让另一个模型生成评价再解析分数</td><td>更灵活，能解释复杂标准</td><td>慢、成本高、解析不稳定。</td></tr>
+<tr><td>Hybrid Reward</td><td>规则 + RM + 长度惩罚 + 工具成功率</td><td>更贴近真实目标</td><td>权重难调，容易奖励冲突。</td></tr>
+</table>
+
+<h3>4.5 Agent Loop：Agent RL 的工程入口</h3>
+
+<p>
+verl 的 Agent Loop 文档把 agent loop 设计成一个通用接口：给定 prompt，用户自己定义循环，里面可以调用 LLM generate API、调用工具、与环境交互，最后返回输出和轨迹。
+</p>
+
+<div class="figure">
+<div class="mermaid-like">
+  <div class="diagram-title">图 8：Agent Loop 的训练直觉</div>
+  <div class="diagram-line"><span class="node gray">Prompt</span><span class="connector">→</span><span class="node">LLM generate</span><span class="connector">→</span><span class="node green">Tool / Environment</span></div>
+  <div class="diagram-line"><span class="node green">Observation</span><span class="connector">→</span><span class="node">LLM continue</span><span class="connector">→</span><span class="node yellow">Final Output</span></div>
+  <div class="diagram-line"><span class="node red">Reward</span><span class="connector">→</span><span>把整条轨迹变成训练信号，用于 RL update。</span></div>
+</div>
+<div class="caption">
+图 8：本文自绘。依据 verl Agent Loop 文档中“prompt → user defined loop → tools/environment → final output → reward → RL training”的描述整理。
+</div>
+</div>
+
+<p>
+Agent Loop 的重点不是“工具在哪里定义”，而是“多轮轨迹如何被训练系统接收”。文档中有一个关键概念：<span class="inline-code">response_mask</span>。
+</p>
+
+<table>
+<tr><th>字段</th><th>含义</th><th>Agent 训练中的作用</th></tr>
+<tr><td><span class="inline-code">prompt_ids</span></td><td>prompt token ids</td><td>环境初始输入。</td></tr>
+<tr><td><span class="inline-code">response_ids</span></td><td>response token ids，包括模型生成和工具返回</td><td>完整轨迹。</td></tr>
+<tr><td><span class="inline-code">response_mask</span></td><td>1 表示 LLM 生成 token，0 表示工具返回 token</td><td>只训练模型生成的部分，不训练工具 observation。</td></tr>
+</table>
+
+<div class="box warn">
+<strong>Agent 后训练大坑：</strong>
+工具返回内容不能当成模型应该学习生成的 token。Observation 是环境给的，不是 assistant 应该凭空生成的。mask 错了，模型会学会伪造工具结果。
+</div>
+
+<h2>5. Rollout：后训练工程里最容易被低估的概念</h2>
+
+<p>
+Rollout 可以翻译为“轨迹采样”或“生成过程”。在普通 LLM 里，它就是模型对 prompt 生成一段回答；在 Agent 里，它是一整条多步交互轨迹。
+</p>
+
+<h3>5.1 普通回答的 rollout</h3>
+
+<pre>
+Prompt: 请解方程 2x + 3 = 9
+Policy generates:
+  Step 1: 2x = 6
+  Step 2: x = 3
+Final Answer: 3
+Reward: 1.0
+</pre>
+
+<table>
+<tr><th>记录内容</th><th>为什么要记录</th></tr>
+<tr><td>生成 token</td><td>训练时要知道 policy 生成了什么。</td></tr>
+<tr><td>log probabilities</td><td>PPO / GRPO loss 需要用当前策略概率。</td></tr>
+<tr><td>reference log probabilities</td><td>计算 KL，限制 policy 不偏离原模型太远。</td></tr>
+<tr><td>reward</td><td>判断这条回答好不好。</td></tr>
+<tr><td>attention / response mask</td><td>区分 prompt token、response token、padding token、tool token。</td></tr>
+</table>
+
+<h3>5.2 Agent 的 rollout</h3>
+
+<pre>
+User: 帮我查文档里 GRPO 和 PPO 的区别
+
+Assistant: Action: search_doc({"query":"GRPO PPO difference"})
+Tool: 检索结果：GRPO 不需要 critic，PPO 需要 value model ...
+Assistant: Action: search_doc({"query":"PPO critic value function"})
+Tool: 检索结果：PPO 使用 critic 估计 value ...
+Assistant: Final Answer: GRPO 和 PPO 的核心区别是 ...
+Reward: 0.85
+</pre>
+
+<p>
+这里的 rollout 不只是 final answer，而是整条动作轨迹。训练系统要知道哪些 token 是模型生成的，哪些 token 是工具返回的；reward 也可能来自最终答案、工具使用效率、引用正确性、步数成本等多个维度。
+</p>
+
+<h3>5.3 为什么 rollout 需要 vLLM / SGLang？</h3>
+
+<p>
+在 RLVR 中，同一个 prompt 可能要生成 4、8、16 条回答；每条回答可能很长。若仍用普通训练框架逐条生成，GPU 利用率会很低。
+</p>
+
+<table>
+<tr><th>后端</th><th>适合场景</th><th>原因</th></tr>
+<tr><td>Transformers generate</td><td>小实验、调试</td><td>简单，但吞吐低。</td></tr>
+<tr><td>vLLM</td><td>大批量单轮 / 长文本 rollout</td><td>高吞吐、KV cache 管理、continuous batching。</td></tr>
+<tr><td>SGLang</td><td>多轮、工具调用、结构化交互</td><td>适合复杂 generation workflow 和多轮 rollout。</td></tr>
+</table>
+
+<div class="box note">
+<strong>工程理解：</strong>
+vLLM / SGLang 在这里不是“部署模型给用户用”，而是“给训练过程快速生产新样本”。在线 RL 的数据不是静态写好的，而是当前 policy 一边训练一边生成出来的。
+</div>
+
+<h2>6. Reward Function：RLVR 的真正核心</h2>
+
+<p>
+很多人学 RLVR 会先看 GRPO 公式，但真正决定训练效果的是 reward function。
+算法只是把 reward 变成梯度；reward 才定义了模型到底应该学什么。
+</p>
+
+<h3>6.1 一个数学 reward 不应该只做字符串包含</h3>
+
+<p>
+最简单的 reward 是答案包含正确数字。但这很脆弱：模型可能在错误推理中偶然包含正确答案，也可能正确答案格式不同导致解析失败。
+更稳的数学 reward 一般需要三个步骤：抽取、规范化、验证。
+</p>
+
+<pre><code>import re
+
+
+def extract_answer(text: str):
+    """从模型输出中抽取最终答案。"""
+    patterns = [
+        r"Final Answer\s*[:：]\s*([^\n]+)",
+        r"答案是\s*([^\n。]+)",
+        r"\\boxed\{([^}]+)\}",
+    ]
+    for p in patterns:
+        m = re.search(p, text)
+        if m:
+            return m.group(1).strip()
+    return None
+
+
+def normalize_answer(ans: str):
+    if ans is None:
+        return None
+    ans = ans.strip()
+    ans = ans.replace("，", ",").replace("。", "")
+    ans = ans.replace(" ", "")
+    return ans
+
+
+def math_reward(text: str, gold: str):
+    pred = normalize_answer(extract_answer(text))
+    gold = normalize_answer(str(gold))
+    return 1.0 if pred == gold else 0.0</code></pre>
+
+<table>
+<tr><th>步骤</th><th>目的</th><th>常见错误</th></tr>
+<tr><td>抽取答案</td><td>找到 final answer</td><td>没有强制输出格式，导致抽不到。</td></tr>
+<tr><td>规范化</td><td>处理空格、标点、分数、小数</td><td>“1/2”和“0.5”等价但被判错。</td></tr>
+<tr><td>验证</td><td>判断是否正确</td><td>只做字符串包含，导致假阳性。</td></tr>
+</table>
+
+<h3>6.2 Agent reward 应该拆成多项</h3>
+
+<p>
+Agent 任务不能只看最终答案。因为一个 Agent 可能最终答对，但过程很危险、很低效，或者根本没有真正使用工具。
+</p>
+
+<table>
+<tr><th>奖励项</th><th>含义</th><th>示例</th></tr>
+<tr><td>格式奖励</td><td>Action 是否可解析</td><td>JSON 合法 +0.1</td></tr>
+<tr><td>工具选择奖励</td><td>是否调用了正确工具</td><td>计算题调用 calculator +0.2</td></tr>
+<tr><td>参数奖励</td><td>参数是否完整准确</td><td>query 字段存在且非空 +0.2</td></tr>
+<tr><td>执行奖励</td><td>工具是否成功执行</td><td>工具无报错 +0.2</td></tr>
+<tr><td>最终答案奖励</td><td>最终任务是否完成</td><td>答案正确 +1.0</td></tr>
+<tr><td>成本惩罚</td><td>是否过多调用工具</td><td>每多一步 -0.02</td></tr>
+</table>
+
+<pre><code>def tool_agent_reward(trace, gold_answer):
+    reward = 0.0
+
+    if trace.action_json_valid:
+        reward += 0.1
+    if trace.tool_name == trace.expected_tool:
+        reward += 0.2
+    if trace.tool_args_valid:
+        reward += 0.2
+    if trace.tool_execution_success:
+        reward += 0.2
+    if normalize_answer(trace.final_answer) == normalize_answer(gold_answer):
+        reward += 1.0
+
+    reward -= 0.02 * max(0, trace.num_tool_calls - 2)
+    return max(reward, 0.0)</code></pre>
+
+<div class="box warn">
+<strong>Reward Hacking 警告：</strong>
+如果你只奖励“出现 Final Answer”，模型就会学会每次都输出 Final Answer；如果你只奖励“调用工具”，模型就会疯狂调用工具；如果你只奖励“答案包含关键词”，模型就会堆关键词。reward 必须同时约束结果、格式、成本和安全边界。
+</div>
+
+<h2>7. Advantage：为什么 reward 不能直接拿来训练？</h2>
+
+<p>
+Reward 是结果分数，Advantage 是“这次输出比基线好多少”。强化学习更新的不是绝对 reward，而是相对表现。
+</p>
+
+<h3>7.1 PPO 的 advantage：critic / value / GAE</h3>
+
+<p>
+PPO 通常有 critic。critic 的作用是估计某个状态下“本来大概能拿多少分”。如果实际 reward 比 critic 估计高，advantage 为正；反之为负。
+</p>
+
+<pre>
+Advantage = 实际回报 - Critic 估计值
+</pre>
+
+<table>
+<tr><th>组件</th><th>作用</th></tr>
+<tr><td>Actor</td><td>生成动作 / token。</td></tr>
+<tr><td>Critic</td><td>估计 value，提供 baseline。</td></tr>
+<tr><td>Reward</td><td>实际反馈。</td></tr>
+<tr><td>Advantage</td><td>告诉 actor 哪些动作比预期好，哪些比预期差。</td></tr>
+</table>
+
+<h3>7.2 GRPO 的 advantage：组内平均就是 baseline</h3>
+
+<p>
+GRPO 不训练 critic。它用同一个 prompt 的多条回答形成一个 group，然后用组内平均 reward 当 baseline。
+</p>
+
+<table>
+<tr><th>Response</th><th>Reward</th><th>组内平均</th><th>Advantage 直觉</th></tr>
+<tr><td>A</td><td>1.0</td><td>0.5</td><td>+0.5，强化</td></tr>
+<tr><td>B</td><td>0.0</td><td>0.5</td><td>-0.5，削弱</td></tr>
+<tr><td>C</td><td>0.8</td><td>0.5</td><td>+0.3，强化</td></tr>
+<tr><td>D</td><td>0.2</td><td>0.5</td><td>-0.3，削弱</td></tr>
+</table>
+
+<p>
+如果进一步做标准差归一化，advantage 还会除以组内或 batch 的 reward 标准差。不同实现对 reward scaling 有不同处理，TRL 和 verl 文档都提醒过 reward scaling / std normalization 可能影响训练偏差。
+</p>
+
+<div class="box deep">
+<strong>关键理解：</strong>
+GRPO 的“聪明”之处在于：它不问“这个回答绝对好不好”，而问“同一个问题下，这条回答比模型自己生成的其他回答好不好”。这让它不需要单独训练 critic，但要求每个 prompt 有多条有差异的 samples。
+</div>
+
+<h2>8. KL：为什么要把模型拴在 reference model 附近？</h2>
+
+<p>
+在 RL 训练中，模型会朝 reward 高的方向移动。但 reward 往往不完美。如果没有约束，模型可能学会奇怪的输出格式、重复文本、过度迎合 reward function，甚至语言能力退化。
+KL 的作用就是把 policy 拴在 reference model 附近。
+</p>
+
+<pre>
+Policy objective = 提高 reward / advantage
+                  - KL penalty × 偏离 reference 的程度
+</pre>
+
+<table>
+<tr><th>KL 太小</th><th>KL 太大</th></tr>
+<tr><td>模型可能为了 reward 跑飞，输出越来越奇怪。</td><td>模型被 reference 锁太死，学不动，reward 上不去。</td></tr>
+<tr><td>可能出现 reward hacking、重复、格式坍塌。</td><td>训练很稳定，但提升很小。</td></tr>
+</table>
+
+<div class="box train">
+<strong>调参直觉：</strong>
+如果 reward 很快上升但输出质量变怪，检查 KL 是否太弱；如果输出稳定但 reward 不动，可能 KL 太强、学习率太低、reward 信号太弱或组内差异不足。
+</div>
+
+<h2>9. Mini Math RLVR：从玩具实验到真实框架</h2>
+
+<p>
+学工程框架不能一上来就训练 7B / 70B。最稳的方式是先做一个 Mini Math RLVR：数据小、奖励明确、失败可观察。
+</p>
+
+<h3>9.1 数据格式</h3>
+
+<pre><code>{"prompt": "计算 17 * 23，并把最终答案写成 Final Answer: xxx", "answer": "391"}
+{"prompt": "如果 x + 8 = 15，x 等于多少？Final Answer 格式回答。", "answer": "7"}
+{"prompt": "计算 144 / 12。Final Answer 格式回答。", "answer": "12"}</code></pre>
+
+<h3>9.2 输出格式约束</h3>
+
+<p>
+为什么要强制 <span class="inline-code">Final Answer:</span>？因为 reward function 需要稳定解析。格式越稳定，reward 越可靠；reward 越可靠，RL 越容易收敛。
+</p>
+
+<pre>
+推荐输出：
+推理过程：...
+Final Answer: 391
+
+不推荐输出：
+应该是三百九十一吧。
+</pre>
+
+<h3>9.3 TRL 版最小 GRPO 实验</h3>
+
+<pre><code>from datasets import Dataset
+from trl import GRPOConfig, GRPOTrainer
+import re
+
+samples = [
+    {"prompt": "计算 17 * 23，并把最终答案写成 Final Answer: xxx", "answer": "391"},
+    {"prompt": "如果 x + 8 = 15，x 等于多少？Final Answer 格式回答。", "answer": "7"},
+]
+dataset = Dataset.from_list(samples)
+
+
+def extract_final(text):
+    m = re.search(r"Final Answer\s*[:：]\s*([^\n]+)", text)
+    return m.group(1).strip() if m else None
+
+
+def reward_func(completions, answer, **kwargs):
+    rewards = []
+    for completion, gold in zip(completions, answer):
+        text = completion[0]["content"] if isinstance(completion, list) else completion
+        pred = extract_final(text)
+        rewards.append(1.0 if pred == str(gold) else 0.0)
+    return rewards
+
+config = GRPOConfig(
+    output_dir="./mini_math_grpo",
+    num_generations=4,
+    per_device_train_batch_size=2,
+    max_completion_length=256,
+    logging_steps=1,
+)
+
+trainer = GRPOTrainer(
+    model="Qwen/Qwen2.5-0.5B-Instruct",
+    args=config,
+    train_dataset=dataset,
+    reward_funcs=[reward_func],
+)
+trainer.train()</code></pre>
+
+<h3>9.4 观察什么日志？</h3>
+
+<table>
+<tr><th>指标</th><th>正常现象</th><th>异常信号</th></tr>
+<tr><td>平均 reward</td><td>慢慢上升</td><td>一直 0：解析失败 / 题太难 / 输出格式不对。</td></tr>
+<tr><td>reward 方差</td><td>同组内有差异</td><td>全 0 或全 1：advantage 信号弱。</td></tr>
+<tr><td>completion length</td><td>合理范围内波动</td><td>越来越长：可能 reward 没有长度约束。</td></tr>
+<tr><td>KL</td><td>稳定在可控范围</td><td>过高：policy 跑飞；过低：学不动。</td></tr>
+<tr><td>格式通过率</td><td>逐渐提高</td><td>仍然乱：SFT 冷启动不足。</td></tr>
+</table>
+
+<h3>9.5 从 TRL 迁移到 OpenRLHF / verl</h3>
+
+<table>
+<tr><th>TRL 小实验概念</th><th>OpenRLHF 中对应</th><th>verl 中对应</th></tr>
+<tr><td><span class="inline-code">Dataset.from_list</span></td><td><span class="inline-code">--data.prompt_dataset</span></td><td>YAML 中 data 相关配置</td></tr>
+<tr><td><span class="inline-code">reward_func</span></td><td><span class="inline-code">--reward.remote_url reward_func.py</span></td><td>RewardManager / custom reward function</td></tr>
+<tr><td><span class="inline-code">num_generations</span></td><td><span class="inline-code">--rollout.n_samples_per_prompt</span></td><td>rollout 组采样配置</td></tr>
+<tr><td><span class="inline-code">GRPOTrainer</span></td><td><span class="inline-code">--algo.advantage.estimator group_norm</span></td><td>GRPO algorithm config</td></tr>
+<tr><td>本地 generate</td><td>vLLM engines</td><td>vLLM / SGLang rollout backend</td></tr>
+</table>
+
+<h2>10. Mini Tool-use Agent：从 SFT 到 DPO 再到 RLVR</h2>
+
+<p>
+Agent 后训练建议不要一开始就做网页浏览或复杂代码仓库。最稳的第一个实验是 Function Picking：给一个任务，让模型选择正确工具并输出合法参数。
+</p>
+
+<h3>10.1 工具集合</h3>
+
+<pre><code>TOOLS = {
+    "calculator": {
+        "description": "用于精确数学计算",
+        "schema": {"expression": "string"}
+    },
+    "search_doc": {
+        "description": "用于检索本地文档",
+        "schema": {"query": "string"}
+    },
+    "python": {
+        "description": "用于运行简单 Python 代码",
+        "schema": {"code": "string"}
+    }
+}</code></pre>
+
+<h3>10.2 SFT 阶段：先学会格式</h3>
+
+<pre><code>{
+  "messages": [
+    {"role": "user", "content": "计算 88 * 17。"},
+    {"role": "assistant", "content": "Thought: 这是精确计算问题，应该使用 calculator。\nAction: calculator({\"expression\": \"88 * 17\"})"},
+    {"role": "tool", "content": "1496"},
+    {"role": "assistant", "content": "Final Answer: 88 * 17 = 1496。"}
+  ]
+}</code></pre>
+
+<h3>10.3 DPO 阶段：比较好坏轨迹</h3>
+
+<pre><code>{
+  "prompt": "计算 88 * 17。",
+  "chosen": "Thought: 需要精确计算。\nAction: calculator({\"expression\": \"88 * 17\"})",
+  "rejected": "Thought: 我可以搜索一下。\nAction: search_doc({\"query\": \"88 * 17\"})"
+}</code></pre>
+
+<h3>10.4 RLVR 阶段：用执行结果给 reward</h3>
+
+<table>
+<tr><th>检查项</th><th>reward</th></tr>
+<tr><td>Action JSON 可解析</td><td>+0.1</td></tr>
+<tr><td>工具名正确</td><td>+0.2</td></tr>
+<tr><td>参数字段符合 schema</td><td>+0.2</td></tr>
+<tr><td>工具执行成功</td><td>+0.2</td></tr>
+<tr><td>最终答案正确</td><td>+1.0</td></tr>
+<tr><td>超过 3 次工具调用</td><td>-0.1</td></tr>
+</table>
+
+<div class="box train">
+<strong>Agent 后训练最小闭环：</strong>
+先用 SFT 学格式，再用 DPO 学偏好，最后用 RLVR 优化执行成功率。不要一开始就指望 RL 自动学会格式；格式不稳时，RL 会把 reward 噪声放大。
+</div>
+
+<h2>11. 三个框架怎么选？</h2>
+
+<table>
+<tr><th>你的条件 / 目标</th><th>推荐框架</th><th>原因</th></tr>
+<tr><td>刚入门，想看懂 SFT / DPO / GRPO</td><td>TRL</td><td>代码短，Hugging Face 生态友好，适合小模型和 LoRA。</td></tr>
+<tr><td>想用 1-8 张卡跑 RLVR</td><td>TRL 或 OpenRLHF</td><td>TRL 适合小实验；OpenRLHF 更适合 vLLM + Ray 的高吞吐训练。</td></tr>
+<tr><td>想理解生产级 RLHF 系统</td><td>OpenRLHF</td><td>架构清楚，强调 Ray + vLLM + DeepSpeed、Hybrid Engine、Async Training。</td></tr>
+<tr><td>想研究 Agent RL / 多轮工具调用</td><td>verl / OpenRLHF</td><td>都有 multi-turn / agent 相关设计；verl 的 Agent Loop / Reward Loop 很适合读工程数据流。</td></tr>
+<tr><td>想复现 reasoning RL 论文路线</td><td>verl / OpenRLHF</td><td>更接近大规模 RL post-training 的真实配置。</td></tr>
+<tr><td>只有消费级显卡</td><td>TRL + LoRA / QLoRA</td><td>先跑 0.5B / 1.5B 小模型，验证数据和 reward。</td></tr>
+</table>
+
+<h2>12. 常见报错和实践坑</h2>
+
+<h3>12.1 数据格式类</h3>
+
+<table>
+<tr><th>问题</th><th>表现</th><th>解决</th></tr>
+<tr><td>chat template 不匹配</td><td>模型输出奇怪角色标记，或者推理时格式崩</td><td>训练和推理使用同一 tokenizer / chat template。</td></tr>
+<tr><td>assistant loss mask 错误</td><td>模型学会生成 user / tool 内容</td><td>检查只对 assistant 生成 token 计算 loss。</td></tr>
+<tr><td>答案抽取失败</td><td>reward 一直 0</td><td>强制 Final Answer 格式，增强 parser。</td></tr>
+<tr><td>chosen / rejected 质量差</td><td>DPO 后模型变差</td><td>偏好对必须差异明确，避免 chosen 本身也错。</td></tr>
+</table>
+
+<h3>12.2 RL 训练类</h3>
+
+<table>
+<tr><th>问题</th><th>表现</th><th>解决</th></tr>
+<tr><td>组内 reward 全相同</td><td>GRPO 学不动</td><td>调整题目难度、采样温度、num_generations。</td></tr>
+<tr><td>KL 过大</td><td>输出跑飞、重复、格式怪</td><td>增大 KL 系数，降低学习率，缩短 rollout。</td></tr>
+<tr><td>KL 过小但 reward 不涨</td><td>模型几乎没变化</td><td>降低 KL 约束、增大学习率、检查 reward 信号。</td></tr>
+<tr><td>completion 越来越长</td><td>reasoning 膨胀，显存爆</td><td>加入长度惩罚，设置 max_completion_length。</td></tr>
+<tr><td>reward hacking</td><td>指标涨但人工看变差</td><td>加入多目标 reward 和人工抽查。</td></tr>
+</table>
+
+<h3>12.3 工程环境类</h3>
+
+<table>
+<tr><th>问题</th><th>表现</th><th>解决</th></tr>
+<tr><td>Ray worker 找不到依赖</td><td>本地能跑，Ray job 报 import error</td><td>使用 runtime env 或在所有节点安装依赖。</td></tr>
+<tr><td>vLLM / CUDA 版本不兼容</td><td>启动 rollout engine 失败</td><td>固定 CUDA、PyTorch、vLLM、flash-attn 版本。</td></tr>
+<tr><td>权重同步慢</td><td>rollout 和 training 间等待很久</td><td>检查 NCCL、tensor parallel、网络带宽。</td></tr>
+<tr><td>OOM</td><td>训练或 rollout 爆显存</td><td>降低 batch、降低 max_new_tokens、启用 ZeRO / FSDP / gradient checkpointing。</td></tr>
+</table>
+
+<h2>13. 读源码时应该抓哪几条线？</h2>
+
+<p>
+真正读框架源码时，不要从文件树第一行开始看。你要按后训练闭环追踪。
+</p>
+
+<table>
+<tr><th>追踪线索</th><th>要找什么</th><th>你会理解什么</th></tr>
+<tr><td>数据线</td><td>dataset → tokenizer → collator → batch</td><td>prompt / response / mask 如何进入模型。</td></tr>
+<tr><td>生成线</td><td>rollout engine → sampling params → generated sequences</td><td>当前 policy 如何产生新样本。</td></tr>
+<tr><td>奖励线</td><td>reward function / RM → reward tensor</td><td>任务目标如何变成标量分数。</td></tr>
+<tr><td>优势线</td><td>reward → baseline → advantage</td><td>为什么某些 token 被强化，某些被削弱。</td></tr>
+<tr><td>KL 线</td><td>policy logprob vs reference logprob</td><td>模型如何被约束在 reference 附近。</td></tr>
+<tr><td>更新线</td><td>loss → backward → optimizer → checkpoint</td><td>最终参数如何改变。</td></tr>
+</table>
+
+<h2>14. 下一步学习路线</h2>
+
+<p>
+这篇读完以后，不建议立刻上大模型。下一步应该做两个小实验。
+</p>
+
+<h3>14.1 实验一：Mini Math GRPO</h3>
+
+<pre>
+目标：让 0.5B / 1.5B 模型学会固定格式回答简单数学题。
+
+步骤：
+1. 构造 100 条小学数学题。
+2. 强制 Final Answer 格式。
+3. 写 extract_answer + normalize_answer + reward_func。
+4. 用 TRL GRPOTrainer 跑通。
+5. 观察 reward、KL、completion length、格式通过率。
+6. 把同样 reward 思路迁移到 OpenRLHF 或 verl。
+</pre>
+
+<h3>14.2 实验二：Function Picking Agent</h3>
+
+<pre>
+目标：让模型在 calculator / search_doc / python 三个工具中选择正确工具。
+
+步骤：
+1. 写 100 条 SFT 工具调用轨迹。
+2. 构造 chosen / rejected 偏好对。
+3. 用 SFT 稳定格式。
+4. 用 DPO 改善工具选择偏好。
+5. 用 RLVR 奖励 JSON 合法、工具正确、执行成功、最终答案正确。
+6. 观察是否出现伪造工具结果、乱调用工具、过长轨迹。
+</pre>
+
+<div class="box train">
+<strong>最终建议：</strong>
+你的学习路线应该从“读懂概念”转成“跑通最小闭环”。先用 TRL 验证数据和 reward，再读 OpenRLHF / verl 的系统设计。这样你不会被复杂工程吓住，也不会只停在理论总结。
+</div>
+
+<h2>15. 本篇总结：工程框架到底帮你做了什么？</h2>
+
+<table>
+<tr><th>框架</th><th>一句话总结</th><th>最值得学的点</th></tr>
+<tr><td>TRL</td><td>把后训练方法封装成 Hugging Face 风格 Trainer。</td><td>数据格式、SFT/DPO/GRPO 最小实验、reward function。</td></tr>
+<tr><td>OpenRLHF</td><td>把 RLHF / RLVR 做成 Ray + vLLM + DeepSpeed 的大规模训练系统。</td><td>Actor/Critic/Reward/Reference 调度、Hybrid Engine、Async rollout。</td></tr>
+<tr><td>verl</td><td>把复杂 RL post-training 组织成可组合的数据流。</td><td>actor_rollout_ref、Reward Loop、Agent Loop、multi-turn rollout。</td></tr>
+</table>
+
+<p>
+到这里，你应该能把理论词汇和工程词汇对应起来：
+</p>
+
+<pre>
+SFT → SFTTrainer / supervised dataset / chat template
+DPO → DPOTrainer / preference dataset / chosen-rejected
+RLVR → reward_func.py / verifier / math checker / unit test
+GRPO → group sampling / relative reward / critic-less advantage
+PPO → actor + critic + reward + reference + clipped update
+Rollout → vLLM / SGLang generation / trajectories
+Agent RL → agent loop / tool feedback / response mask / environment reward
+</pre>
+
+<div class="box note">
+<strong>这篇的核心收获：</strong>
+后训练工程不是“换一个 Trainer 名字”。它是一条闭环：当前模型生成 → 奖励系统评价 → advantage 计算 → KL 约束 → policy 更新 → 再生成。TRL、OpenRLHF、verl 只是对这条闭环的不同工程实现。
+</div>
+
+<h2>16. 参考链接与图片来源</h2>
+
+<ul>
+<li>Hugging Face TRL Documentation：<a href="https://huggingface.co/docs/trl/en/index" target="_blank">https://huggingface.co/docs/trl/en/index</a></li>
+<li>TRL SFT Trainer：<a href="https://huggingface.co/docs/trl/en/sft_trainer" target="_blank">https://huggingface.co/docs/trl/en/sft_trainer</a></li>
+<li>TRL DPO Trainer：<a href="https://huggingface.co/docs/trl/en/dpo_trainer" target="_blank">https://huggingface.co/docs/trl/en/dpo_trainer</a></li>
+<li>TRL GRPO Trainer：<a href="https://huggingface.co/docs/trl/en/grpo_trainer" target="_blank">https://huggingface.co/docs/trl/en/grpo_trainer</a></li>
+<li>OpenRLHF Documentation：<a href="https://openrlhf.readthedocs.io/en/latest/" target="_blank">https://openrlhf.readthedocs.io/en/latest/</a></li>
+<li>OpenRLHF Architecture：<a href="https://openrlhf.readthedocs.io/en/latest/architecture.html" target="_blank">https://openrlhf.readthedocs.io/en/latest/architecture.html</a></li>
+<li>OpenRLHF 官方架构图：<a href="https://openrlhf.readthedocs.io/en/latest/_images/openrlhf-arch.png" target="_blank">https://openrlhf.readthedocs.io/en/latest/_images/openrlhf-arch.png</a></li>
+<li>OpenRLHF RL Training Guide：<a href="https://openrlhf.readthedocs.io/en/latest/agent_training.html" target="_blank">https://openrlhf.readthedocs.io/en/latest/agent_training.html</a></li>
+<li>verl Documentation：<a href="https://verl.readthedocs.io/en/latest/" target="_blank">https://verl.readthedocs.io/en/latest/</a></li>
+<li>verl GRPO：<a href="https://verl.readthedocs.io/en/latest/algo/grpo.html" target="_blank">https://verl.readthedocs.io/en/latest/algo/grpo.html</a></li>
+<li>verl Config Explanation：<a href="https://verl.readthedocs.io/en/latest/examples/config.html" target="_blank">https://verl.readthedocs.io/en/latest/examples/config.html</a></li>
+<li>verl Agent Loop：<a href="https://verl.readthedocs.io/en/latest/advance/agent_loop.html" target="_blank">https://verl.readthedocs.io/en/latest/advance/agent_loop.html</a></li>
+<li>verl Reward Loop：<a href="https://verl.readthedocs.io/en/latest/advance/reward_loop.html" target="_blank">https://verl.readthedocs.io/en/latest/advance/reward_loop.html</a></li>
+</ul>
+
+
+<script>
+(function() {
+  const toc = document.querySelector('.page-toc');
+  const toggle = document.querySelector('.page-toc-toggle');
+  const list = document.getElementById('page-toc-list');
+  const headings = Array.from(document.querySelectorAll('h2, h3'));
+  function makeId(text, index) {
+    return 'sec-' + index + '-' + text.trim().replace(/\s+/g, '-').slice(0, 30);
+  }
+  let currentLi = null;
+  headings.forEach((h, i) => {
+    if (!h.id) h.id = makeId(h.textContent, i);
+    if (h.tagName.toLowerCase() === 'h2') {
+      const li = document.createElement('li');
+      li.className = 'page-toc-item';
+      const a = document.createElement('a');
+      a.className = 'page-toc-link';
+      a.href = '#' + h.id;
+      a.textContent = h.textContent;
+      li.appendChild(a);
+      const sub = document.createElement('ol');
+      sub.className = 'page-toc-sublist';
+      li.appendChild(sub);
+      list.appendChild(li);
+      currentLi = li;
+    } else if (currentLi) {
+      const sub = currentLi.querySelector('.page-toc-sublist');
+      const subLi = document.createElement('li');
+      subLi.className = 'page-toc-subitem';
+      const a = document.createElement('a');
+      a.className = 'page-toc-link';
+      a.href = '#' + h.id;
+      a.textContent = h.textContent;
+      subLi.appendChild(a);
+      sub.appendChild(subLi);
+    }
+  });
+  toggle.addEventListener('click', () => toc.classList.toggle('is-open'));
+  document.addEventListener('click', (e) => {
+    if (!toc.contains(e.target)) toc.classList.remove('is-open');
+  });
+  list.addEventListener('click', (e) => {
+    if (e.target.tagName.toLowerCase() === 'a') toc.classList.remove('is-open');
+  });
+})();
+</script>
+
+</body>
+</html>

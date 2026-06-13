@@ -10,9 +10,13 @@ After GitHub Pages is enabled for this repository, open:
 https://wh201215.github.io/-/
 ```
 
-This page does not require Astro, Vercel, local Node.js, or any app. It is a plain HTML directory that links directly to the archived HTML files.
+This page does not require Astro, Vercel, local Node.js, or any app. It is a plain HTML directory that links directly to the files under `files/`.
 
-To add more files, put them under `public/archive/` and add a new link in `index.html`.
+To add more files, put them under one of these folders and add a new link in `index.html`:
+
+- `files/后训练agent/`
+- `files/强化学习/`
+- `files/推荐算法/`
 
 ## Astro version
 
