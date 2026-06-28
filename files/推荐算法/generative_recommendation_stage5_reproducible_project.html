@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>推荐广告大模型新范式 Stage 5：生成式推荐可复现实验与项目落地</title>
+<script>
+window.MathJax={tex:{inlineMath:[["\\(","\\)"],["$","$"]],displayMath:[["\\[","\\]"]],processEscapes:true},svg:{fontCache:'global'}};
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<style>
+html{scroll-behavior:smooth}
+body{font-family:"Microsoft YaHei",Arial,sans-serif;line-height:1.85;max-width:1080px;margin:40px auto;padding:0 28px 100px;background:#f7f8fb;color:#1f2937;font-size:17px}
+h1{font-size:34px;line-height:1.35;border-bottom:5px solid #2563eb;padding-bottom:14px}
+h2{margin-top:48px;padding:12px 16px;font-size:27px;background:#eef4ff;border-left:7px solid #2563eb}
+h3{margin-top:28px;font-size:21px}
+h2,h3{scroll-margin-top:24px}
+.box{background:#fff;border:1px solid #d9e2ef;border-radius:12px;padding:18px 22px;margin:18px 0}
+.note{background:#fff7d6;border-left:6px solid #d6a800}
+.train{background:#ecfdf3;border-left:6px solid #16a34a}
+.warn{background:#fff1f1;border-left:6px solid #dc2626}
+.formula{background:#fff;border:1px solid #d9e2ef;border-radius:12px;padding:16px 18px;margin:18px 0;overflow-x:auto;max-width:100%}
+table{width:100%;border-collapse:collapse;margin:18px 0;background:#fff}
+th,td{border:1px solid #d9e2ef;padding:11px 13px;vertical-align:top}
+th{background:#f1f5f9}
+pre{background:#111827;color:#e5e7eb;padding:18px;border-radius:10px;overflow-x:auto;line-height:1.55;white-space:pre}
+code{font-family:Consolas,Monaco,"Courier New",monospace}
+.small{color:#667085;font-size:14px}
+.tag{display:inline-block;background:#dbeafe;color:#1d4ed8;border-radius:999px;padding:2px 10px;font-size:13px;margin-right:6px}
+.svgbox{background:#fff;border:1px solid #d9e2ef;border-radius:14px;padding:18px;margin:20px 0;overflow-x:auto}
+.svg-title{font-weight:700;margin-bottom:10px;color:#0f172a}
+a{color:#2563eb;text-decoration:none}a:hover{text-decoration:underline}
+.kbd{font-family:Consolas,Monaco,"Courier New",monospace;background:#eef2ff;border:1px solid #c7d2fe;border-radius:6px;padding:1px 6px;font-size:14px;color:#3730a3}
+.page-toc{position:fixed;top:20px;right:20px;z-index:1000}
+.page-toc-toggle{border:0;border-radius:999px;padding:10px 16px;background:#2563eb;color:#fff;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 10px 24px rgba(37,99,235,.24)}
+.page-toc-toggle:hover{background:#1d4ed8}
+.page-toc-panel{display:none;width:390px;max-height:calc(100vh - 90px);overflow:auto;background:rgba(255,255,255,.96);border:1px solid #d9e2ef;border-radius:14px;padding:16px 18px;margin-top:10px;box-shadow:0 12px 30px rgba(15,23,42,.08);backdrop-filter:blur(8px)}
+.page-toc.is-open .page-toc-panel{display:block}
+.page-toc-title{margin-bottom:12px;font-size:15px;font-weight:700;color:#0f172a}
+.page-toc-list{list-style:none;margin:0;padding:0}
+.page-toc-item+.page-toc-item{margin-top:10px}
+.page-toc-link{display:block;color:#334155;text-decoration:none;font-size:14px;line-height:1.55}
+.page-toc-link:hover{color:#2563eb}
+@media(max-width:760px){body{margin:30px auto;padding:0 18px 80px;font-size:16px}h1{font-size:28px}h2{font-size:23px}table{font-size:15px}.page-toc-panel{width:min(390px,calc(100vw - 24px))}}
+</style>
+</head>
+<body>
+<nav class="page-toc" aria-label="文章目录">
+<button class="page-toc-toggle" onclick="document.querySelector('.page-toc').classList.toggle('is-open')">☰ 目录</button>
+<div class="page-toc-panel">
+<div class="page-toc-title">目录导航</div>
+<ol class="page-toc-list">
+<li class="page-toc-item"><a class="page-toc-link" href="#intro">0. 这一阶段到底学什么</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#goal">1. Stage 5 的目标：把论文变成实验</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#dataset">2. 公开数据怎么选</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#task">3. 任务定义：Next-item Generative Recommendation</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#split">4. 数据切分与样本构造</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#sid">5. Semantic ID 构造实验</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#rqvae">6. RQ-VAE 训练细节</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#model">7. TIGER-style 生成模型</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#decode">8. 推理：Beam Search 与约束解码</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#baseline">9. Baseline 应该怎么设</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#metric">10. 评估指标与公式</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#ablation">11. 消融实验设计</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#error">12. 错误分析</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#project">13. 六周项目计划</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#bank">14. 如果要落到银行/业务场景</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#paper">15. 可以包装成什么论文/项目</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#summary">16. 一页总结</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#refs">17. 参考资料</a></li>
+</ol>
+</div>
+</nav>
+
+<h1>推荐广告大模型新范式 Stage 5：生成式推荐可复现实验与项目落地</h1>
+<p><span class="tag">Generative Recommendation</span><span class="tag">TIGER</span><span class="tag">Semantic ID</span><span class="tag">RQ-VAE</span><span class="tag">Evaluation</span><span class="tag">Project</span></p>
+
+<div class="box note" id="intro">
+<p><strong>学习定位：</strong>Stage 2 讲清了 Semantic ID 和 TIGER，Stage 3 讲清了 OneRec 工业系统，Stage 4 讲清了 SFT、DPO、RL 等后训练。Stage 5 要解决一个更现实的问题：</p>
+<div class="formula">\[
+\text{如果我没有工业数据，如何用公开数据做一个像样的生成式推荐实验？}
+\]</div>
+<p>这一篇不是继续堆论文名，而是把论文里的核心方法拆成可复现的工程步骤：数据选择、序列切分、Semantic ID 训练、生成模型训练、Beam Search 推理、指标计算、消融实验、错误分析和项目包装。</p>
+</div>
+
+<h2 id="goal">1. Stage 5 的目标：把论文变成实验</h2>
+<p>生成式推荐论文读起来很先进，但真正做项目时经常卡在几个具体问题：</p>
+<table>
+<tr><th>卡点</th><th>为什么会卡</th><th>Stage 5 怎么解决</th></tr>
+<tr><td>没有工业数据</td><td>OneRec 这类工作依赖短视频平台大规模曝光、点击、播放时长数据</td><td>用 Amazon Reviews 2023 / MovieLens / RecBole 格式数据做离线 next-item 任务</td></tr>
+<tr><td>Semantic ID 不知道怎么做</td><td>论文里通常写 RQ-VAE / Quantization，但工程实现细节很多</td><td>拆成 item embedding、codebook、残差量化、唯一性处理四步</td></tr>
+<tr><td>生成模型不知道怎么评估</td><td>传统 ranker 是对候选 item 打分，生成模型是直接生成 ID</td><td>统一成 top-K item list，再计算 Recall@K、NDCG@K、MRR@K、Coverage</td></tr>
+<tr><td>不知道怎么体现价值</td><td>只跑一个 TIGER 很容易像 toy demo</td><td>做 ID 方案消融、冷启动消融、长尾覆盖、非法 ID 分析</td></tr>
+</table>
+<div class="box train"><strong>一句话：</strong>Stage 5 的目标不是复现快手 OneRec，而是做一个可解释、可复现、可扩展的 Semantic-ID Generative Recommendation 项目。</div>
+
+<div class="svgbox">
+<div class="svg-title">图 1：Stage 5 的完整实验闭环</div>
+<svg width="1000" height="260" viewBox="0 0 1000 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="生成式推荐可复现实验流程图">
+<defs>
+<marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#2563eb"/></marker>
+</defs>
+<rect x="25" y="55" width="135" height="80" rx="14" fill="#eef4ff" stroke="#2563eb" stroke-width="2"/>
+<text x="92" y="90" text-anchor="middle" font-size="16" font-weight="700" fill="#0f172a">公开数据</text>
+<text x="92" y="116" text-anchor="middle" font-size="13" fill="#334155">Amazon / MovieLens</text>
+<line x1="160" y1="95" x2="215" y2="95" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow)"/>
+<rect x="215" y="55" width="145" height="80" rx="14" fill="#ecfdf3" stroke="#16a34a" stroke-width="2"/>
+<text x="287" y="88" text-anchor="middle" font-size="16" font-weight="700" fill="#0f172a">序列样本</text>
+<text x="287" y="115" text-anchor="middle" font-size="13" fill="#334155">history → next item</text>
+<line x1="360" y1="95" x2="415" y2="95" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow)"/>
+<rect x="415" y="55" width="145" height="80" rx="14" fill="#fff7d6" stroke="#d6a800" stroke-width="2"/>
+<text x="487" y="88" text-anchor="middle" font-size="16" font-weight="700" fill="#0f172a">Semantic ID</text>
+<text x="487" y="115" text-anchor="middle" font-size="13" fill="#334155">RQ-VAE / Codebook</text>
+<line x1="560" y1="95" x2="615" y2="95" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow)"/>
+<rect x="615" y="55" width="145" height="80" rx="14" fill="#f5f3ff" stroke="#7c3aed" stroke-width="2"/>
+<text x="687" y="88" text-anchor="middle" font-size="16" font-weight="700" fill="#0f172a">生成模型</text>
+<text x="687" y="115" text-anchor="middle" font-size="13" fill="#334155">Transformer / T5</text>
+<line x1="760" y1="95" x2="815" y2="95" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow)"/>
+<rect x="815" y="55" width="150" height="80" rx="14" fill="#fff1f1" stroke="#dc2626" stroke-width="2"/>
+<text x="890" y="88" text-anchor="middle" font-size="16" font-weight="700" fill="#0f172a">评估与分析</text>
+<text x="890" y="115" text-anchor="middle" font-size="13" fill="#334155">Recall / NDCG / Error</text>
+<rect x="190" y="170" width="620" height="45" rx="12" fill="#ffffff" stroke="#d9e2ef"/>
+<text x="500" y="198" text-anchor="middle" font-size="15" fill="#334155">最终产物：一套可复现实验 + 一组消融表 + 一份项目报告</text>
+</svg>
+</div>
+
+<h2 id="dataset">2. 公开数据怎么选</h2>
+<p>生成式推荐最需要的数据不是“评分表”本身，而是<strong>用户行为序列 + item 侧信息</strong>。因为 Semantic ID 最好不是纯随机 ID，而是能从 item 内容、类目、文本、图像或行为 embedding 中量化出来。</p>
+
+<h3>2.1 数据集选择原则</h3>
+<table>
+<tr><th>选择标准</th><th>为什么重要</th><th>推荐程度</th></tr>
+<tr><td>有用户-物品交互时间</td><td>next-item prediction 必须构造按时间排序的用户历史</td><td>必需</td></tr>
+<tr><td>有 item metadata</td><td>Semantic ID 可以从标题、类目、描述、图片等内容生成</td><td>强烈推荐</td></tr>
+<tr><td>item 数不能太小</td><td>生成式推荐在大 item space 下更能体现优势</td><td>推荐</td></tr>
+<tr><td>有长尾分布</td><td>可以分析生成模型是否只推荐热门 item</td><td>推荐</td></tr>
+<tr><td>预处理成本可控</td><td>学生项目不应该被数据清洗拖死</td><td>必需</td></tr>
+</table>
+
+<h3>2.2 推荐数据集</h3>
+<table>
+<tr><th>数据集</th><th>优点</th><th>缺点</th><th>适合做什么</th></tr>
+<tr><td>Amazon Reviews 2023</td><td>规模大；包含 reviews、ratings、text、item metadata、description、price、image、also-bought links 等丰富信息</td><td>完整数据很大，需要选一个 category 子集</td><td>最适合做 Semantic ID + 生成式推荐</td></tr>
+<tr><td>MovieLens 1M / 20M / latest-small</td><td>经典、容易处理、社区代码多</td><td>item 内容较弱，生成 Semantic ID 的优势不明显</td><td>适合先跑通序列推荐 baseline</td></tr>
+<tr><td>RecBole 内置数据格式</td><td>训练、评估、baseline 统一，指标支持完整</td><td>生成式推荐需要自己改造模型输出</td><td>适合做 baseline 对照</td></tr>
+<tr><td>OpenOneRec 相关数据/benchmark</td><td>更接近 recommendation foundation model 和 instruction-following recommender</td><td>工程复杂度更高</td><td>适合 Stage 6 以后做 foundation model 实验</td></tr>
+</table>
+<div class="box note"><strong>建议：</strong>第一版项目不要一上来用全量 Amazon Reviews 2023。选择一个中等 category，例如 Beauty、Sports、Toys、Tools、Home 等，过滤出交互次数不少于 5 的用户和物品，先让实验闭环跑通。</div>
+
+<h3>2.3 数据规模建议</h3>
+<table>
+<tr><th>版本</th><th>用户数</th><th>物品数</th><th>交互数</th><th>适合阶段</th></tr>
+<tr><td>Toy Debug</td><td>1k - 5k</td><td>1k - 5k</td><td>20k - 100k</td><td>调通 pipeline</td></tr>
+<tr><td>Small Experiment</td><td>10k - 50k</td><td>10k - 50k</td><td>200k - 1M</td><td>写报告和消融</td></tr>
+<tr><td>Medium Experiment</td><td>50k - 200k</td><td>50k - 200k</td><td>1M - 10M</td><td>更像论文实验</td></tr>
+</table>
+<p>如果显存有限，Small Experiment 已经足够做出有说服力的图表。生成式推荐项目的价值不只看绝对指标，而是看你是否能解释：</p>
+<pre>为什么某种 Semantic ID 更好？
+为什么生成模型会产生 invalid SID？
+为什么 beam size 增大后 Recall 上升但延迟增加？
+为什么冷启动 item 在内容型 Semantic ID 下更容易被召回？</pre>
+
+<h2 id="task">3. 任务定义：Next-item Generative Recommendation</h2>
+<p>最标准、最容易复现的任务是 next-item prediction。给定用户历史行为序列，预测下一个交互 item。</p>
+<div class="formula">\[
+H_u = \left(i_1, i_2, \ldots, i_n\right)
+\]</div>
+<div class="formula">\[
+i_{n+1}^{\star} = \text{the next item interacted by user }u
+\]</div>
+<p>传统序列推荐模型通常学习一个打分函数：</p>
+<div class="formula">\[
+s_{u,i}=f_{\theta}\left(H_u,i\right)
+\]</div>
+<p>然后对候选 item 排序：</p>
+<div class="formula">\[
+R_u^K = \operatorname{TopK}_{i\in\mathcal{I}}\; s_{u,i}
+\]</div>
+<p>生成式推荐则先把 item 映射成 Semantic ID：</p>
+<div class="formula">\[
+\operatorname{SID}\left(i\right)=\left(c_{i,1},c_{i,2},\ldots,c_{i,L}\right)
+\]</div>
+<p>模型直接生成目标 item 的 token 序列：</p>
+<div class="formula">\[
+p_{\theta}\left(\operatorname{SID}\left(i_{n+1}^{\star}\right)\mid \operatorname{SID}\left(i_1\right),\ldots,\operatorname{SID}\left(i_n\right)\right)
+\]</div>
+<p>展开成自回归形式：</p>
+<div class="formula">\[
+p_{\theta}\left(c_{\star,1},\ldots,c_{\star,L}\mid H_u\right)=
+\prod_{\ell=1}^{L}p_{\theta}\left(c_{\star,\ell}\mid c_{\star,\lt \ell},H_u\right)
+\]</div>
+<div class="box train"><strong>关键变化：</strong>传统推荐是“给 item 打分”；生成式推荐是“把 item 变成 token，再预测 token 序列”。</div>
+
+<h2 id="split">4. 数据切分与样本构造</h2>
+<h3>4.1 用户序列排序</h3>
+<p>每个用户的交互按时间排序：</p>
+<pre>user u:
+item_3 → item_8 → item_2 → item_15 → item_9</pre>
+<p>然后构造训练样本：</p>
+<pre>input:  item_3
+label:  item_8
+
+input:  item_3, item_8
+label:  item_2
+
+input:  item_3, item_8, item_2
+label:  item_15</pre>
+<p>验证和测试可以采用 leave-one-out：</p>
+<table>
+<tr><th>切分</th><th>样本</th><th>用途</th></tr>
+<tr><td>训练</td><td>除最后两个交互之外的滑窗样本</td><td>训练生成模型</td></tr>
+<tr><td>验证</td><td>倒数第二个 item</td><td>调参、早停、选 beam size</td></tr>
+<tr><td>测试</td><td>最后一个 item</td><td>最终报告指标</td></tr>
+</table>
+
+<h3>4.2 滑窗长度</h3>
+<p>实际训练时不会把无限长历史全部输入，而是截断到最大长度 \(M\)：</p>
+<div class="formula">\[
+H_u^{\left(M\right)}=\left(i_{\max\left(1,n-M+1\right)},\ldots,i_n\right)
+\]</div>
+<table>
+<tr><th>最大历史长度</th><th>特点</th><th>建议</th></tr>
+<tr><td>20</td><td>训练快，适合 debug</td><td>第一版</td></tr>
+<tr><td>50</td><td>能覆盖多数用户近期兴趣</td><td>正式小实验</td></tr>
+<tr><td>100+</td><td>更适合大模型和长序列兴趣建模</td><td>显存充足再做</td></tr>
+</table>
+
+<h3>4.3 样本格式</h3>
+<p>生成式推荐的训练样本可以组织成文本式 token 序列，也可以直接组织成整数 token 序列。</p>
+<pre>Input tokens:
+&lt;user_hist&gt; 12 87 301 44 &lt;item_sep&gt; 12 88 109 7 &lt;item_sep&gt; 3 91 21 50
+
+Target tokens:
+3 91 22 19 &lt;eos&gt;</pre>
+<div class="box warn"><strong>注意：</strong>如果写进 HTML 的代码块里出现尖括号，需要写成 <code>&amp;lt;token&amp;gt;</code>，否则浏览器会把它误解成 HTML 标签。数学公式里也不要直接写 <code>&lt;</code>，要写 <code>\lt</code>。</div>
+
+<h2 id="sid">5. Semantic ID 构造实验</h2>
+<p>Semantic ID 是整个项目的核心。你不能只说“用了 Semantic ID”，而要证明不同 ID 方案的效果差异。</p>
+<h3>5.1 至少做四种 ID 对照</h3>
+<table>
+<tr><th>ID 方案</th><th>构造方式</th><th>作用</th><th>预期现象</th></tr>
+<tr><td>Random ID</td><td>随机给每个 item 分配 token tuple</td><td>证明“仅仅生成 ID”不够</td><td>通常较弱，长尾泛化差</td></tr>
+<tr><td>Popularity / Category ID</td><td>用类目、热门度分桶构造层级 ID</td><td>简单可解释 baseline</td><td>粗粒度有效，但细粒度不足</td></tr>
+<tr><td>Behavior SID</td><td>用协同过滤或 LightGCN item embedding 量化</td><td>捕捉用户共现行为</td><td>点击预测强，但冷启动弱</td></tr>
+<tr><td>Content SID</td><td>用 title、description、category、image embedding 量化</td><td>利用 item 内容语义</td><td>冷启动和语义泛化更好</td></tr>
+<tr><td>Hybrid SID</td><td>行为 embedding + 内容 embedding 拼接或融合后量化</td><td>结合协同信号和内容语义</td><td>通常是最值得尝试的主方案</td></tr>
+</table>
+
+<h3>5.2 为什么 Random ID 是必要对照</h3>
+<p>生成式推荐很容易被误解成“只要 Transformer 足够强，就能记住 item ID”。Random ID 对照就是为了回答这个问题：</p>
+<div class="formula">\[
+\text{性能提升到底来自生成建模，还是来自 Semantic ID 的语义结构？}
+\]</div>
+<p>如果 Content SID 或 Hybrid SID 明显优于 Random ID，就说明模型不是单纯背 ID，而是在利用 item token 的共享结构。</p>
+
+<h3>5.3 Semantic ID 的三个评价角度</h3>
+<table>
+<tr><th>评价角度</th><th>怎么观察</th><th>意义</th></tr>
+<tr><td>唯一性</td><td>多少 item 共享完全相同的 SID</td><td>重复 SID 会导致生成后无法唯一映射 item</td></tr>
+<tr><td>语义聚类</td><td>共享前缀 token 的 item 是否属于相似类目</td><td>验证 SID 是否真的有语义</td></tr>
+<tr><td>长尾覆盖</td><td>生成结果中 long-tail item 比例</td><td>判断模型是否只学热门 item</td></tr>
+</table>
+
+<div class="svgbox">
+<div class="svg-title">图 2：不同 Semantic ID 方案的作用差异</div>
+<svg width="1000" height="330" viewBox="0 0 1000 330" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Semantic ID 方案对照图">
+<defs><marker id="arrow2" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#2563eb"/></marker></defs>
+<rect x="40" y="40" width="190" height="70" rx="14" fill="#fff1f1" stroke="#dc2626" stroke-width="2"/>
+<text x="135" y="70" text-anchor="middle" font-size="16" font-weight="700">Random ID</text>
+<text x="135" y="96" text-anchor="middle" font-size="13">无语义，只能记忆</text>
+<rect x="40" y="135" width="190" height="70" rx="14" fill="#fff7d6" stroke="#d6a800" stroke-width="2"/>
+<text x="135" y="165" text-anchor="middle" font-size="16" font-weight="700">Content SID</text>
+<text x="135" y="191" text-anchor="middle" font-size="13">标题/类目/描述/图片</text>
+<rect x="40" y="230" width="190" height="70" rx="14" fill="#ecfdf3" stroke="#16a34a" stroke-width="2"/>
+<text x="135" y="260" text-anchor="middle" font-size="16" font-weight="700">Behavior SID</text>
+<text x="135" y="286" text-anchor="middle" font-size="13">共现/点击/购买序列</text>
+<line x1="230" y1="75" x2="330" y2="165" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow2)"/>
+<line x1="230" y1="170" x2="330" y2="170" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow2)"/>
+<line x1="230" y1="265" x2="330" y2="175" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow2)"/>
+<rect x="330" y="110" width="210" height="120" rx="16" fill="#eef4ff" stroke="#2563eb" stroke-width="2"/>
+<text x="435" y="145" text-anchor="middle" font-size="17" font-weight="700">RQ-VAE / Quantization</text>
+<text x="435" y="176" text-anchor="middle" font-size="14">离散 code tuple</text>
+<text x="435" y="204" text-anchor="middle" font-size="14">SID = (12, 87, 301, 44)</text>
+<line x1="540" y1="170" x2="635" y2="170" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow2)"/>
+<rect x="635" y="95" width="300" height="150" rx="16" fill="#ffffff" stroke="#d9e2ef" stroke-width="2"/>
+<text x="785" y="128" text-anchor="middle" font-size="17" font-weight="700">生成模型效果差异</text>
+<text x="785" y="160" text-anchor="middle" font-size="14">Recall / NDCG</text>
+<text x="785" y="188" text-anchor="middle" font-size="14">Cold-start / Tail coverage</text>
+<text x="785" y="216" text-anchor="middle" font-size="14">Invalid SID / Collision</text>
+</svg>
+</div>
+
+<h2 id="rqvae">6. RQ-VAE 训练细节</h2>
+<p>RQ-VAE 的作用是把连续 item embedding 压缩成多个离散 code。你可以把它理解成“分多层的向量量化”。</p>
+<h3>6.1 输入 item embedding</h3>
+<p>先为每个 item 准备一个连续向量：</p>
+<div class="formula">\[
+\mathbf{x}_i \in \mathbb{R}^{d}
+\]</div>
+<p>这个向量可以来自：</p>
+<table>
+<tr><th>来源</th><th>例子</th><th>优点</th></tr>
+<tr><td>文本 embedding</td><td>title + description + category</td><td>冷启动友好</td></tr>
+<tr><td>图像 embedding</td><td>商品主图、视频封面</td><td>适合电商、短视频</td></tr>
+<tr><td>行为 embedding</td><td>Item2Vec、LightGCN、SASRec item embedding</td><td>协同信号强</td></tr>
+<tr><td>混合 embedding</td><td>内容向量和行为向量拼接后投影</td><td>综合效果更稳</td></tr>
+</table>
+
+<h3>6.2 残差量化</h3>
+<p>假设有 \(L\) 层 codebook，每层有 \(K\) 个 code vector。第 \(\ell\) 层 codebook 是：</p>
+<div class="formula">\[
+\mathcal{C}^{\left(\ell\right)}=\left\{\mathbf{e}_{1}^{\left(\ell\right)},\mathbf{e}_{2}^{\left(\ell\right)},\ldots,\mathbf{e}_{K}^{\left(\ell\right)}\right\}
+\]</div>
+<p>残差量化过程：</p>
+<div class="formula">\[
+\mathbf{r}_{i}^{\left(0\right)}=\mathbf{z}_i
+\]</div>
+<div class="formula">\[
+q_{i,\ell}=\operatorname*{arg\,min}_{k\in\left\{1,\ldots,K\right\}}
+\left\|\mathbf{r}_{i}^{\left(\ell-1\right)}-\mathbf{e}_{k}^{\left(\ell\right)}\right\|_2^2
+\]</div>
+<div class="formula">\[
+\mathbf{r}_{i}^{\left(\ell\right)}=
+\mathbf{r}_{i}^{\left(\ell-1\right)}-\mathbf{e}_{q_{i,\ell}}^{\left(\ell\right)}
+\]</div>
+<p>最终 item 的 Semantic ID 是：</p>
+<div class="formula">\[
+\operatorname{SID}\left(i\right)=\left(q_{i,1},q_{i,2},\ldots,q_{i,L}\right)
+\]</div>
+<div class="box note"><strong>直觉：</strong>第一层 code 往往捕捉粗粒度语义，后几层 code 逐步补充细节。就像先判断“鞋子”，再判断“跑鞋”，再判断“某个品牌/款式”。</div>
+
+<h3>6.3 重构损失</h3>
+<p>RQ-VAE 训练的基本目标是让量化后的向量能重构原始 item 表示：</p>
+<div class="formula">\[
+\hat{\mathbf{x}}_i = D_{\phi}\left(\sum_{\ell=1}^{L}\mathbf{e}_{q_{i,\ell}}^{\left(\ell\right)}\right)
+\]</div>
+<div class="formula">\[
+\mathcal{L}_{\operatorname{rec}}=
+\sum_{i\in\mathcal{I}}\left\|\mathbf{x}_i-\hat{\mathbf{x}}_i\right\|_2^2
+\]</div>
+<p>实际实现里还会加入 commitment loss 或 codebook 更新机制，防止 encoder 输出频繁跳动或 codebook 使用不均衡。</p>
+
+<h3>6.4 Codebook collapse 问题</h3>
+<p>如果大部分 item 都被映射到少数 code，说明 codebook 没有被充分利用。</p>
+<table>
+<tr><th>现象</th><th>可能原因</th><th>处理方法</th></tr>
+<tr><td>某些 code 从不被选中</td><td>初始化差、学习率不合适、embedding 分布集中</td><td>重新初始化冷门 code；加入 usage regularization</td></tr>
+<tr><td>大量 item 共享同一 SID</td><td>codebook 太小或层数太少</td><td>增大 \(K\) 或 \(L\)</td></tr>
+<tr><td>SID 无语义聚类</td><td>item embedding 本身质量差</td><td>换更好的文本/图像/行为 embedding</td></tr>
+</table>
+
+<h2 id="model">7. TIGER-style 生成模型</h2>
+<p>TIGER-style 模型可以用 encoder-decoder Transformer，也可以用 decoder-only Transformer 简化实现。第一版建议从 encoder-decoder 开始，因为它和原始 TIGER 论文表述更接近。</p>
+<h3>7.1 输入输出形式</h3>
+<pre>Input:
+SID(item_1), SID(item_2), ..., SID(item_n)
+
+Target:
+SID(item_{n+1})</pre>
+<p>如果每个 item 的 SID 长度为 \(L\)，用户历史长度为 \(M\)，那么输入 token 数大约是：</p>
+<div class="formula">\[
+T_{\operatorname{input}} \approx M\cdot L
+\]</div>
+<p>目标 token 数是：</p>
+<div class="formula">\[
+T_{\operatorname{target}}=L+1
+\]</div>
+<p>其中 \(+1\) 是结束符 \(\operatorname{EOS}\)。</p>
+
+<h3>7.2 训练目标</h3>
+<p>给定用户历史 \(H_u\)，目标 item 的 Semantic ID 为 \(\left(c_{u,1}^{\star},\ldots,c_{u,L}^{\star}\right)\)，训练损失为：</p>
+<div class="formula">\[
+\mathcal{L}_{\operatorname{gen}}=-\sum_{u\in\mathcal{U}}
+\sum_{\ell=1}^{L}
+\log p_{\theta}\left(c_{u,\ell}^{\star}\mid c_{u,\lt \ell}^{\star},H_u\right)
+\]</div>
+<p>如果加入 \(\operatorname{EOS}\)，则把 \(L\) 改成 \(L+1\)。</p>
+
+<h3>7.3 为什么这是语言模型式训练</h3>
+<p>它和语言模型的 next-token prediction 非常像：</p>
+<table>
+<tr><th>语言模型</th><th>生成式推荐</th></tr>
+<tr><td>上下文是一段文本</td><td>上下文是用户历史 item 序列</td></tr>
+<tr><td>目标是下一个词 token</td><td>目标是下一个 item 的 SID token</td></tr>
+<tr><td>输出词表是语言 token vocabulary</td><td>输出词表是 codebook token vocabulary</td></tr>
+<tr><td>生成一句话</td><td>生成一个 item 或一个推荐列表</td></tr>
+</table>
+<div class="box train"><strong>讲项目时可以这样说：</strong>我们不是把 LLM 用来写推荐理由，而是把推荐目标本身转成可生成的离散 token 序列，用 next-token learning 统一建模用户兴趣转移。</div>
+
+<h2 id="decode">8. 推理：Beam Search 与约束解码</h2>
+<p>训练时模型知道目标 SID；推理时模型要自己生成 SID。因此推理阶段非常关键。</p>
+<h3>8.1 普通 Beam Search</h3>
+<p>每一步保留得分最高的 \(B\) 个前缀：</p>
+<div class="formula">\[
+\operatorname{score}\left(c_{1:\ell}\right)=
+\sum_{t=1}^{\ell}\log p_{\theta}\left(c_t\mid c_{\lt t},H_u\right)
+\]</div>
+<p>最后得到若干完整 SID，再映射回 item。</p>
+
+<h3>8.2 为什么需要 constrained decoding</h3>
+<p>模型可能生成训练集中不存在的 SID：</p>
+<pre>Generated SID: (12, 87, 999, 44)
+但是 item catalog 里没有任何 item 对应这个 code tuple</pre>
+<p>这就是 invalid SID。解决方法是构建 SID Trie，只允许模型生成真实存在的 SID 前缀。</p>
+<pre>合法 SID 集合：
+(12, 87, 301, 44)
+(12, 87, 302, 19)
+(12, 90, 11,  5)
+
+当模型已经生成前缀 (12, 87) 时，下一步只允许生成 301 或 302。</pre>
+<div class="formula">\[
+\mathcal{A}\left(c_{1:\ell}\right)=
+\left\{c:\left(c_{1},\ldots,c_{\ell},c\right)\text{ is a valid SID prefix}\right\}
+\]</div>
+<p>约束解码时只在合法集合里归一化：</p>
+<div class="formula">\[
+p_{\theta}^{\operatorname{valid}}\left(c\mid c_{\lt t},H_u\right)=
+\frac{\exp\left(o_c\right)\cdot \mathbb{I}\left\{c\in\mathcal{A}\left(c_{\lt t}\right)\right\}}
+{\sum_{c'\in\mathcal{A}\left(c_{\lt t}\right)}\exp\left(o_{c'}\right)}
+\]</div>
+
+<h3>8.3 生成 Top-K 推荐列表</h3>
+<p>生成式推荐最终也要输出 top-K item：</p>
+<pre>Beam candidates:
+SID_1 → item_1, score_1
+SID_2 → item_2, score_2
+SID_3 → item_3, score_3
+...
+
+After filtering:
+Top-K recommended items</pre>
+<p>过滤规则包括：</p>
+<table>
+<tr><th>过滤</th><th>原因</th></tr>
+<tr><td>去掉用户已交互 item</td><td>避免重复推荐历史物品</td></tr>
+<tr><td>去掉 invalid SID</td><td>保证能映射回真实 item</td></tr>
+<tr><td>去掉不可用 item</td><td>商品下架、视频删除、广告预算耗尽</td></tr>
+<tr><td>业务约束重排</td><td>多样性、安全、广告 pacing、库存等</td></tr>
+</table>
+
+<h2 id="baseline">9. Baseline 应该怎么设</h2>
+<p>一个能被认可的项目，不能只有自己的模型。至少要有传统方法、序列推荐方法、生成式方法三类对照。</p>
+<table>
+<tr><th>类别</th><th>模型</th><th>作用</th></tr>
+<tr><td>简单 baseline</td><td>Popularity、ItemKNN</td><td>确认模型不是连热门推荐都打不过</td></tr>
+<tr><td>序列推荐 baseline</td><td>GRU4Rec、SASRec、BERT4Rec</td><td>对比主流 next-item 推荐</td></tr>
+<tr><td>图推荐 baseline</td><td>LightGCN</td><td>对比协同过滤图结构</td></tr>
+<tr><td>生成式 baseline</td><td>Random ID + Transformer</td><td>证明 Semantic ID 的必要性</td></tr>
+<tr><td>主模型</td><td>RQ-VAE SID + Transformer</td><td>你的核心方法</td></tr>
+</table>
+
+<h3>9.1 最小可接受 baseline 组合</h3>
+<pre>Popularity
+ItemKNN
+SASRec
+BERT4Rec
+Random-ID Generative Transformer
+Semantic-ID Generative Transformer</pre>
+<p>如果时间紧，至少保留 Popularity、SASRec、Random-ID Generative Transformer 和 Semantic-ID Generative Transformer。</p>
+
+<h3>9.2 为什么必须有 Random-ID Generative Transformer</h3>
+<p>它和主模型唯一差异是 ID 是否有语义：</p>
+<table>
+<tr><th>模型</th><th>ID</th><th>生成架构</th></tr>
+<tr><td>Random-ID GenRec</td><td>随机 ID</td><td>Transformer</td></tr>
+<tr><td>Semantic-ID GenRec</td><td>RQ-VAE SID</td><td>Transformer</td></tr>
+</table>
+<p>这样才能把增益归因到 Semantic ID，而不是 Transformer 本身。</p>
+
+<h2 id="metric">10. 评估指标与公式</h2>
+<p>生成式推荐最终输出的是 item 排序列表，所以仍然可以用 top-K recommendation 指标。</p>
+
+<h3>10.1 Recall@K / Hit@K</h3>
+<p>如果每个用户测试集只有一个目标 item，那么 Recall@K 和 Hit@K 基本等价：</p>
+<div class="formula">\[
+\operatorname{Recall@K}=\frac{1}{\left|\mathcal{U}\right|}\sum_{u\in\mathcal{U}}
+\mathbb{I}\left\{i_u^{\star}\in R_u^K\right\}
+\]</div>
+<p>其中 \(R_u^K\) 是模型给用户 \(u\) 生成的 top-K 推荐列表。</p>
+
+<h3>10.2 NDCG@K</h3>
+<p>NDCG 考虑命中 item 的排名位置。命中越靠前，分数越高。</p>
+<div class="formula">\[
+\operatorname{NDCG@K}=\frac{1}{\left|\mathcal{U}\right|}\sum_{u\in\mathcal{U}}
+\frac{\mathbb{I}\left\{i_u^{\star}\in R_u^K\right\}}
+{\log_2\left(\operatorname{rank}_u\left(i_u^{\star}\right)+1\right)}
+\]</div>
+<p>如果没有命中，则该用户贡献为 0。</p>
+
+<h3>10.3 MRR@K</h3>
+<div class="formula">\[
+\operatorname{MRR@K}=\frac{1}{\left|\mathcal{U}\right|}\sum_{u\in\mathcal{U}}
+\frac{\mathbb{I}\left\{i_u^{\star}\in R_u^K\right\}}
+{\operatorname{rank}_u\left(i_u^{\star}\right)}
+\]</div>
+
+<h3>10.4 Coverage / Long-tail</h3>
+<p>生成式推荐不能只看准确率，还要看是否覆盖更多 item。</p>
+<div class="formula">\[
+\operatorname{Coverage@K}=\frac{\left|\bigcup_{u\in\mathcal{U}}R_u^K\right|}{\left|\mathcal{I}\right|}
+\]</div>
+<p>长尾覆盖可以定义为推荐列表里属于长尾 item 的比例：</p>
+<div class="formula">\[
+\operatorname{TailRatio@K}=\frac{1}{\left|\mathcal{U}\right|K}
+\sum_{u\in\mathcal{U}}\sum_{i\in R_u^K}\mathbb{I}\left\{i\in\mathcal{I}_{\operatorname{tail}}\right\}
+\]</div>
+<div class="box warn"><strong>评估注意：</strong>尽量做 full-catalog evaluation，不要只对 100 个 sampled negatives 排序。采样负例评估容易高估模型效果，尤其不利于比较生成式方法和传统排序方法。</div>
+
+<h2 id="ablation">11. 消融实验设计</h2>
+<p>这部分是项目能不能显得“像研究”的关键。不要只报一张主表，而要让读者看出你的方法为什么有效。</p>
+
+<h3>11.1 ID 方案消融</h3>
+<table>
+<tr><th>实验</th><th>变量</th><th>观察指标</th><th>要回答的问题</th></tr>
+<tr><td>Random ID vs Semantic ID</td><td>ID 是否有语义</td><td>Recall、NDCG、TailRatio</td><td>Semantic ID 是否真的带来泛化</td></tr>
+<tr><td>Content SID vs Behavior SID</td><td>item embedding 来源</td><td>冷启动 Recall、总体 Recall</td><td>内容语义和协同行为哪个更重要</td></tr>
+<tr><td>Hybrid SID</td><td>融合内容和行为</td><td>总体和长尾指标</td><td>两种信号是否互补</td></tr>
+</table>
+
+<h3>11.2 Codebook 大小消融</h3>
+<table>
+<tr><th>参数</th><th>候选值</th><th>影响</th></tr>
+<tr><td>SID 长度 \(L\)</td><td>2 / 4 / 6 / 8</td><td>越长越能区分 item，但生成更难</td></tr>
+<tr><td>每层 codebook 大小 \(K\)</td><td>64 / 128 / 256 / 512</td><td>越大表达更细，但稀疏训练更难</td></tr>
+<tr><td>Beam size \(B\)</td><td>5 / 10 / 20 / 50</td><td>越大 Recall 可能更高，但推理更慢</td></tr>
+<tr><td>历史长度 \(M\)</td><td>20 / 50 / 100</td><td>越长能看更多兴趣，但计算更大</td></tr>
+</table>
+
+<h3>11.3 冷启动消融</h3>
+<p>可以模拟冷启动：把一部分 item 的训练交互减少，只保留 metadata。</p>
+<pre>Cold-start setting:
+1. 按 item 交互次数排序；
+2. 选出低频 item 作为 cold-start subset；
+3. 比较 Random ID、Behavior SID、Content SID、Hybrid SID 在该 subset 上的 Recall@K。</pre>
+<p>预期是：Content SID 和 Hybrid SID 在冷启动 subset 上优于 Behavior SID，因为它们能利用 item 内容。</p>
+
+<h3>11.4 结果表模板</h3>
+<table>
+<tr><th>Model</th><th>SID Type</th><th>Recall@10</th><th>NDCG@10</th><th>MRR@10</th><th>Coverage@10</th><th>TailRatio@10</th></tr>
+<tr><td>Popularity</td><td>-</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td></tr>
+<tr><td>SASRec</td><td>Raw Item ID</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td></tr>
+<tr><td>GenRec</td><td>Random ID</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td></tr>
+<tr><td>GenRec</td><td>Content SID</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td></tr>
+<tr><td>GenRec</td><td>Behavior SID</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td></tr>
+<tr><td>GenRec</td><td>Hybrid SID</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td></tr>
+</table>
+
+<h2 id="error">12. 错误分析</h2>
+<p>错误分析比单纯跑分更能体现你理解生成式推荐。</p>
+<table>
+<tr><th>错误类型</th><th>表现</th><th>可能原因</th><th>改进方向</th></tr>
+<tr><td>Invalid SID</td><td>生成的 code tuple 不存在</td><td>无约束解码；SID 空间太稀疏</td><td>Trie constrained decoding；减小 SID 长度</td></tr>
+<tr><td>SID collision</td><td>多个 item 对应同一 SID</td><td>codebook 表达能力不足</td><td>增大 codebook；加入 disambiguation token</td></tr>
+<tr><td>热门偏置</td><td>推荐列表集中在热门 item</td><td>训练样本长尾不平衡</td><td>重采样；tail-aware loss；温度调节</td></tr>
+<tr><td>语义漂移</td><td>生成 item 和用户历史主题不一致</td><td>SID 聚类差或用户兴趣突变</td><td>改进 item embedding；加入 session-level intent</td></tr>
+<tr><td>重复推荐</td><td>推荐用户已经交互过的 item</td><td>缺少 history filter</td><td>推理后过滤历史 item</td></tr>
+<tr><td>冷启动失败</td><td>新 item 几乎不被生成</td><td>SID 依赖行为信号</td><td>加入内容型 SID</td></tr>
+</table>
+
+<h3>12.1 必做可视化</h3>
+<ul>
+<li>Codebook usage histogram：看 code 是否塌缩；</li>
+<li>SID prefix cluster：看共享前缀的 item 是否语义相似；</li>
+<li>Recall vs Beam Size 曲线：看推理预算和效果权衡；</li>
+<li>Coverage vs NDCG：看准确性和多样性权衡；</li>
+<li>Cold-start subset 指标：看内容型 SID 的价值。</li>
+</ul>
+<div class="svgbox">
+<div class="svg-title">图 3：错误分析应该观察哪些现象</div>
+<svg width="1000" height="300" viewBox="0 0 1000 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="生成式推荐错误分析维度图">
+<rect x="60" y="55" width="180" height="80" rx="14" fill="#fff1f1" stroke="#dc2626" stroke-width="2"/>
+<text x="150" y="88" text-anchor="middle" font-size="16" font-weight="700">Invalid SID</text>
+<text x="150" y="115" text-anchor="middle" font-size="13">生成不存在 item</text>
+<rect x="300" y="55" width="180" height="80" rx="14" fill="#fff7d6" stroke="#d6a800" stroke-width="2"/>
+<text x="390" y="88" text-anchor="middle" font-size="16" font-weight="700">Collision</text>
+<text x="390" y="115" text-anchor="middle" font-size="13">多个 item 共用 SID</text>
+<rect x="540" y="55" width="180" height="80" rx="14" fill="#ecfdf3" stroke="#16a34a" stroke-width="2"/>
+<text x="630" y="88" text-anchor="middle" font-size="16" font-weight="700">Popularity Bias</text>
+<text x="630" y="115" text-anchor="middle" font-size="13">热门 item 过多</text>
+<rect x="780" y="55" width="180" height="80" rx="14" fill="#eef4ff" stroke="#2563eb" stroke-width="2"/>
+<text x="870" y="88" text-anchor="middle" font-size="16" font-weight="700">Semantic Drift</text>
+<text x="870" y="115" text-anchor="middle" font-size="13">兴趣主题偏移</text>
+<rect x="180" y="185" width="640" height="60" rx="16" fill="#ffffff" stroke="#d9e2ef" stroke-width="2"/>
+<text x="500" y="221" text-anchor="middle" font-size="16" fill="#334155">把错误类型和 SID 方案、beam size、history length 关联起来分析</text>
+</svg>
+</div>
+
+<h2 id="project">13. 六周项目计划</h2>
+<table>
+<tr><th>时间</th><th>目标</th><th>产出</th></tr>
+<tr><td>第 1 周</td><td>数据处理与 baseline 环境</td><td>Amazon 子集 / MovieLens 序列数据；Popularity、ItemKNN、SASRec baseline</td></tr>
+<tr><td>第 2 周</td><td>构造 item embedding</td><td>文本 embedding、行为 embedding、混合 embedding；item 向量可视化</td></tr>
+<tr><td>第 3 周</td><td>训练 RQ-VAE / 量化器</td><td>Random ID、Content SID、Behavior SID、Hybrid SID；code usage 统计</td></tr>
+<tr><td>第 4 周</td><td>训练生成模型</td><td>Random-ID GenRec、Semantic-ID GenRec；训练曲线</td></tr>
+<tr><td>第 5 周</td><td>推理与评估</td><td>Beam Search、Trie constrained decoding、Recall/NDCG/MRR/Coverage 表格</td></tr>
+<tr><td>第 6 周</td><td>消融与报告</td><td>ID 消融、codebook 消融、冷启动分析、错误案例分析、最终 HTML/PDF 报告</td></tr>
+</table>
+
+<h3>13.1 最小项目命名</h3>
+<pre>Semantic-ID Generative Recommendation on Public E-commerce Data
+
+中文：
+基于语义 ID 的公开电商数据生成式推荐实验</pre>
+
+<h3>13.2 更像论文的项目命名</h3>
+<pre>Hybrid Semantic Tokenization for Generative Next-Item Recommendation
+
+中文：
+面向生成式下一物品推荐的混合语义标识符构造方法</pre>
+
+<h3>13.3 项目 README 结构</h3>
+<pre>1. Background
+2. Dataset
+3. Task Formulation
+4. Semantic ID Construction
+5. Generative Recommendation Model
+6. Evaluation Protocol
+7. Experimental Results
+8. Ablation Studies
+9. Error Analysis
+10. Limitations</pre>
+
+<h2 id="bank">14. 如果要落到银行/业务场景</h2>
+<p>你之前提过“最好能落地银行，但不要太高级”。生成式推荐可以迁移到银行，但不要一上来做风控。更合适的银行场景是：</p>
+<table>
+<tr><th>场景</th><th>推荐对象</th><th>为什么适合生成式推荐</th></tr>
+<tr><td>手机银行内容推荐</td><td>理财知识文章、活动页、权益页</td><td>item 有文本语义，适合 Semantic ID</td></tr>
+<tr><td>权益/优惠推荐</td><td>餐饮券、出行券、支付立减、会员权益</td><td>类目明确，用户兴趣序列明显</td></tr>
+<tr><td>金融产品教育推荐</td><td>基金科普、保险说明、风险测评引导</td><td>需要安全解释和合规过滤</td></tr>
+<tr><td>App 功能入口推荐</td><td>转账、缴费、账单、信用卡活动</td><td>可作为低风险个性化入口排序</td></tr>
+</table>
+<div class="box warn"><strong>不建议第一版做：</strong>贷款审批、授信、反欺诈、投资收益承诺。这些场景高风险、高合规，容易把项目复杂度拉爆。</div>
+
+<h3>14.1 银行版本怎么讲</h3>
+<p>可以把 item 从商品换成“内容/权益/服务入口”：</p>
+<pre>用户历史：
+信用卡账单页 → 餐饮优惠页 → 地铁出行券 → 周末活动页
+
+生成目标：
+下一个最可能点击的权益/内容/服务入口 Semantic ID</pre>
+<p>银行版本的重点不是追求极致点击率，而是：</p>
+<table>
+<tr><th>目标</th><th>说明</th></tr>
+<tr><td>可控生成</td><td>只能生成合规 item catalog 中存在的内容</td></tr>
+<tr><td>可解释语义</td><td>Semantic ID 前缀对应内容类目或业务主题</td></tr>
+<tr><td>冷启动友好</td><td>新活动、新权益可通过文本内容进入推荐池</td></tr>
+<tr><td>多样性</td><td>避免只推信用卡或只推理财</td></tr>
+</table>
+
+<h2 id="paper">15. 可以包装成什么论文/项目</h2>
+<p>如果你想把它从学习项目提升成“有研究味道”的项目，可以围绕 Semantic ID 的构造和评估展开。</p>
+<table>
+<tr><th>方向</th><th>核心问题</th><th>可做创新</th></tr>
+<tr><td>Hybrid SID</td><td>内容语义和行为语义如何融合</td><td>对比拼接、门控融合、对比学习融合</td></tr>
+<tr><td>Cold-start GenRec</td><td>生成式推荐如何推荐低频 item</td><td>content-aware SID + tail-aware decoding</td></tr>
+<tr><td>Constrained Decoding</td><td>如何减少 invalid SID</td><td>Trie decoding + business constraint mask</td></tr>
+<tr><td>SID Quality Evaluation</td><td>Semantic ID 怎么评价好坏</td><td>唯一性、聚类纯度、code usage、长尾覆盖</td></tr>
+<tr><td>Bank Content GenRec</td><td>低风险金融内容如何个性化推荐</td><td>合规 catalog 约束 + 可解释 SID</td></tr>
+</table>
+
+<h3>15.1 一个可行的最终项目题目</h3>
+<div class="box train">
+<strong>Hybrid Semantic ID for Controllable Generative Recommendation</strong><br>
+中文：<strong>面向可控生成式推荐的混合语义标识符构造方法</strong><br><br>
+核心卖点：不是做一个新的大模型，而是研究 item tokenization 如何影响生成式推荐的准确性、冷启动能力、长尾覆盖和可控性。
+</div>
+
+<h3>15.2 最终报告的主结论应该长什么样</h3>
+<pre>1. Semantic ID-based generation 在 next-item recommendation 上可以接近或超过部分序列推荐 baseline；
+2. Random ID 明显弱于 Content/Hybrid SID，说明 item token 的语义结构很重要；
+3. Content SID 在 cold-start subset 上表现更好；
+4. Behavior SID 在高频 item 上更强；
+5. Hybrid SID 在总体 Recall 和长尾覆盖之间更平衡；
+6. Constrained decoding 能显著降低 invalid SID；
+7. Beam size 提升 Recall，但会带来推理成本上升。</pre>
+
+<h2 id="summary">16. 一页总结</h2>
+<table>
+<tr><th>模块</th><th>核心理解</th></tr>
+<tr><td>任务</td><td>把 next-item prediction 改写成 Semantic ID sequence generation</td></tr>
+<tr><td>数据</td><td>优先选择有时间序列和 item metadata 的公开数据，例如 Amazon Reviews 2023 子集</td></tr>
+<tr><td>Semantic ID</td><td>项目核心，不同 ID 方案必须做消融</td></tr>
+<tr><td>RQ-VAE</td><td>把连续 item embedding 量化为多层离散 code tuple</td></tr>
+<tr><td>生成模型</td><td>输入用户历史 SID 序列，输出下一个 item 的 SID</td></tr>
+<tr><td>推理</td><td>Beam Search + Trie constrained decoding + item filtering</td></tr>
+<tr><td>指标</td><td>Recall@K、NDCG@K、MRR@K、Coverage@K、TailRatio@K</td></tr>
+<tr><td>Baseline</td><td>Popularity、ItemKNN、SASRec、BERT4Rec、Random-ID GenRec</td></tr>
+<tr><td>消融</td><td>ID 类型、codebook 大小、SID 长度、beam size、history length、cold-start subset</td></tr>
+<tr><td>错误分析</td><td>Invalid SID、SID collision、热门偏置、语义漂移、重复推荐、冷启动失败</td></tr>
+<tr><td>项目价值</td><td>用公开数据证明 Semantic ID 对生成式推荐的泛化、冷启动和可控性有影响</td></tr>
+</table>
+
+<div class="box train">
+<strong>Stage 5 结束标准：</strong>
+<ol>
+<li>能说清楚一个生成式推荐实验从数据到评估的完整 pipeline；</li>
+<li>能解释为什么 Semantic ID 方案必须做消融；</li>
+<li>能写出 next-item generation loss、Recall@K、NDCG@K、Coverage@K；</li>
+<li>能设计 Random ID、Content SID、Behavior SID、Hybrid SID 对比实验；</li>
+<li>能把项目包装成可控生成式推荐或银行内容推荐方向。</li>
+</ol>
+</div>
+
+<h2 id="refs">17. 参考资料</h2>
+<ol>
+<li>Rajput et al. <strong>Recommender Systems with Generative Retrieval</strong>. NeurIPS 2023. <a href="https://arxiv.org/abs/2305.05065" target="_blank">arXiv</a> / <a href="https://proceedings.neurips.cc/paper_files/paper/2023/file/20dcab0f14046a5c6b02b61da9f13229-Paper-Conference.pdf" target="_blank">PDF</a></li>
+<li>Deng et al. <strong>OneRec: Unifying Retrieve and Rank with Generative Recommender and Iterative Preference Alignment</strong>. 2025. <a href="https://arxiv.org/abs/2502.18965" target="_blank">arXiv</a></li>
+<li>Zhou et al. <strong>OneRec-V2 Technical Report</strong>. 2025. <a href="https://arxiv.org/abs/2508.20900" target="_blank">arXiv</a></li>
+<li>Kuaishou-OneRec. <strong>OpenOneRec Technical Report</strong>. 2025. <a href="https://arxiv.org/html/2512.24762v1" target="_blank">arXiv HTML</a></li>
+<li>Kuaishou-OneRec. <strong>OpenOneRec GitHub Repository</strong>. <a href="https://github.com/Kuaishou-OneRec/OpenOneRec" target="_blank">GitHub</a></li>
+<li>McAuley Lab. <strong>Amazon Reviews 2023</strong>. <a href="https://amazon-reviews-2023.github.io/" target="_blank">Dataset page</a></li>
+<li>GroupLens. <strong>MovieLens Datasets</strong>. <a href="https://grouplens.org/datasets/movielens/" target="_blank">Dataset page</a></li>
+<li>RecBole Documentation. <strong>Training & Evaluation Introduction</strong>. <a href="https://recbole.io/docs/user_guide/train_eval_intro.html" target="_blank">Docs</a></li>
+</ol>
+<p class="small">资料注：本文是学习讲义式整理，不替代原论文。涉及具体实验设置、线上指标和系统实现时，请以原论文、官方文档和开源仓库为准。</p>
+</body>
+</html>

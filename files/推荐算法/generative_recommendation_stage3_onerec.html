@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>推荐广告大模型新范式 Stage 3：OneRec 与工业级生成式推荐</title>
+<script>
+window.MathJax={tex:{inlineMath:[["\\(","\\)"],["$","$"]],displayMath:[["\\[","\\]"]],processEscapes:true},svg:{fontCache:"global"}};
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<style>
+html{scroll-behavior:smooth}
+body{font-family:"Microsoft YaHei",Arial,sans-serif;line-height:1.86;max-width:1120px;margin:40px auto;padding:0 28px 110px;background:#f7f8fb;color:#1f2937;font-size:17px}
+h1{font-size:34px;line-height:1.35;border-bottom:5px solid #2563eb;padding-bottom:14px}
+h2{margin-top:48px;padding:12px 16px;font-size:27px;background:#eef4ff;border-left:7px solid #2563eb}
+h3{margin-top:28px;font-size:21px}
+h2,h3{scroll-margin-top:24px}
+a{color:#2563eb;text-decoration:none}a:hover{text-decoration:underline}
+.box{background:#fff;border:1px solid #d9e2ef;border-radius:12px;padding:18px 22px;margin:18px 0}
+.note{background:#fff7d6;border-left:6px solid #d6a800}
+.train{background:#ecfdf3;border-left:6px solid #16a34a}
+.warn{background:#fff1f1;border-left:6px solid #dc2626}
+.deep{background:#f5f3ff;border-left:6px solid #7c3aed}
+.formula{background:#fff;border:1px solid #d9e2ef;border-radius:12px;padding:16px 18px;margin:18px 0;overflow-x:auto;white-space:normal}
+table{width:100%;border-collapse:collapse;margin:18px 0;background:#fff}
+th,td{border:1px solid #d9e2ef;padding:11px 13px;vertical-align:top}
+th{background:#f1f5f9}
+pre{background:#111827;color:#e5e7eb;padding:18px;border-radius:10px;overflow-x:auto;line-height:1.55}
+code{font-family:Consolas,Monaco,"Courier New",monospace}
+.small{color:#667085;font-size:14px}
+.tag{display:inline-block;background:#dbeafe;color:#1d4ed8;border-radius:999px;padding:2px 10px;font-size:13px;margin-right:6px;margin-bottom:6px}
+.fig{background:#fff;border:1px solid #d9e2ef;border-radius:14px;margin:22px 0;padding:14px;overflow-x:auto}
+.caption{font-size:14px;color:#667085;margin-top:8px;text-align:center}
+svg text{font-family:"Microsoft YaHei",Arial,sans-serif}
+.ref-list li{margin:8px 0}
+.page-toc{position:fixed;top:20px;right:20px;z-index:1000}
+.page-toc-toggle{border:0;border-radius:999px;padding:10px 16px;background:#2563eb;color:#fff;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 10px 24px rgba(37,99,235,.24)}
+.page-toc-toggle:hover{background:#1d4ed8}
+.page-toc-panel{display:none;width:390px;max-height:calc(100vh - 90px);overflow:auto;background:rgba(255,255,255,.96);border:1px solid #d9e2ef;border-radius:14px;padding:16px 18px;margin-top:10px;box-shadow:0 12px 30px rgba(15,23,42,.08);backdrop-filter:blur(8px)}
+.page-toc.is-open .page-toc-panel{display:block}
+.page-toc-title{margin-bottom:12px;font-size:15px;font-weight:700;color:#0f172a}
+.page-toc-list{list-style:none;margin:0;padding:0}
+.page-toc-item+.page-toc-item{margin-top:10px}
+.page-toc-link{display:block;color:#334155;text-decoration:none;font-size:14px;line-height:1.55}
+.page-toc-link:hover{color:#2563eb}
+@media(max-width:760px){body{margin:30px auto;padding:0 18px 80px;font-size:16px}h1{font-size:28px}h2{font-size:23px}table{font-size:15px}.page-toc-panel{width:min(390px,calc(100vw - 24px))}}
+</style>
+</head>
+<body>
+<nav class="page-toc" aria-label="文章目录">
+<button class="page-toc-toggle" onclick="document.querySelector('.page-toc').classList.toggle('is-open')">☰ 目录</button>
+<div class="page-toc-panel">
+<div class="page-toc-title">目录导航</div>
+<ol class="page-toc-list">
+<li class="page-toc-item"><a class="page-toc-link" href="#intro">0. 这一阶段到底学什么</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#stage2">1. 从 TIGER 到 OneRec：范式升级</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#pipeline">2. 传统 Retrieve + Rank 的系统问题</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#problem">3. OneRec 的问题定义</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#session">4. Session-wise Generation</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#arch">5. OneRec-V1 架构</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#sid">6. 工业场景里的 Item Token / SID</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#objective">7. 训练目标：从 next item 到整页生成</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#decode">8. 推理与约束解码</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#moe">9. Sparse-MoE：容量扩展</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#dpo">10. Iterative Preference Alignment 与 DPO</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#mfu">11. 为什么 OneRec 强调 MFU</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#v2">12. OneRec-V2：Lazy Decoder-Only</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#open">13. OpenOneRec：开源 Foundation Model</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#mini">14. MiniOneRec：公开复现路线</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#compare">15. OneRec / RankMixer / TIGER 对比</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#read">16. 读论文抓什么</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#project">17. 可以做的实验项目</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#summary">18. 一页总结</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#refs">19. 参考资料</a></li>
+</ol>
+</div>
+</nav>
+<h1>推荐广告大模型新范式 Stage 3：OneRec 与工业级生成式推荐</h1>
+<p><span class="tag">Generative Recommendation</span><span class="tag">OneRec</span><span class="tag">Retrieve & Rank Unification</span><span class="tag">Semantic ID</span><span class="tag">DPO</span><span class="tag">Sparse-MoE</span><span class="tag">OpenOneRec</span></p>
+
+<div class="box note" id="intro">
+<p><strong>学习定位：</strong>Stage 2 已经讲了 TIGER 和 Semantic ID：推荐可以被改写成“生成目标 item 的离散标识符”。Stage 3 要继续往工业系统走，核心问题变成：</p>
+<div class="formula">\[
+\text{能不能用一个生成式模型，直接替代传统的召回、粗排、精排和重排？}
+\]</div>
+<p>这就是 OneRec 系列最值得学习的地方。它不是单纯把 TIGER 放大，而是把推荐系统从多阶段级联系统，改造成端到端的自回归生成系统。</p>
+</div>
+
+<div class="fig">
+<svg width="1050" height="280" viewBox="0 0 1050 280" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#2563eb"/></marker>
+<filter id="shadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#0f172a" flood-opacity="0.12"/></filter>
+</defs>
+<rect x="25" y="40" width="180" height="70" rx="12" fill="#fff" stroke="#93c5fd" filter="url(#shadow)"/>
+<text x="115" y="68" text-anchor="middle" font-size="17" fill="#1f2937">Stage 1</text>
+<text x="115" y="94" text-anchor="middle" font-size="15" fill="#334155">Ranking Scaling</text>
+<line x1="205" y1="75" x2="285" y2="75" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow)"/>
+<rect x="285" y="40" width="210" height="70" rx="12" fill="#fff" stroke="#93c5fd" filter="url(#shadow)"/>
+<text x="390" y="68" text-anchor="middle" font-size="17" fill="#1f2937">Stage 2</text>
+<text x="390" y="94" text-anchor="middle" font-size="15" fill="#334155">TIGER / Semantic ID</text>
+<line x1="495" y1="75" x2="575" y2="75" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow)"/>
+<rect x="575" y="40" width="220" height="70" rx="12" fill="#eff6ff" stroke="#2563eb" stroke-width="2" filter="url(#shadow)"/>
+<text x="685" y="68" text-anchor="middle" font-size="17" fill="#1f2937">Stage 3</text>
+<text x="685" y="94" text-anchor="middle" font-size="15" fill="#334155">OneRec 工业生成式推荐</text>
+<line x1="795" y1="75" x2="875" y2="75" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow)"/>
+<rect x="875" y="40" width="150" height="70" rx="12" fill="#fff" stroke="#93c5fd" filter="url(#shadow)"/>
+<text x="950" y="68" text-anchor="middle" font-size="17" fill="#1f2937">Stage 4</text>
+<text x="950" y="94" text-anchor="middle" font-size="15" fill="#334155">Post-training / RL</text>
+
+<rect x="80" y="170" width="900" height="55" rx="14" fill="#f8fafc" stroke="#d9e2ef"/>
+<text x="530" y="202" text-anchor="middle" font-size="18" fill="#1f2937">主线：从“给候选 item 打分” → “生成 item token” → “生成整页推荐结果” → “用用户反馈对齐”</text>
+</svg>
+<div class="caption">图 1：Stage 3 在整个学习路线中的位置。本文所有图为学习讲义式自绘示意图。</div>
+</div>
+
+<h2 id="stage2">1. 从 TIGER 到 OneRec：范式升级</h2>
+<p>Stage 2 的核心是 TIGER。TIGER 的关键贡献是：给每个 item 分配一个由多个 codeword 组成的 Semantic ID，然后训练 Transformer seq2seq 模型根据用户历史行为生成下一个 item 的 Semantic ID。论文摘要强调，模型不是做向量检索，而是自回归解码目标候选 item 的标识符；Semantic ID 又是语义上有意义的 codeword tuple，因此它比随机 item_id 更利于泛化。</p>
+
+<table>
+<tr><th>阶段</th><th>核心问题</th><th>典型形式</th><th>局限</th></tr>
+<tr><td>TIGER / Generative Retrieval</td><td>能否直接生成目标候选 item？</td><td>用户历史 → 生成下一个 item 的 Semantic ID</td><td>更多是召回范式，仍可能接在传统排序系统前面</td></tr>
+<tr><td>OneRec-V1</td><td>能否统一召回和排序？</td><td>用户历史 → 生成一组视频 / 一页结果</td><td>Encoder 计算占比高，扩展到更大模型有瓶颈</td></tr>
+<tr><td>OneRec-V2</td><td>能否进一步降低计算、做大模型、用真实反馈对齐？</td><td>Lazy Decoder-Only + preference alignment</td><td>更接近工业 foundation recommender，但复现成本高</td></tr>
+<tr><td>OpenOneRec / MiniOneRec</td><td>能否公开复现、评测、后训练？</td><td>开源数据、benchmark、SID 构造、SFT、RL</td><td>公开数据和工业数据仍有差距</td></tr>
+</table>
+
+<div class="box train"><strong>一句话：</strong>TIGER 证明“推荐可以生成 item 标识符”；OneRec 进一步证明“生成式模型可以承担完整推荐系统的一部分核心职责，而不是只做召回候选生成”。</div>
+
+<h2 id="pipeline">2. 传统 Retrieve + Rank 的系统问题</h2>
+<p>工业推荐系统通常不是一个模型，而是一个多阶段工程系统：</p>
+<pre>全量 item 池
+  ↓
+多路召回 Recall：协同过滤 / 双塔 / 热门 / 规则 / 兴趣簇
+  ↓
+粗排 Pre-rank：轻量模型快速过滤
+  ↓
+精排 Rank：复杂模型估计 CTR / WatchTime / CVR
+  ↓
+重排 Re-rank：多样性、去重、业务约束、探索
+  ↓
+最终展示列表</pre>
+<p>这个架构非常成功，但它有几个天然问题：</p>
+<table>
+<tr><th>问题</th><th>具体含义</th><th>对生成式推荐的启发</th></tr>
+<tr><td>优化割裂</td><td>召回、粗排、精排、重排分别训练，目标不完全一致</td><td>如果能端到端生成最终结果，目标会更统一</td></tr>
+<tr><td>候选集上限</td><td>精排只能在召回给出的候选集合里选择</td><td>生成式模型希望从 item token 空间中直接产生候选</td></tr>
+<tr><td>手工规则重</td><td>多样性、去重、组合策略常需要大量工程规则</td><td>session-wise generation 希望直接学习一组结果的组合关系</td></tr>
+<tr><td>系统碎片化</td><td>不同阶段使用不同架构和不同 serving 链路</td><td>OneRec 希望用统一生成模型减少级联复杂度</td></tr>
+<tr><td>难利用 LLM 技术</td><td>Transformer、MoE、DPO、RLHF 等技术不容易直接接入传统 ranker</td><td>把推荐改成序列生成后，可以借鉴大模型训练和对齐范式</td></tr>
+</table>
+
+<div class="formula">\[
+\mathcal{C}_u=\operatorname{Retrieve}(u),\qquad
+s_i=f_{\theta}(u,i),\qquad
+\operatorname{TopK}=\operatorname{argsort}_{i\in\mathcal{C}_u}(s_i)
+\]</div>
+<p>传统系统的关键限制在 \(\mathcal{C}_u\)：如果召回阶段没有把某个 item 放进候选集，那么后续精排模型再强也无法选择它。</p>
+
+<h2 id="problem">3. OneRec 的问题定义：不只是生成式召回</h2>
+<p>OneRec 的标题是 <strong>Unifying Retrieve and Rank with Generative Recommender and Iterative Preference Alignment</strong>，它的重点是“统一召回和排序”。这和 TIGER 的侧重点不同：TIGER 更像 generative retrieval；OneRec 要处理的是线上推荐主场景中的最终生成质量。</p>
+
+<div class="box deep">
+<p><strong>OneRec 的目标：</strong>输入用户历史行为序列，模型直接生成用户可能感兴趣的一组 item，而不是先生成候选，再交给传统排序模型。</p>
+</div>
+
+<p>抽象地看，OneRec 要学习的是：</p>
+<div class="formula">\[
+Y_u=(i_1,i_2,\ldots,i_K),\qquad
+p_{\theta}(Y_u\mid H_u)
+\]</div>
+<p>其中 \(H_u\) 是用户历史行为，\(Y_u\) 是当前请求要展示的一组推荐结果。每个 item 又可以被表示成若干 token：</p>
+<div class="formula">\[
+i_j\rightarrow (c_{j,1},c_{j,2},\ldots,c_{j,m})
+\]</div>
+<p>因此整页推荐可以写成一个长序列：</p>
+<div class="formula">\[
+Y_u=(c_{1,1},\ldots,c_{1,m},c_{2,1},\ldots,c_{K,m})
+\]</div>
+<p>自回归生成目标就是：</p>
+<div class="formula">\[
+p_{\theta}(Y_u\mid H_u)=
+\prod_{j=1}^{K}\prod_{t=1}^{m}
+p_{\theta}\left(c_{j,t}\mid H_u,c_{1:m}^{(1:j-1)},c_{j,\lt t}\right)
+\]</div>
+<div class="box warn"><strong>公式注意：</strong>这里的 \(c_{j,\lt t}\) 使用了 \(\lt\)，不是 HTML 里的小于号，避免公式在浏览器中被误解析。</div>
+
+<h2 id="session">4. Session-wise Generation：为什么不是简单 next-item prediction</h2>
+<p>传统序列推荐常做 next-item prediction：</p>
+<div class="formula">\[
+H_u=(i_1,i_2,\ldots,i_n)\rightarrow i_{n+1}
+\]</div>
+<p>但线上推荐一次请求通常不是只展示一个 item，而是展示一组内容。比如短视频流、信息流广告、电商首页瀑布流，用户看到的是一个 session 或一页结果。OneRec-V1 的一个重要点是 <strong>session-wise generation</strong>：不是逐点生成一个 item 再用手工规则拼成列表，而是让模型学习整组推荐结果之间的上下文关系。</p>
+
+<div class="fig">
+<svg width="1050" height="360" viewBox="0 0 1050 360" xmlns="http://www.w3.org/2000/svg">
+<defs><marker id="arrow2" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#2563eb"/></marker></defs>
+<text x="80" y="40" font-size="20" fill="#0f172a" font-weight="700">Point-wise next-item</text>
+<rect x="80" y="70" width="120" height="50" rx="10" fill="#fff" stroke="#d9e2ef"/><text x="140" y="101" text-anchor="middle" font-size="15">History</text>
+<line x1="200" y1="95" x2="280" y2="95" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow2)"/>
+<rect x="280" y="70" width="120" height="50" rx="10" fill="#fff" stroke="#d9e2ef"/><text x="340" y="101" text-anchor="middle" font-size="15">item A</text>
+<line x1="400" y1="95" x2="480" y2="95" stroke="#64748b" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#arrow2)"/>
+<rect x="480" y="70" width="180" height="50" rx="10" fill="#fff7d6" stroke="#d6a800"/><text x="570" y="101" text-anchor="middle" font-size="15">规则拼接列表</text>
+
+<text x="80" y="190" font-size="20" fill="#0f172a" font-weight="700">Session-wise generation</text>
+<rect x="80" y="220" width="120" height="50" rx="10" fill="#fff" stroke="#d9e2ef"/><text x="140" y="251" text-anchor="middle" font-size="15">History</text>
+<line x1="200" y1="245" x2="280" y2="245" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow2)"/>
+<rect x="280" y="220" width="90" height="50" rx="10" fill="#eff6ff" stroke="#2563eb"/><text x="325" y="251" text-anchor="middle" font-size="15">item A</text>
+<line x1="370" y1="245" x2="410" y2="245" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow2)"/>
+<rect x="410" y="220" width="90" height="50" rx="10" fill="#eff6ff" stroke="#2563eb"/><text x="455" y="251" text-anchor="middle" font-size="15">item B</text>
+<line x1="500" y1="245" x2="540" y2="245" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow2)"/>
+<rect x="540" y="220" width="90" height="50" rx="10" fill="#eff6ff" stroke="#2563eb"/><text x="585" y="251" text-anchor="middle" font-size="15">item C</text>
+<line x1="630" y1="245" x2="670" y2="245" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow2)"/>
+<rect x="670" y="220" width="90" height="50" rx="10" fill="#eff6ff" stroke="#2563eb"/><text x="715" y="251" text-anchor="middle" font-size="15">item D</text>
+<rect x="800" y="205" width="180" height="80" rx="12" fill="#ecfdf3" stroke="#16a34a"/>
+<text x="890" y="235" text-anchor="middle" font-size="15">列表内部关系</text>
+<text x="890" y="260" text-anchor="middle" font-size="15">由模型共同学习</text>
+</svg>
+<div class="caption">图 2：point-wise next-item 与 session-wise generation 的区别。</div>
+</div>
+
+<table>
+<tr><th>对比</th><th>Next-item prediction</th><th>Session-wise generation</th></tr>
+<tr><td>训练对象</td><td>下一个 item</td><td>一组 item / 一页推荐结果</td></tr>
+<tr><td>列表关系</td><td>通常靠后处理规则</td><td>模型生成时天然考虑前面已生成内容</td></tr>
+<tr><td>多样性</td><td>需要额外去重、多样性规则</td><td>可以在解码、奖励、训练数据中学习</td></tr>
+<tr><td>更像什么</td><td>序列推荐</td><td>语言模型生成一段回答</td></tr>
+</table>
+
+<h2 id="arch">5. OneRec-V1 架构：Encoder-Decoder 生成推荐</h2>
+<p>OneRec-V1 使用 encoder-decoder 思路：encoder 编码用户历史行为序列，decoder 逐步生成用户可能感兴趣的视频。论文摘要还强调使用 Sparse-MoE 来扩展模型容量，同时避免计算 FLOPs 等比例增长。</p>
+
+<div class="fig">
+<svg width="1050" height="420" viewBox="0 0 1050 420" xmlns="http://www.w3.org/2000/svg">
+<defs><marker id="arrow3" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#2563eb"/></marker></defs>
+<rect x="50" y="60" width="180" height="230" rx="16" fill="#fff" stroke="#d9e2ef"/>
+<text x="140" y="92" text-anchor="middle" font-size="18" font-weight="700" fill="#0f172a">User History</text>
+<text x="140" y="130" text-anchor="middle" font-size="14">click / watch</text>
+<text x="140" y="158" text-anchor="middle" font-size="14">like / skip</text>
+<text x="140" y="186" text-anchor="middle" font-size="14">video SID</text>
+<text x="140" y="214" text-anchor="middle" font-size="14">time / context</text>
+<text x="140" y="242" text-anchor="middle" font-size="14">session signal</text>
+<line x1="230" y1="175" x2="310" y2="175" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow3)"/>
+<rect x="310" y="60" width="200" height="230" rx="16" fill="#eff6ff" stroke="#2563eb"/>
+<text x="410" y="92" text-anchor="middle" font-size="18" font-weight="700">Encoder</text>
+<rect x="345" y="120" width="130" height="36" rx="8" fill="#fff" stroke="#93c5fd"/><text x="410" y="143" text-anchor="middle" font-size="14">Self-Attention</text>
+<rect x="345" y="172" width="130" height="36" rx="8" fill="#fff" stroke="#93c5fd"/><text x="410" y="195" text-anchor="middle" font-size="14">FFN / MoE</text>
+<rect x="345" y="224" width="130" height="36" rx="8" fill="#fff" stroke="#93c5fd"/><text x="410" y="247" text-anchor="middle" font-size="14">History State</text>
+<line x1="510" y1="175" x2="590" y2="175" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow3)"/>
+<rect x="590" y="60" width="220" height="230" rx="16" fill="#f5f3ff" stroke="#7c3aed"/>
+<text x="700" y="92" text-anchor="middle" font-size="18" font-weight="700">Decoder</text>
+<rect x="625" y="120" width="150" height="36" rx="8" fill="#fff" stroke="#c4b5fd"/><text x="700" y="143" text-anchor="middle" font-size="14">Autoregressive</text>
+<rect x="625" y="172" width="150" height="36" rx="8" fill="#fff" stroke="#c4b5fd"/><text x="700" y="195" text-anchor="middle" font-size="14">Constrained Decode</text>
+<rect x="625" y="224" width="150" height="36" rx="8" fill="#fff" stroke="#c4b5fd"/><text x="700" y="247" text-anchor="middle" font-size="14">Generate SIDs</text>
+<line x1="810" y1="175" x2="890" y2="175" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow3)"/>
+<rect x="890" y="80" width="120" height="190" rx="16" fill="#ecfdf3" stroke="#16a34a"/>
+<text x="950" y="115" text-anchor="middle" font-size="18" font-weight="700">Results</text>
+<text x="950" y="152" text-anchor="middle" font-size="14">video 1</text>
+<text x="950" y="182" text-anchor="middle" font-size="14">video 2</text>
+<text x="950" y="212" text-anchor="middle" font-size="14">video 3</text>
+<text x="950" y="242" text-anchor="middle" font-size="14">video K</text>
+<rect x="250" y="330" width="550" height="50" rx="14" fill="#fff7d6" stroke="#d6a800"/>
+<text x="525" y="362" text-anchor="middle" font-size="16">V1 的核心：历史编码 + 自回归解码 + session-wise 生成 + DPO 对齐</text>
+</svg>
+<div class="caption">图 3：OneRec-V1 encoder-decoder 架构示意。</div>
+</div>
+
+<pre>OneRec-V1 abstract view:
+
+User behavior sequence
+    ↓
+Encoder: compress user interest state
+    ↓
+Decoder: autoregressively generate item tokens
+    ↓
+Session-wise recommendation list
+    ↓
+Preference alignment with DPO-like training</pre>
+
+<h2 id="sid">6. 工业场景里的 Item Token / SID</h2>
+<p>生成式推荐必须解决一个基础问题：item 怎么进入语言模型式的 token 空间？原始 item_id 太稀疏、太大、无语义，因此 Stage 2 已经讲过 Semantic ID。到了 OneRec / OpenOneRec，item tokenization 进一步变成连接推荐系统和 LLM 的接口。</p>
+
+<table>
+<tr><th>表示方式</th><th>例子</th><th>优点</th><th>问题</th></tr>
+<tr><td>原始 item_id</td><td>video_39847291</td><td>唯一、简单</td><td>无语义，词表巨大，泛化差</td></tr>
+<tr><td>Semantic ID</td><td>(23, 501, 77)</td><td>压缩、可生成、相似 item 可能共享前缀</td><td>需要构造 tokenizer / quantizer</td></tr>
+<tr><td>Itemic Token</td><td>&lt;s_a_340&gt;&lt;s_b_6566&gt;&lt;s_c_5603&gt;</td><td>可以和 LLM token 序列拼接</td><td>需要对齐文本、行为、多模态信息</td></tr>
+</table>
+
+<p>OpenOneRec 的 GitHub 说明里把 item 当成一种独立模态，并使用来自 hierarchical vector quantization 的 Itemic Tokens，让 LLM 能把交互历史作为连续上下文序列处理。</p>
+
+<div class="formula">\[
+\operatorname{ItemTokenizer}(i)=
+\left(z_1,z_2,\ldots,z_m\right),\qquad z_t\in\mathcal{V}_{\operatorname{item}}
+\]</div>
+<p>如果引入文本、多模态和行为信号，可以抽象成：</p>
+<div class="formula">\[
+\mathbf{h}_i=\operatorname{Encoder}\left(x_i^{\operatorname{text}},x_i^{\operatorname{image}},x_i^{\operatorname{behavior}}\right)
+\]</div>
+<div class="formula">\[
+(z_1,\ldots,z_m)=\operatorname{Quantize}(\mathbf{h}_i)
+\]</div>
+
+<div class="box train"><strong>理解重点：</strong>SID / Itemic Token 的作用不是“压缩编号”这么简单，而是给生成模型提供一个可学习、可泛化、可约束解码的 item 语言。</div>
+
+<h2 id="objective">7. 训练目标：从 next item 到整页生成</h2>
+<p>如果只做 next-item，训练目标通常是：</p>
+<div class="formula">\[
+\mathcal{L}_{\operatorname{next}}(\theta)=
+-\sum_{u}\sum_{t=1}^{m}\log p_{\theta}\left(c_{n+1,t}\mid H_u,c_{n+1,\lt t}\right)
+\]</div>
+<p>OneRec 的 session-wise 思路更接近生成一段目标序列：</p>
+<div class="formula">\[
+\mathcal{L}_{\operatorname{session}}(\theta)=
+-\sum_{u}\sum_{j=1}^{K}\sum_{t=1}^{m}
+\log p_{\theta}\left(c_{j,t}\mid H_u,c_{1:m}^{(1:j-1)},c_{j,\lt t}\right)
+\]</div>
+<p>其中：</p>
+<table>
+<tr><th>符号</th><th>含义</th></tr>
+<tr><td>\(H_u\)</td><td>用户历史行为序列，包括观看、点击、停留、互动等</td></tr>
+<tr><td>\(K\)</td><td>本次请求生成的 item 个数</td></tr>
+<tr><td>\(m\)</td><td>每个 item 的 token 数，例如 3 层或 4 层 SID</td></tr>
+<tr><td>\(c_{j,t}\)</td><td>第 \(j\) 个 item 的第 \(t\) 个 token</td></tr>
+<tr><td>\(c_{j,\lt t}\)</td><td>同一个 item 中已经生成的前缀 token</td></tr>
+<tr><td>\(c_{1:m}^{(1:j-1)}\)</td><td>前面已经生成的 item token 序列</td></tr>
+</table>
+
+<div class="box note"><strong>为什么这很重要：</strong>模型不只是学“用户喜欢什么 item”，还在学“这一页里前后 item 怎么搭配”。这和传统 ranker 独立打分 item 完全不同。</div>
+
+<h2 id="decode">8. 推理与约束解码：生成出来的 token 必须是合法 item</h2>
+<p>生成式推荐的推理不是普通文本生成。文本生成时出现一个不常见的词也许可以接受，但推荐生成时，如果 SID 不对应任何真实 item，就无法展示。因此需要约束解码。</p>
+
+<pre>Naive decoding problem:
+
+model outputs: (12, 87, 999)
+item vocabulary: no item has this SID
+  ↓
+invalid recommendation</pre>
+
+<p>一种常见做法是用 SID Trie 或前缀树约束解码：</p>
+<div class="fig">
+<svg width="1050" height="350" viewBox="0 0 1050 350" xmlns="http://www.w3.org/2000/svg">
+<defs><marker id="arrow4" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#2563eb"/></marker></defs>
+<circle cx="120" cy="170" r="35" fill="#eff6ff" stroke="#2563eb"/><text x="120" y="176" text-anchor="middle" font-size="15">root</text>
+<line x1="153" y1="158" x2="260" y2="95" stroke="#2563eb" stroke-width="2" marker-end="url(#arrow4)"/>
+<line x1="155" y1="180" x2="260" y2="180" stroke="#2563eb" stroke-width="2" marker-end="url(#arrow4)"/>
+<line x1="153" y1="193" x2="260" y2="255" stroke="#2563eb" stroke-width="2" marker-end="url(#arrow4)"/>
+<circle cx="300" cy="75" r="32" fill="#fff" stroke="#d9e2ef"/><text x="300" y="81" text-anchor="middle" font-size="14">12</text>
+<circle cx="300" cy="180" r="32" fill="#fff" stroke="#d9e2ef"/><text x="300" y="186" text-anchor="middle" font-size="14">23</text>
+<circle cx="300" cy="275" r="32" fill="#fff" stroke="#d9e2ef"/><text x="300" y="281" text-anchor="middle" font-size="14">45</text>
+<line x1="332" y1="75" x2="450" y2="75" stroke="#2563eb" stroke-width="2" marker-end="url(#arrow4)"/>
+<line x1="332" y1="180" x2="450" y2="140" stroke="#2563eb" stroke-width="2" marker-end="url(#arrow4)"/>
+<line x1="332" y1="180" x2="450" y2="220" stroke="#2563eb" stroke-width="2" marker-end="url(#arrow4)"/>
+<circle cx="490" cy="75" r="32" fill="#fff" stroke="#d9e2ef"/><text x="490" y="81" text-anchor="middle" font-size="14">87</text>
+<circle cx="490" cy="135" r="32" fill="#fff" stroke="#d9e2ef"/><text x="490" y="141" text-anchor="middle" font-size="14">41</text>
+<circle cx="490" cy="225" r="32" fill="#fff" stroke="#d9e2ef"/><text x="490" y="231" text-anchor="middle" font-size="14">66</text>
+<line x1="522" y1="75" x2="640" y2="75" stroke="#2563eb" stroke-width="2" marker-end="url(#arrow4)"/>
+<line x1="522" y1="135" x2="640" y2="135" stroke="#2563eb" stroke-width="2" marker-end="url(#arrow4)"/>
+<line x1="522" y1="225" x2="640" y2="225" stroke="#2563eb" stroke-width="2" marker-end="url(#arrow4)"/>
+<rect x="650" y="52" width="130" height="46" rx="10" fill="#ecfdf3" stroke="#16a34a"/><text x="715" y="81" text-anchor="middle" font-size="14">item A</text>
+<rect x="650" y="112" width="130" height="46" rx="10" fill="#ecfdf3" stroke="#16a34a"/><text x="715" y="141" text-anchor="middle" font-size="14">item B</text>
+<rect x="650" y="202" width="130" height="46" rx="10" fill="#ecfdf3" stroke="#16a34a"/><text x="715" y="231" text-anchor="middle" font-size="14">item C</text>
+<rect x="830" y="95" width="170" height="150" rx="14" fill="#fff7d6" stroke="#d6a800"/>
+<text x="915" y="130" text-anchor="middle" font-size="15">每一步只允许</text>
+<text x="915" y="158" text-anchor="middle" font-size="15">生成当前前缀下</text>
+<text x="915" y="186" text-anchor="middle" font-size="15">合法的下一个 token</text>
+<text x="915" y="214" text-anchor="middle" font-size="15">避免 invalid SID</text>
+</svg>
+<div class="caption">图 4：SID Trie 约束解码示意。</div>
+</div>
+
+<p>推理时通常还要处理：</p>
+<table>
+<tr><th>问题</th><th>处理方式</th></tr>
+<tr><td>Invalid SID</td><td>用 Trie mask 只允许合法 token</td></tr>
+<tr><td>重复 item</td><td>对已生成 item 做去重约束</td></tr>
+<tr><td>不适合展示</td><td>结合审核、库存、广告预算、曝光频控等过滤</td></tr>
+<tr><td>探索不足</td><td>温度、top-k、beam search、多样性奖励</td></tr>
+<tr><td>延迟压力</td><td>KV cache、批处理、短 token SID、量化推理</td></tr>
+</table>
+
+<h2 id="moe">9. Sparse-MoE：如何扩大容量但不等比例增加计算</h2>
+<p>OneRec-V1 摘要明确提到 sparse Mixture-of-Experts：用来扩大模型容量，同时避免计算 FLOPs 按参数量等比例增长。这个思想和大语言模型中的 MoE 一样：总参数很多，但每个 token 只激活一小部分专家。</p>
+
+<div class="formula">\[
+\operatorname{MoE}(x)=
+\sum_{k\in\operatorname{TopK}(g(x))}g_k(x)E_k(x)
+\]</div>
+<p>其中：</p>
+<table>
+<tr><th>符号</th><th>含义</th></tr>
+<tr><td>\(g(x)\)</td><td>router / gate，决定 token 分配给哪些专家</td></tr>
+<tr><td>\(E_k(x)\)</td><td>第 \(k\) 个专家网络</td></tr>
+<tr><td>\(\operatorname{TopK}(g(x))\)</td><td>只选得分最高的少数专家</td></tr>
+</table>
+
+<div class="box train"><strong>MoE 在推荐里的直觉：</strong>不同用户、不同兴趣簇、不同内容类型、不同商业目标，可能需要不同专家来建模。Sparse-MoE 允许模型容量变大，但每次请求只走少数专家。</div>
+
+<h2 id="dpo">10. Iterative Preference Alignment 与 DPO</h2>
+<p>OneRec-V1 的另一条核心线是 <strong>Iterative Preference Alignment</strong>，并结合 Direct Preference Optimization（DPO）提升生成结果质量。DPO 在 NLP 里通常依赖成对偏好数据：同一个 prompt 下，一个回答更好，一个回答更差。推荐场景难点是：用户每次请求通常只看到一组结果，系统很难同时得到同一请求下正负两组完整展示结果。</p>
+
+<p>DPO 的标准形式可以抽象为：</p>
+<div class="formula">\[
+\mathcal{L}_{\operatorname{DPO}}(\theta)=
+-\mathbb{E}_{(x,y^+,y^-)}
+\left[
+\log\sigma\left(
+\beta\left(
+\log\frac{\pi_{\theta}(y^+\mid x)}{\pi_{\operatorname{ref}}(y^+\mid x)}
+-
+\log\frac{\pi_{\theta}(y^-\mid x)}{\pi_{\operatorname{ref}}(y^-\mid x)}
+\right)
+\right)
+\right]
+\]</div>
+
+<table>
+<tr><th>在 NLP 中</th><th>在推荐中</th></tr>
+<tr><td>同一个 prompt 可以离线收集多个回答的偏好</td><td>同一个用户请求通常只展示一次，很难同时得到正负列表</td></tr>
+<tr><td>偏好可能来自人工标注</td><td>偏好更多来自点击、观看时长、停留、转化等隐式反馈</td></tr>
+<tr><td>回答质量相对稳定</td><td>推荐反馈受位置、时间、上下文、曝光机会影响</td></tr>
+<tr><td>奖励偏主观质量</td><td>奖励多目标：时长、点击、留存、商业价值、生态约束</td></tr>
+</table>
+
+<p>OneRec-V1 的处理思路是设计 reward model 来模拟用户反馈，并定制采样策略构造 DPO 样本。你可以把它理解成：</p>
+<pre>当前 OneRec 生成列表 A
+        ↓
+采样 / 扰动 / 生成候选列表 B
+        ↓
+Reward model 估计 A 和 B 谁更好
+        ↓
+构造 preference pair
+        ↓
+DPO 更新生成模型
+        ↓
+重新生成更符合用户偏好的列表</pre>
+
+<div class="box warn"><strong>注意：</strong>推荐里的 DPO 不是把 NLP 的 DPO 直接套过来。它必须解决“没有同请求正负展示对”的问题，所以 reward model 和采样策略非常关键。</div>
+
+<h2 id="mfu">11. 为什么 OneRec 强调 MFU 和系统效率</h2>
+<p>Stage 1 的 RankMixer 已经讲过 MFU：Model FLOPs Utilization。传统推荐模型经常有大量稀疏 embedding lookup、特征拼接、规则模块和不规则计算，导致硬件利用率不高。OneRec 把推荐改成更像 LLM 的自回归序列建模后，理论上更容易利用大矩阵乘法、KV cache、MoE、量化等大模型系统优化。</p>
+
+<div class="formula">\[
+\operatorname{MFU}=\frac{\text{实际有效模型计算吞吐}}{\text{硬件理论峰值计算吞吐}}
+\]</div>
+
+<table>
+<tr><th>系统</th><th>计算形态</th><th>硬件友好性</th></tr>
+<tr><td>传统多阶段推荐</td><td>召回、排序、规则、特征服务混合</td><td>链路碎片化，GPU 利用不稳定</td></tr>
+<tr><td>RankMixer / TokenMixer</td><td>更统一的 ranking backbone</td><td>比传统模块更适合 scaling</td></tr>
+<tr><td>OneRec</td><td>自回归生成 + Transformer / MoE</td><td>更接近 LLM serving，可借鉴大模型系统优化</td></tr>
+</table>
+
+<h2 id="v2">12. OneRec-V2：Lazy Decoder-Only 架构</h2>
+<p>OneRec-V2 解决的是 V1 继续放大时的两个关键问题：第一，计算分配不合理，论文摘要称 V1 中 97.66% 的资源被 sequence encoding 消耗，而不是 generation；第二，偏好对齐如果只依赖 reward model 也有局限。V2 提出 Lazy Decoder-Only Architecture，把总计算减少 94%、训练资源减少 90%，并支持扩展到 8B 参数。</p>
+
+<div class="fig">
+<svg width="1050" height="380" viewBox="0 0 1050 380" xmlns="http://www.w3.org/2000/svg">
+<defs><marker id="arrow5" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#2563eb"/></marker></defs>
+<text x="70" y="48" font-size="20" font-weight="700" fill="#0f172a">OneRec-V1</text>
+<rect x="70" y="75" width="190" height="90" rx="14" fill="#eff6ff" stroke="#2563eb"/><text x="165" y="110" text-anchor="middle" font-size="16">Heavy Encoder</text><text x="165" y="138" text-anchor="middle" font-size="14">history sequence</text>
+<line x1="260" y1="120" x2="340" y2="120" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow5)"/>
+<rect x="340" y="75" width="190" height="90" rx="14" fill="#f5f3ff" stroke="#7c3aed"/><text x="435" y="110" text-anchor="middle" font-size="16">Decoder</text><text x="435" y="138" text-anchor="middle" font-size="14">generate results</text>
+<rect x="590" y="75" width="360" height="90" rx="14" fill="#fff1f1" stroke="#dc2626"/><text x="770" y="108" text-anchor="middle" font-size="16">瓶颈：大部分计算消耗在编码历史</text><text x="770" y="138" text-anchor="middle" font-size="14">继续 scaling 时成本压力非常大</text>
+
+<text x="70" y="238" font-size="20" font-weight="700" fill="#0f172a">OneRec-V2</text>
+<rect x="70" y="265" width="210" height="80" rx="14" fill="#ecfdf3" stroke="#16a34a"/><text x="175" y="297" text-anchor="middle" font-size="16">Lazy Decoder-Only</text><text x="175" y="323" text-anchor="middle" font-size="14">unified sequence model</text>
+<line x1="280" y1="305" x2="360" y2="305" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow5)"/>
+<rect x="360" y="265" width="220" height="80" rx="14" fill="#ecfdf3" stroke="#16a34a"/><text x="470" y="297" text-anchor="middle" font-size="16">Lower compute</text><text x="470" y="323" text-anchor="middle" font-size="14">scale to 8B</text>
+<line x1="580" y1="305" x2="660" y2="305" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow5)"/>
+<rect x="660" y="265" width="290" height="80" rx="14" fill="#ecfdf3" stroke="#16a34a"/><text x="805" y="297" text-anchor="middle" font-size="16">Real-world interaction alignment</text><text x="805" y="323" text-anchor="middle" font-size="14">duration-aware reward + ratio clipping</text>
+</svg>
+<div class="caption">图 5：OneRec-V1 到 OneRec-V2 的架构升级。</div>
+</div>
+
+<table>
+<tr><th>OneRec-V2 点</th><th>具体解决什么</th></tr>
+<tr><td>Lazy Decoder-Only</td><td>去掉 V1 encoder bottleneck，降低历史编码计算压力</td></tr>
+<tr><td>94% total computation reduction</td><td>让大模型推荐在工业场景更可服务</td></tr>
+<tr><td>90% training resources reduction</td><td>降低训练成本，支撑更大参数规模</td></tr>
+<tr><td>8B parameters</td><td>说明生成式推荐进入 billion-level foundation recommender 阶段</td></tr>
+<tr><td>Duration-Aware Reward Shaping</td><td>把观看时长等真实用户行为反馈纳入偏好优化</td></tr>
+<tr><td>Adaptive Ratio Clipping</td><td>稳定策略更新，避免偏好优化破坏推荐质量</td></tr>
+</table>
+
+<div class="box train"><strong>Stage 3 的关键理解：</strong>OneRec-V1 是“统一召回和排序”的突破；OneRec-V2 是“把这个范式做大、做快、做稳”的工程化升级。</div>
+
+<h2 id="open">13. OpenOneRec：从工业闭源到开源 Foundation Model</h2>
+<p>OpenOneRec 的意义是把 OneRec 系列从工业系统报告推向公开研究框架。它的目标不是只开源一个模型，而是提供 benchmark、训练数据、模型、训练 pipeline 和后训练流程。</p>
+
+<table>
+<tr><th>模块</th><th>OpenOneRec 提供什么</th><th>学习价值</th></tr>
+<tr><td>RecIF-Bench</td><td>覆盖 8 类任务，从 item understanding 到 recommendation explanation</td><td>不再只看 Recall / NDCG，而是看推荐、指令跟随、推理解释</td></tr>
+<tr><td>Open Data</td><td>论文摘要称释放大规模交互数据，GitHub 说明有跨短视频、广告、电商的数据组织</td><td>解决生成式推荐公开复现数据不足</td></tr>
+<tr><td>OneRec-Foundation</td><td>1.7B 和 8B 模型族，基于 Qwen 架构</td><td>说明推荐 foundation model 开始和通用 LLM 融合</td></tr>
+<tr><td>Itemic Tokens</td><td>用分层向量量化把 item 变成 token</td><td>连接 item 模态和 LLM token 序列</td></tr>
+<tr><td>Training Pipeline</td><td>data processing、co-pretraining、post-training</td><td>提供从预训练到 RL 的完整路线</td></tr>
+</table>
+
+<p>OpenOneRec 的 GitHub README 把训练流程概括为：</p>
+<pre>Pre-training:
+  Itemic-Text Alignment
+  Full-Parameter Co-Pretraining
+
+Post-training:
+  Stage 1: Multi-task SFT
+  Stage 2: On-policy Distillation
+  Stage 3: Reinforcement Learning</pre>
+
+<p>这个流程对你后续做项目非常重要，因为它把生成式推荐拆成了可落地的三件事：</p>
+<ol>
+<li>先让模型认识 item token 和文本/行为之间的关系；</li>
+<li>再用多任务 SFT 学会推荐指令和基本任务；</li>
+<li>最后用蒸馏或 RL 强化推荐指标和偏好对齐。</li>
+</ol>
+
+<h2 id="mini">14. MiniOneRec：公开复现路线</h2>
+<p>MiniOneRec 的价值在于把 OneRec 这类工业范式变成公开数据上可跑的框架。其摘要提出两个问题：生成式推荐在公开 benchmark 上是否存在 scaling law，以及最小后训练 recipe 是什么。MiniOneRec 提供 SID construction、SFT 和 recommendation-oriented RL 的端到端流程，并在 Amazon Review 数据上对 Qwen 0.5B 到 7B 进行后训练。</p>
+
+<table>
+<tr><th>步骤</th><th>MiniOneRec 式复现应该做什么</th><th>你能学到什么</th></tr>
+<tr><td>SID construction</td><td>用 RQ-VAE 或量化方法把 item 变成 SID</td><td>理解 tokenizer 对生成式推荐的影响</td></tr>
+<tr><td>SFT</td><td>用用户历史 → 目标 SID 的格式训练模型</td><td>理解推荐任务如何变成语言模型任务</td></tr>
+<tr><td>Constrained decoding</td><td>只允许生成合法 SID</td><td>理解生成式推荐 serving 的关键约束</td></tr>
+<tr><td>RL / preference optimization</td><td>用 recall、rank、diversity 等 hybrid reward 训练</td><td>理解推荐后训练和普通 LLM RL 的区别</td></tr>
+<tr><td>Scaling analysis</td><td>比较 0.5B、1.5B、3B、7B 等模型</td><td>观察 loss 和推荐指标是否随参数规模改善</td></tr>
+</table>
+
+<div class="box note"><strong>对你最有用的地方：</strong>如果你要做一个能讲得出去的项目，不建议从 OneRec 工业系统复刻开始，而应该从 MiniOneRec 式公开数据流程开始：SID 构造 + SFT + 约束解码 + 小型 RL。</div>
+
+<h2 id="compare">15. OneRec / RankMixer / TIGER 对比</h2>
+<table>
+<tr><th>方向</th><th>代表</th><th>核心问题</th><th>模型输入输出</th><th>学习重点</th></tr>
+<tr><td>Ranking Model Scaling</td><td>RankMixer / TokenMixer-Large</td><td>精排模型如何做大、硬件友好、低延迟</td><td>user + candidate item → score</td><td>feature tokenization、token mixing、MFU、MoE</td></tr>
+<tr><td>Generative Retrieval</td><td>TIGER</td><td>能不能直接生成候选 item 的 Semantic ID</td><td>user history → next item SID</td><td>Semantic ID、RQ-VAE、seq2seq retrieval</td></tr>
+<tr><td>End-to-End Generative Rec</td><td>OneRec</td><td>能不能统一召回和排序，直接生成推荐结果</td><td>user history → session-wise item sequence</td><td>encoder-decoder、session generation、DPO、MoE、线上 A/B</td></tr>
+<tr><td>Foundation Recommender</td><td>OpenOneRec</td><td>推荐模型能不能具备指令跟随、推理、跨域泛化</td><td>instruction + history + itemic tokens → recommendation / explanation</td><td>co-pretraining、SFT、distillation、RL、RecIF-Bench</td></tr>
+</table>
+
+<h2 id="read">16. 读 OneRec 论文时应该抓什么</h2>
+<ol>
+<li><strong>它到底统一了什么？</strong>不是统一所有推荐工程，而是用生成模型承担 retrieve + rank 的核心决策。</li>
+<li><strong>session-wise generation 为什么重要？</strong>它让模型生成一组结果，而不是生成单点 item 后再规则拼接。</li>
+<li><strong>item token 如何设计？</strong>原始 item_id、SID、Itemic Token 的差异会直接影响泛化和解码。</li>
+<li><strong>MoE 放在哪里？</strong>它怎样增加容量，又怎样控制 FLOPs。</li>
+<li><strong>DPO 样本怎么来？</strong>推荐系统没有天然的同请求正负回答，所以 reward model 和采样策略是重点。</li>
+<li><strong>线上指标是什么？</strong>OneRec-V1 报告快手主场景 watch-time 提升；V2 报告 App Stay Time 提升。</li>
+<li><strong>V2 为什么改成 Lazy Decoder-Only？</strong>因为 V1 历史编码计算占比太高，继续 scaling 会被 encoder bottleneck 卡住。</li>
+<li><strong>OpenOneRec 如何公开复现？</strong>看数据、Itemic Tokens、RecIF-Bench、SFT、distillation、RL。</li>
+</ol>
+
+<div class="box train"><strong>最关键三问：</strong><br>OneRec 和 TIGER 的区别是什么？<br>Session-wise generation 解决了传统推荐的什么问题？<br>推荐 DPO 为什么不能直接照搬 NLP DPO？</div>
+
+<h2 id="project">17. 可以做的实验项目</h2>
+<h3>17.1 Toy OneRec：公开数据上的 session-wise generative recommender</h3>
+<pre>Dataset:
+Amazon Review / MovieLens / KuaiRec if available
+
+Pipeline:
+1. Build item content embeddings
+2. Train RQ-VAE or simple hierarchical k-means tokenizer
+3. Convert item_id to SID sequence
+4. Format user history as token sequence
+5. SFT a small decoder-only LM or Transformer
+6. Use Trie-constrained decoding to generate legal SID
+7. Evaluate Recall@K / NDCG@K / diversity
+</pre>
+
+<h3>17.2 从 next-item 到 session-wise 的 ablation</h3>
+<table>
+<tr><th>实验</th><th>目的</th></tr>
+<tr><td>Next-item only</td><td>验证基础生成式推荐能力</td></tr>
+<tr><td>Generate Top-K independently</td><td>观察重复和多样性问题</td></tr>
+<tr><td>Session-wise sequence generation</td><td>观察列表整体建模是否提升多样性和 Recall</td></tr>
+<tr><td>Trie-constrained decoding</td><td>验证 invalid SID 是否显著下降</td></tr>
+<tr><td>Reward reranking / RL</td><td>尝试把多样性、点击概率、长尾覆盖合成 reward</td></tr>
+</table>
+
+<h3>17.3 推荐后训练小方向</h3>
+<p>如果你后续想转成论文或面试项目，可以考虑：</p>
+<pre>SID-aware SFT
+  ↓
+Constrained decoding
+  ↓
+Hybrid reward:
+  Recall reward
+  Diversity reward
+  Popularity penalty
+  Invalid SID penalty
+  User history consistency reward
+  ↓
+GRPO / DPO / pairwise preference optimization</pre>
+<p>这个方向比单纯复现 TIGER 更有含金量，因为它贴近 OneRec / MiniOneRec 的后训练路线。</p>
+
+<h2 id="summary">18. 一页总结</h2>
+<table>
+<tr><th>概念</th><th>核心理解</th></tr>
+<tr><td>TIGER</td><td>用 Semantic ID 把推荐召回改成自回归生成问题</td></tr>
+<tr><td>OneRec-V1</td><td>用生成式模型统一 retrieve 和 rank，输入用户历史，输出 session-wise 推荐结果</td></tr>
+<tr><td>Session-wise Generation</td><td>生成一组 item，而不是只预测下一个 item；列表内部关系由模型学习</td></tr>
+<tr><td>Sparse-MoE</td><td>扩大模型容量，但每个 token 只激活部分专家，控制计算成本</td></tr>
+<tr><td>Iterative Preference Alignment</td><td>用 reward model 和采样策略构造偏好样本，再用 DPO 类方法优化生成质量</td></tr>
+<tr><td>OneRec-V2</td><td>用 Lazy Decoder-Only 解决 V1 encoder bottleneck，并引入真实用户交互偏好对齐</td></tr>
+<tr><td>OpenOneRec</td><td>开放 benchmark、模型、数据和训练流程，把生成式推荐推向 foundation model 研究</td></tr>
+<tr><td>MiniOneRec</td><td>公开复现路线：SID 构造、SFT、约束解码、推荐 RL、scaling analysis</td></tr>
+<tr><td>核心风险</td><td>invalid SID、重复生成、延迟、线上反馈偏差、多目标冲突、item tokenizer 质量</td></tr>
+<tr><td>学习重点</td><td>把“推荐系统工程问题”翻译成“序列生成 + 约束解码 + 偏好对齐问题”</td></tr>
+</table>
+
+<div class="box train">
+<strong>Stage 3 结束标准：</strong>
+<ol>
+<li>能讲清 TIGER 和 OneRec 的区别；</li>
+<li>能解释 OneRec 为什么说自己统一 retrieve 和 rank；</li>
+<li>能写出 session-wise generation 的训练目标；</li>
+<li>能解释推荐场景里 DPO 为什么需要 reward model 和采样策略；</li>
+<li>能讲清 OneRec-V2 为什么从 encoder-decoder 转向 Lazy Decoder-Only；</li>
+<li>能设计一个公开数据上的 Toy OneRec 实验流程。</li>
+</ol>
+</div>
+
+<h2 id="refs">19. 参考资料</h2>
+<ol class="ref-list">
+<li>Rajput et al. <strong>Recommender Systems with Generative Retrieval</strong>. NeurIPS 2023 / arXiv:2305.05065. 重点看 Semantic ID、RQ-VAE、seq2seq generative retrieval。</li>
+<li>Deng et al. <strong>OneRec: Unifying Retrieve and Rank with Generative Recommender and Iterative Preference Alignment</strong>. arXiv:2502.18965. 重点看 encoder-decoder、session-wise generation、Sparse-MoE、DPO。</li>
+<li>Zhou et al. <strong>OneRec Technical Report</strong>. arXiv:2506.13695. 重点看端到端生成式推荐如何重塑传统级联系统。</li>
+<li>Zhou et al. <strong>OneRec-V2 Technical Report</strong>. arXiv:2508.20900. 重点看 Lazy Decoder-Only、计算削减、真实用户交互偏好对齐。</li>
+<li>Zhou et al. <strong>OpenOneRec Technical Report</strong>. arXiv:2512.24762. 重点看 RecIF-Bench、OneRec-Foundation、co-pretraining 和 post-training。</li>
+<li>Kuaishou-OneRec / <strong>OpenOneRec GitHub</strong>. 重点看 Itemic Tokens、模型 zoo、训练 pipeline 和 quick start。</li>
+<li>Kong et al. <strong>MiniOneRec: An Open-Source Framework for Scaling Generative Recommendation</strong>. arXiv:2510.24431. 重点看公开数据上的 SID 构造、SFT、RL 和 scaling 实验。</li>
+</ol>
+<p class="small">资料注：本文是学习讲义式整理，不替代原论文。涉及具体实验细节、线上指标和部署设置时，请以原论文和官方仓库为准。</p>
+
+</body>
+</html>

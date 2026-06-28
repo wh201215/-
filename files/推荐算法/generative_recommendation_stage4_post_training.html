@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>推荐广告大模型新范式 Stage 4：生成式推荐的训练与后训练</title>
+<script>
+window.MathJax={tex:{inlineMath:[["\\(","\\)"],["$","$"]],displayMath:[["\\[","\\]"],],processEscapes:true},svg:{fontCache:"global"}};
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<style>
+html{scroll-behavior:smooth}
+body{font-family:"Microsoft YaHei",Arial,sans-serif;line-height:1.85;max-width:1120px;margin:40px auto;padding:0 28px 100px;background:#f7f8fb;color:#1f2937;font-size:17px}
+h1{font-size:34px;line-height:1.35;border-bottom:5px solid #7c3aed;padding-bottom:14px}
+h2{margin-top:48px;padding:12px 16px;font-size:27px;background:#f3e8ff;border-left:7px solid #7c3aed}
+h3{margin-top:28px;font-size:21px;color:#111827}
+h2,h3{scroll-margin-top:24px}
+a{color:#5b21b6;text-decoration:none}a:hover{text-decoration:underline}
+.box{background:#fff;border:1px solid #d9e2ef;border-radius:12px;padding:18px 22px;margin:18px 0}
+.note{background:#fff7d6;border-left:6px solid #d6a800}
+.train{background:#ecfdf3;border-left:6px solid #16a34a}
+.warn{background:#fff1f1;border-left:6px solid #dc2626}
+.deep{background:#eef2ff;border-left:6px solid #4f46e5}
+.formula{background:#fff;border:1px solid #d9e2ef;border-radius:12px;padding:16px 18px;margin:18px 0;overflow-x:auto}
+table{width:100%;border-collapse:collapse;margin:18px 0;background:#fff}
+th,td{border:1px solid #d9e2ef;padding:11px 13px;vertical-align:top}
+th{background:#f1f5f9}
+pre{background:#111827;color:#e5e7eb;padding:18px;border-radius:10px;overflow-x:auto;line-height:1.55}
+code{font-family:Consolas,Monaco,"Courier New",monospace}
+.small{color:#667085;font-size:14px}.muted{color:#64748b}
+.tag{display:inline-block;background:#ede9fe;color:#5b21b6;border-radius:999px;padding:2px 10px;font-size:13px;margin-right:6px;margin-bottom:8px}
+.figure{background:#fff;border:1px solid #d9e2ef;border-radius:14px;padding:16px;margin:20px 0;overflow-x:auto}.figcap{font-size:14px;color:#667085;margin-top:8px;text-align:center}
+.page-toc{position:fixed;top:20px;right:20px;z-index:1000}.page-toc-toggle{border:0;border-radius:999px;padding:10px 16px;background:#7c3aed;color:#fff;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 10px 24px rgba(124,58,237,.24)}.page-toc-toggle:hover{background:#6d28d9}.page-toc-panel{display:none;width:390px;max-height:calc(100vh - 90px);overflow:auto;background:rgba(255,255,255,.96);border:1px solid #d9e2ef;border-radius:14px;padding:16px 18px;margin-top:10px;box-shadow:0 12px 30px rgba(15,23,42,.08);backdrop-filter:blur(8px)}.page-toc.is-open .page-toc-panel{display:block}.page-toc-title{margin-bottom:12px;font-size:15px;font-weight:700;color:#0f172a}.page-toc-list{list-style:none;margin:0;padding:0}.page-toc-item+.page-toc-item{margin-top:10px}.page-toc-link{display:block;color:#334155;text-decoration:none;font-size:14px;line-height:1.55}.page-toc-link:hover{color:#7c3aed}
+@media(max-width:760px){body{margin:30px auto;padding:0 18px 80px;font-size:16px}h1{font-size:28px}h2{font-size:23px}table{font-size:15px}.page-toc-panel{width:min(390px,calc(100vw - 24px))}}
+</style>
+</head>
+<body>
+<nav class="page-toc" aria-label="文章目录">
+<button class="page-toc-toggle" onclick="document.querySelector('.page-toc').classList.toggle('is-open')">☰ 目录</button>
+<div class="page-toc-panel">
+<div class="page-toc-title">目录导航</div>
+<ol class="page-toc-list">
+<li class="page-toc-item"><a class="page-toc-link" href="#intro">0. 这一阶段到底学什么</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#why-post">1. 为什么 NTP / SFT 不够</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#pipeline">2. 生成式推荐训练流水线</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#data">3. 训练数据怎么组织</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#pretrain">4. 预训练与 Co-Pretraining</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#sft">5. SFT：从预测到指令跟随</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#onerec-ipa">6. OneRec 的 DPO / IPA</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#dpo-math">7. DPO 数学目标</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#rec-rl">8. OpenOneRec 的 Rec-RL</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#grpo">9. GRPO / Group Relative 优化</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#reward">10. 奖励函数怎么设计</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#real-feedback">11. OneRec-V2：真实用户反馈</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#reasoning">12. OneRec-Think：推理式推荐</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#llm-diff">13. 和 LLM 后训练的区别</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#project">14. 可落地小项目</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#pitfalls">15. 常见坑</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#read">16. 阅读顺序</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#summary">17. 一页总结</a></li>
+</ol>
+</div>
+</nav>
+
+<h1>推荐广告大模型新范式 Stage 4：生成式推荐的训练与后训练</h1>
+<p><span class="tag">Generative Recommendation</span><span class="tag">Post-training</span><span class="tag">DPO</span><span class="tag">Rec-RL</span><span class="tag">OneRec</span><span class="tag">OpenOneRec</span><span class="tag">Reasoning Rec</span></p>
+
+<div class="box note" id="intro">
+<p><strong>学习定位：</strong>Stage 2 已经讲了 Semantic ID 和 TIGER，Stage 3 讲了 OneRec 如何把 retrieve 和 rank 统一成工业级生成模型。Stage 4 要解决更关键的问题：<strong>生成式推荐模型训练完 next-token prediction 之后，怎么继续后训练，让它更像一个真正可用的推荐系统？</strong></p>
+<p>这一阶段的核心问题是：</p>
+<div class="formula">\[
+\text{如何把生成模型从“会预测下一个 item”后训练成“会优化用户体验和业务目标”的推荐模型？}
+\]</div>
+<p>这一篇重点看四条线：<strong>NTP / SFT</strong>、<strong>DPO / Preference Alignment</strong>、<strong>Rec-RL / GRPO</strong>、<strong>Reasoning-aware Recommendation</strong>。</p>
+</div>
+
+<h2 id="why-post">1. 为什么 NTP / SFT 不够</h2>
+<p>生成式推荐最自然的训练目标是 next-token prediction。把用户历史行为序列作为上下文，把目标 item 的 Semantic ID 或 Itemic Token 作为输出，模型学习：</p>
+<div class="formula">\[
+\mathcal{L}_{\operatorname{NTP}}
+= -\sum_{t=1}^{T}\log \pi_\theta(y_t \mid x, y_{1:t-1})
+\]</div>
+<table>
+<tr><th>符号</th><th>含义</th></tr>
+<tr><td>\(x\)</td><td>用户历史、上下文、画像、场景特征、指令文本等输入</td></tr>
+<tr><td>\(y_t\)</td><td>第 \(t\) 个目标 token，可以是 Semantic ID token，也可以是自然语言 token</td></tr>
+<tr><td>\(\pi_\theta\)</td><td>当前生成式推荐模型</td></tr>
+</table>
+<p>这个目标让模型学会“历史之后通常出现什么 item”，但推荐系统的真实目标不是只复现历史。真实目标往往包括点击、观看时长、购买、转化、留存、多样性、新颖性、商业约束和安全约束。</p>
+<div class="box warn"><strong>关键矛盾：</strong>Next-token prediction 学的是历史分布，推荐系统想优化的是未来反馈。历史里出现过的 item 不一定是最优推荐，用户没看见过的 item 也可能更好。</div>
+
+<h3>1.1 NTP 的三个局限</h3>
+<table>
+<tr><th>问题</th><th>为什么会发生</th><th>后训练要解决什么</th></tr>
+<tr><td>曝光偏差</td><td>训练数据来自旧系统曝光，不是完整 item 空间</td><td>让模型跳出旧系统分布，探索高潜力 item</td></tr>
+<tr><td>目标错位</td><td>NTP 只最大化历史 item 的似然</td><td>用点击、时长、转化、满意度等反馈重新对齐</td></tr>
+<tr><td>列表质量缺失</td><td>逐 item 预测不直接优化整页推荐</td><td>从 token 级别优化转向 session/list 级别优化</td></tr>
+</table>
+
+<pre>只做 NTP：
+用户历史 → 生成下一个历史 item
+
+做后训练：
+用户历史 → 生成更可能带来好反馈的一组 item</pre>
+
+<h2 id="pipeline">2. 生成式推荐训练流水线</h2>
+<p>工业级生成式推荐通常不是一步训练完成，而是多阶段配方：</p>
+<div class="figure">
+<svg width="1050" height="250" viewBox="0 0 1050 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="生成式推荐训练流水线">
+<defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#7c3aed"/></marker></defs>
+<rect x="25" y="70" width="145" height="70" rx="14" fill="#ede9fe" stroke="#7c3aed"/>
+<text x="97" y="100" text-anchor="middle" font-size="16" font-weight="700">Item Tokenizer</text>
+<text x="97" y="123" text-anchor="middle" font-size="13">SID / Itemic Token</text>
+<line x1="170" y1="105" x2="230" y2="105" stroke="#7c3aed" stroke-width="3" marker-end="url(#arrow)"/>
+<rect x="230" y="50" width="155" height="110" rx="14" fill="#fff" stroke="#d9e2ef"/>
+<text x="307" y="83" text-anchor="middle" font-size="16" font-weight="700">Pre-training</text>
+<text x="307" y="108" text-anchor="middle" font-size="13">item + text + behavior</text>
+<text x="307" y="132" text-anchor="middle" font-size="13">co-pretraining</text>
+<line x1="385" y1="105" x2="445" y2="105" stroke="#7c3aed" stroke-width="3" marker-end="url(#arrow)"/>
+<rect x="445" y="50" width="145" height="110" rx="14" fill="#ecfdf3" stroke="#16a34a"/>
+<text x="517" y="83" text-anchor="middle" font-size="16" font-weight="700">SFT</text>
+<text x="517" y="108" text-anchor="middle" font-size="13">instruction</text>
+<text x="517" y="132" text-anchor="middle" font-size="13">next item / list</text>
+<line x1="590" y1="105" x2="650" y2="105" stroke="#7c3aed" stroke-width="3" marker-end="url(#arrow)"/>
+<rect x="650" y="50" width="150" height="110" rx="14" fill="#fff7d6" stroke="#d6a800"/>
+<text x="725" y="83" text-anchor="middle" font-size="16" font-weight="700">Preference</text>
+<text x="725" y="108" text-anchor="middle" font-size="13">DPO / IPA</text>
+<text x="725" y="132" text-anchor="middle" font-size="13">pairwise alignment</text>
+<line x1="800" y1="105" x2="860" y2="105" stroke="#7c3aed" stroke-width="3" marker-end="url(#arrow)"/>
+<rect x="860" y="50" width="155" height="110" rx="14" fill="#fff1f1" stroke="#dc2626"/>
+<text x="938" y="83" text-anchor="middle" font-size="16" font-weight="700">Rec-RL</text>
+<text x="938" y="108" text-anchor="middle" font-size="13">GRPO / rewards</text>
+<text x="938" y="132" text-anchor="middle" font-size="13">online feedback</text>
+<text x="520" y="210" text-anchor="middle" font-size="15" fill="#475569">从“会生成 item”到“会优化推荐体验”的训练路线</text>
+</svg>
+<div class="figcap">图 1：生成式推荐从 tokenizer 到后训练的典型流水线。</div>
+</div>
+
+<table>
+<tr><th>阶段</th><th>解决的问题</th><th>代表论文 / 系统</th></tr>
+<tr><td>Tokenizer / SID</td><td>把 item 变成可生成的离散 token</td><td>TIGER、ETEGRec、OpenOneRec Itemic Tokens</td></tr>
+<tr><td>Pre-training</td><td>学习 item 语义、协同过滤、文本语义和序列模式</td><td>OpenOneRec co-pretraining</td></tr>
+<tr><td>SFT</td><td>把任务统一成指令格式，恢复指令跟随能力</td><td>OpenOneRec Multi-task SFT</td></tr>
+<tr><td>Preference Alignment</td><td>让模型偏向更好的生成结果</td><td>OneRec IPA + DPO</td></tr>
+<tr><td>Rec-RL</td><td>直接优化 Hit、Recall、NDCG、时长、多样性等目标</td><td>OpenOneRec Rec-RL、OneRec-V2 real feedback alignment</td></tr>
+<tr><td>Reasoning Enhancement</td><td>让模型显式解释和推理，而不是黑盒预测</td><td>OneRec-Think</td></tr>
+</table>
+
+<h2 id="data">3. 训练数据怎么组织</h2>
+<p>生成式推荐的后训练，本质上是在构造不同形式的监督信号。你可以把数据分成四类。</p>
+
+<h3>3.1 监督式 next-item 样本</h3>
+<pre>User history:
+  [item_12, item_98, item_35]
+Target:
+  item_77</pre>
+<p>如果 item 用 Semantic ID 表示：</p>
+<pre>Input:
+  [SID_12, SID_98, SID_35]
+Output:
+  SID_77 = (c1, c2, c3)</pre>
+<div class="formula">\[
+\mathcal{L}_{\operatorname{item}}
+= -\sum_{m=1}^{M}\log \pi_\theta(c_m \mid x, c_{1:m-1})
+\]</div>
+<p>这里 \(M\) 是一个 item 的 token 长度，比如 TIGER 里 Semantic ID 可以是一个 codeword tuple，OpenOneRec 里 itemic tokens 也可以看成压缩后的 item 表示。</p>
+
+<h3>3.2 Session-wise 样本</h3>
+<p>OneRec 的重要变化是从 next-item 走向 session-wise generation。不是生成一个 item，而是生成一个 session 内多个 item：</p>
+<div class="formula">\[
+Y = (i_1,i_2,\ldots,i_K)
+\]</div>
+<div class="formula">\[
+\mathcal{L}_{\operatorname{session}}
+= -\sum_{k=1}^{K}\sum_{m=1}^{M}\log \pi_\theta(c_{k,m} \mid x, i_{1:k-1}, c_{k,1:m-1})
+\]</div>
+<div class="box train"><strong>为什么 session-wise 重要：</strong>推荐页面不是单点预测。一个列表里要考虑重复、互补、多样性、探索、疲劳、商业约束。Session-wise generation 让模型直接学习“整页推荐”的序列结构。</div>
+
+<h3>3.3 Pairwise preference 样本</h3>
+<p>DPO / preference alignment 需要偏好对：</p>
+<pre>Prompt x:
+  用户历史 + 场景 + 候选生成约束
+Chosen y+:
+  更好的推荐列表 / item 序列
+Rejected y-:
+  较差的推荐列表 / item 序列</pre>
+<p>在推荐里，难点是正负样本不总是天然同时出现。用户一次请求通常只看到一个推荐列表，系统不知道“没展示的另一个列表”用户会不会更喜欢。OneRec 因此引入 reward model 和定制采样策略来模拟或构造偏好对。</p>
+
+<h3>3.4 On-policy RL 样本</h3>
+<p>RL 样本来自当前模型自己生成：</p>
+<pre>同一个用户请求 x
+  ↓
+当前模型采样 G 个推荐结果
+  ↓
+用 reward 函数打分
+  ↓
+相对优势归一化
+  ↓
+更新模型</pre>
+<div class="formula">\[
+\{Y_1,Y_2,\ldots,Y_G\} \sim \pi_\theta(\cdot \mid x)
+\]</div>
+<p>这和 SFT 最大的不同是：SFT 学固定答案，RL 学“在自己会生成的空间里，哪些结果更好”。</p>
+
+<h2 id="pretrain">4. 预训练与 Co-Pretraining：先让模型认识 item</h2>
+<p>如果 Stage 2 的重点是“item 怎么变成 token”，那么 Stage 4 的预训练重点是：<strong>item token 怎么和自然语言 token、用户行为 token 放进同一个模型空间里。</strong></p>
+
+<h3>4.1 Itemic Token / Semantic ID 的作用</h3>
+<pre>原始 item：
+视频、广告、商品、作者、类目、价格、文本、图像
+
+压缩后：
+Itemic Tokens / Semantic ID
+
+进入 LLM：
+用户历史 = item token 序列 + 文本指令 + 上下文</pre>
+<p>OpenOneRec 把 item 作为一种独立模态处理，用 Itemic Tokens 缩短 item 表示，使用户交互历史可以作为一个统一的长上下文序列输入模型。它的技术报告还强调，层级 token 让相似 item 共享前缀，从而有利于知识迁移。</p>
+
+<h3>4.2 Co-Pretraining 的直觉</h3>
+<p>推荐 foundation model 不能只吃推荐日志，否则容易变成一个“只会 pattern matching 的领域专家”。它也不能只吃通用文本，否则不会理解点击、购买、广告转化这些推荐信号。Co-pretraining 的目标是两边都学：</p>
+<table>
+<tr><th>数据源</th><th>模型学到什么</th></tr>
+<tr><td>用户行为序列</td><td>协同过滤、兴趣迁移、短期偏好、长期偏好</td></tr>
+<tr><td>item metadata</td><td>标题、类目、品牌、作者、内容语义</td></tr>
+<tr><td>通用文本</td><td>语言理解、指令跟随、常识、推理能力</td></tr>
+<tr><td>推荐指令数据</td><td>把推荐任务表达成问答、解释、条件推荐、交互推荐</td></tr>
+</table>
+<div class="box deep"><strong>论文线索：</strong>OpenOneRec 的框架把预训练、混合域 co-pretraining、SFT、on-policy distillation 和 Rec-RL 串起来，目标不是只训练一个 ranker，而是训练一个 recommendation foundation model。</div>
+
+<h2 id="sft">5. SFT：从预测下一个 item 到指令跟随</h2>
+<p>SFT 不是简单继续 next-item prediction，而是把不同推荐任务包装成统一的 instruction-response 格式。</p>
+<pre>Instruction:
+  根据用户最近观看历史，推荐 10 个短视频。
+
+Input:
+  用户历史 itemic tokens + 标签 + 上下文
+
+Response:
+  推荐 itemic tokens 列表 + 可选解释</pre>
+<p>OpenOneRec 的 SFT 阶段混合了推荐任务和通用指令/推理数据，目的有两个：</p>
+<ol>
+<li>增强推荐域任务能力，例如视频推荐、广告推荐、商品推荐、标签条件推荐、交互式推荐；</li>
+<li>防止模型在推荐预训练后遗忘 LLM 的通用指令跟随和推理能力。</li>
+</ol>
+<div class="formula">\[
+\mathcal{L}_{\operatorname{SFT}}
+= -\mathbb{E}_{(x,y)\sim \mathcal{D}_{\operatorname{SFT}}}
+\sum_{t=1}^{T}\log \pi_\theta(y_t \mid x,y_{1:t-1})
+\]</div>
+<div class="box note"><strong>SFT 的作用：</strong>它不是最终优化目标，而是给后面的 DPO / RL 提供一个稳定初始策略。没有 SFT，模型可能连格式、任务、约束、解释方式都不稳定。</div>
+
+<h2 id="onerec-ipa">6. OneRec 的 DPO / IPA：为什么推荐也需要偏好对齐</h2>
+<p>OneRec-V1 的一个关键贡献是 <strong>Iterative Preference Alignment</strong>，也就是把 DPO 引入生成式推荐结果优化中。</p>
+<p>在 LLM 里，DPO 通常来自人类偏好：回答 A 比回答 B 好。在推荐里，偏好不是这么直接，因为一次请求通常只展示一个列表，不能同时给同一个用户展示两个不同列表再比较。因此 OneRec 的问题更难：</p>
+<pre>LLM DPO:
+同一个 prompt → 两个回答 → 人类选更好
+
+推荐 DPO:
+同一个用户请求 → 系统只展示一个列表 → 只有一个真实反馈</pre>
+<p>OneRec 的做法可以抽象成：</p>
+<ol>
+<li>先用当前生成式推荐模型生成多个候选结果；</li>
+<li>用 reward model 或反馈估计这些结果质量；</li>
+<li>构造 chosen / rejected 偏好对；</li>
+<li>用 DPO 让模型提高 chosen 的相对概率，降低 rejected 的相对概率；</li>
+<li>迭代更新，形成 preference alignment loop。</li>
+</ol>
+<div class="figure">
+<svg width="1050" height="260" viewBox="0 0 1050 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="OneRec IPA DPO流程">
+<defs><marker id="arrow2" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#7c3aed"/></marker></defs>
+<rect x="30" y="75" width="155" height="80" rx="14" fill="#ede9fe" stroke="#7c3aed"/>
+<text x="107" y="108" text-anchor="middle" font-size="16" font-weight="700">Prompt x</text>
+<text x="107" y="132" text-anchor="middle" font-size="13">user history</text>
+<line x1="185" y1="115" x2="245" y2="115" stroke="#7c3aed" stroke-width="3" marker-end="url(#arrow2)"/>
+<rect x="245" y="55" width="155" height="120" rx="14" fill="#fff" stroke="#d9e2ef"/>
+<text x="322" y="85" text-anchor="middle" font-size="16" font-weight="700">Generator</text>
+<text x="322" y="112" text-anchor="middle" font-size="13">sample candidates</text>
+<text x="322" y="137" text-anchor="middle" font-size="13">Y1, Y2, ...</text>
+<line x1="400" y1="115" x2="460" y2="115" stroke="#7c3aed" stroke-width="3" marker-end="url(#arrow2)"/>
+<rect x="460" y="55" width="155" height="120" rx="14" fill="#fff7d6" stroke="#d6a800"/>
+<text x="537" y="85" text-anchor="middle" font-size="16" font-weight="700">Reward Model</text>
+<text x="537" y="112" text-anchor="middle" font-size="13">score candidates</text>
+<text x="537" y="137" text-anchor="middle" font-size="13">watch / click / rank</text>
+<line x1="615" y1="115" x2="675" y2="115" stroke="#7c3aed" stroke-width="3" marker-end="url(#arrow2)"/>
+<rect x="675" y="55" width="150" height="120" rx="14" fill="#ecfdf3" stroke="#16a34a"/>
+<text x="750" y="85" text-anchor="middle" font-size="16" font-weight="700">Preference Pair</text>
+<text x="750" y="112" text-anchor="middle" font-size="13">chosen y+</text>
+<text x="750" y="137" text-anchor="middle" font-size="13">rejected y-</text>
+<line x1="825" y1="115" x2="885" y2="115" stroke="#7c3aed" stroke-width="3" marker-end="url(#arrow2)"/>
+<rect x="885" y="55" width="135" height="120" rx="14" fill="#fff1f1" stroke="#dc2626"/>
+<text x="952" y="85" text-anchor="middle" font-size="16" font-weight="700">DPO</text>
+<text x="952" y="112" text-anchor="middle" font-size="13">increase y+</text>
+<text x="952" y="137" text-anchor="middle" font-size="13">decrease y-</text>
+<path d="M952 175 C952 225, 320 225, 320 180" fill="none" stroke="#7c3aed" stroke-width="2.5" stroke-dasharray="7 5" marker-end="url(#arrow2)"/>
+<text x="630" y="225" text-anchor="middle" font-size="14" fill="#64748b">iterative preference alignment loop</text>
+</svg>
+<div class="figcap">图 2：OneRec 里可理解的 IPA / DPO 训练闭环。</div>
+</div>
+
+<h2 id="dpo-math">7. DPO 数学目标：推荐里到底优化什么</h2>
+<p>DPO 的核心不是训练一个显式 reward model 再 PPO，而是直接用偏好对优化策略模型。给定同一个输入 \(x\)，有一个较优输出 \(y^+\) 和较差输出 \(y^-\)。</p>
+<div class="formula">\[
+\Delta_\theta(x,y^+,y^-)
+= \log \pi_\theta(y^+ \mid x)-\log \pi_\theta(y^- \mid x)
+\]</div>
+<p>为了防止模型偏离原始策略太远，DPO 还引入 reference model：</p>
+<div class="formula">\[
+\Delta_{\operatorname{ref}}(x,y^+,y^-)
+= \log \pi_{\operatorname{ref}}(y^+ \mid x)-\log \pi_{\operatorname{ref}}(y^- \mid x)
+\]</div>
+<p>DPO loss 可以写成：</p>
+<div class="formula">\[
+\mathcal{L}_{\operatorname{DPO}}
+= -\mathbb{E}\left[\log \sigma\left(\beta\left(\Delta_\theta(x,y^+,y^-)-\Delta_{\operatorname{ref}}(x,y^+,y^-)\right)\right)\right]
+\]</div>
+<table>
+<tr><th>项</th><th>直觉</th></tr>
+<tr><td>\(\Delta_\theta\)</td><td>当前模型认为 chosen 比 rejected 高多少</td></tr>
+<tr><td>\(\Delta_{\operatorname{ref}}\)</td><td>参考模型原本的偏好差距</td></tr>
+<tr><td>\(\beta\)</td><td>控制偏好对齐强度；越大，更新越激进</td></tr>
+<tr><td>\(\sigma\)</td><td>sigmoid，把相对优势变成分类概率</td></tr>
+</table>
+<div class="box train"><strong>推荐视角：</strong>DPO 不是让模型“记住 y+”，而是让模型在同一个用户请求下，更偏向生成高反馈列表，而不是低反馈列表。</div>
+
+<h3>7.1 Item-level DPO 和 List-level DPO</h3>
+<table>
+<tr><th>粒度</th><th>形式</th><th>优点</th><th>问题</th></tr>
+<tr><td>Item-level</td><td>单个 item 做 chosen / rejected</td><td>构造简单，训练稳定</td><td>不能直接处理列表多样性和位置关系</td></tr>
+<tr><td>List-level</td><td>整组推荐列表做 chosen / rejected</td><td>更接近真实推荐页面</td><td>reward 噪声更大，信用分配更难</td></tr>
+<tr><td>Session-level</td><td>一个 session 的连续推荐结果做偏好</td><td>能建模上下文连贯性</td><td>训练成本高，需要更复杂采样</td></tr>
+</table>
+
+<h2 id="rec-rl">8. OpenOneRec 的 Rec-RL：为什么还要强化学习</h2>
+<p>DPO 适合有偏好对的场景，但推荐系统还有很多目标不是简单 pairwise 能覆盖的：</p>
+<ul>
+<li>Recall@K / NDCG@K 这类离散 ranking metric；</li>
+<li>整页推荐的多样性、重复率、无效 item、冷启动覆盖；</li>
+<li>广告场景里的转化、ROI、预算、pacing；</li>
+<li>视频场景里的 watch time、完播率、互动、留存；</li>
+<li>通用推荐 foundation model 的 instruction following 和 reasoning 保持。</li>
+</ul>
+<p>OpenOneRec 的后训练配方可以概括为三步：</p>
+<pre>Stage 1: Multi-task SFT
+  恢复和增强推荐任务 + 通用指令能力
+
+Stage 2: On-policy Distillation
+  用通用 LLM teacher 修复通用推理能力
+
+Stage 3: Rec-RL
+  用推荐 reward 直接优化推荐指标</pre>
+<p>这个设计背后的思想是：推荐模型不能只会推荐，也不能只会聊天。它要同时保留 LLM 的通用能力和推荐系统的目标优化能力。</p>
+
+<h3>8.1 On-policy distillation 的意义</h3>
+<p>OpenOneRec 发现，模型做推荐预训练和 SFT 后，可能会损失通用 reasoning / instruction following 能力。因此它用 teacher model 监督学生模型自己采样出来的轨迹。直觉如下：</p>
+<pre>学生模型自己回答 general prompt
+        ↓
+teacher model 评价或提供分布约束
+        ↓
+学生模型修正自己在通用任务上的漂移</pre>
+<div class="formula">\[
+\mathcal{L}_{\operatorname{distill}}
+= \mathbb{E}_{y\sim \pi_\theta(\cdot \mid x)}
+D_{\operatorname{KL}}\left(\pi_\theta(\cdot \mid x,y_{1:t-1})\,\Vert\,\pi_{\operatorname{teacher}}(\cdot \mid x,y_{1:t-1})\right)
+\]</div>
+<p>如果模型在通用文本任务里乱生成 itemic token，就要惩罚；否则模型会出现“推荐 token 污染通用语言空间”的问题。</p>
+
+<h2 id="grpo">9. GRPO / Group Relative 优化：推荐 RL 的基本形状</h2>
+<p>OpenOneRec 使用 Group Relative Policy Optimization 思路做 recommendation-oriented RL。核心不是给每个样本训练一个 critic，而是对同一个 prompt 采样一组候选输出，并在组内计算相对优势。</p>
+<div class="formula">\[
+Y_1,Y_2,\ldots,Y_G \sim \pi_\theta(\cdot \mid x)
+\]</div>
+<div class="formula">\[
+A_i = \frac{r_i-\operatorname{mean}(r_1,r_2,\ldots,r_G)}{\operatorname{std}(r_1,r_2,\ldots,r_G)+\epsilon}
+\]</div>
+<p>其中 \(r_i\) 是第 \(i\) 个生成列表的推荐 reward，\(A_i\) 是组内标准化后的优势。</p>
+<div class="formula">\[
+\rho_i = \frac{\pi_\theta(Y_i \mid x)}{\pi_{\operatorname{old}}(Y_i \mid x)}
+\]</div>
+<div class="formula">\[
+\mathcal{J}_{\operatorname{GRPO}}
+= \mathbb{E}\left[\sum_{i=1}^{G}\min\left(\rho_i A_i,\operatorname{clip}(\rho_i,1-\epsilon,1+\epsilon)A_i\right)-\lambda D_{\operatorname{KL}}(\pi_\theta\,\Vert\,\pi_{\operatorname{ref}})\right]
+\]</div>
+<div class="box warn"><strong>注意：</strong>推荐 RL 的难点不是公式，而是 reward。Reward 写错，模型就会学会刷指标、重复热门 item、牺牲多样性或过度迎合短期点击。</div>
+
+<h2 id="reward">10. 奖励函数怎么设计：推荐后训练的核心</h2>
+<p>推荐后训练最重要的不是“用了 DPO 还是 GRPO”，而是 reward 是否代表真实目标。</p>
+<div class="formula">\[
+r(Y,x)=\alpha_1\operatorname{Hit@K}+\alpha_2\operatorname{NDCG@K}+\alpha_3\operatorname{Diversity}-\alpha_4\operatorname{InvalidRate}-\alpha_5\operatorname{DuplicateRate}
+\]</div>
+<table>
+<tr><th>Reward 项</th><th>作用</th><th>可能风险</th></tr>
+<tr><td>Hit@K</td><td>鼓励列表命中用户真实交互</td><td>过度追热门，忽略排序质量</td></tr>
+<tr><td>NDCG@K</td><td>考虑命中位置，靠前更重要</td><td>依赖离线 label，仍有曝光偏差</td></tr>
+<tr><td>WatchTime / DwellTime</td><td>贴近视频内容消费质量</td><td>长视频天然时长高，需要归一化</td></tr>
+<tr><td>CTR / CVR</td><td>适合广告和电商转化</td><td>容易短期化，可能牺牲长期体验</td></tr>
+<tr><td>Diversity</td><td>减少信息茧房和重复推荐</td><td>过强会牺牲相关性</td></tr>
+<tr><td>InvalidRate</td><td>惩罚生成不存在或不可展示 item</td><td>需要和约束解码一起使用</td></tr>
+<tr><td>DuplicateRate</td><td>惩罚列表内部重复</td><td>需要定义 item、作者、类目多层重复</td></tr>
+</table>
+
+<h3>10.1 为什么 watch time 不能直接当 reward</h3>
+<p>视频推荐里，watch time 很重要，但 raw watch time 有偏差。长视频天然可能产生更长观看时长，短视频即使用户很满意，绝对时长也较短。因此 OneRec-V2 提到 Duration-Aware Reward Shaping，用视频时长相关的归一化方式缓解这种偏差。</p>
+<div class="formula">\[
+r_{\operatorname{duration}} = \operatorname{normalize}(\operatorname{watch\_time},\operatorname{video\_duration})
+\]</div>
+<p>直觉是：不要奖励“本来就很长”的内容，而要奖励“在同类时长内容里表现更好”的内容。</p>
+
+<h3>10.2 多目标 reward</h3>
+<p>推荐系统通常不是单目标。一个更真实的 reward 可以写成：</p>
+<div class="formula">\[
+r = w_1 r_{\operatorname{engagement}} + w_2 r_{\operatorname{conversion}} + w_3 r_{\operatorname{retention}} + w_4 r_{\operatorname{diversity}} - w_5 r_{\operatorname{risk}}
+\]</div>
+<p>银行、广告、电商场景尤其要小心风险项。例如金融推荐里不能只优化点击，还要考虑适配性、合规、风险等级、用户承受能力和解释。</p>
+
+<h2 id="real-feedback">11. OneRec-V2：从 reward model 到真实用户反馈</h2>
+<p>OneRec-V1 的 preference alignment 主要依赖 reward model 构造偏好；OneRec-V2 进一步强调用真实用户交互反馈做后训练，包括 Duration-Aware Reward Shaping 和 Adaptive Ratio Clipping。</p>
+<table>
+<tr><th>版本</th><th>后训练重点</th><th>意义</th></tr>
+<tr><td>OneRec-V1</td><td>IPA + DPO，使用 reward model 辅助构造偏好</td><td>证明生成式推荐可以通过偏好对齐改善结果质量</td></tr>
+<tr><td>OneRec-V2</td><td>真实用户反馈 + reward shaping + ratio clipping</td><td>减少 proxy reward 偏差，更接近线上目标</td></tr>
+<tr><td>OpenOneRec</td><td>SFT + on-policy distillation + Rec-RL</td><td>把后训练做成开源 foundation model pipeline</td></tr>
+</table>
+<div class="box deep"><strong>Stage 4 的关键变化：</strong>生成式推荐从“离线序列建模”走向“在线反馈驱动的策略优化”。这也是它和传统 sequential recommendation 最大的分水岭。</div>
+
+<h2 id="reasoning">12. OneRec-Think：推理式推荐从哪里来</h2>
+<p>OneRec 和 TIGER 这类模型通常是隐式预测器：输入历史，输出 item。它们未必会解释为什么推荐，也不一定能进行显式推理。OneRec-Think 针对这个问题提出 in-text reasoning for generative recommendation，试图把对话、推理和个性化推荐统一起来。</p>
+<p>可以把 OneRec-Think 理解成三步：</p>
+<table>
+<tr><th>模块</th><th>作用</th><th>通俗理解</th></tr>
+<tr><td>Itemic Alignment</td><td>把 itemic tokens 和文本语义空间对齐</td><td>让模型知道一个 item token 对应什么内容</td></tr>
+<tr><td>Reasoning Activation</td><td>用 CoT / reasoning SFT 激活推荐推理</td><td>让模型不仅给 item，还能写出选择逻辑</td></tr>
+<tr><td>Reasoning Enhancement</td><td>用推荐特定 reward 继续优化推理</td><td>让解释和推荐结果一起对齐用户偏好</td></tr>
+</table>
+<div class="figure">
+<svg width="1050" height="250" viewBox="0 0 1050 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="OneRec-Think流程">
+<defs><marker id="arrow3" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#7c3aed"/></marker></defs>
+<rect x="35" y="70" width="180" height="88" rx="14" fill="#ede9fe" stroke="#7c3aed"/>
+<text x="125" y="103" text-anchor="middle" font-size="16" font-weight="700">Itemic Tokens</text>
+<text x="125" y="129" text-anchor="middle" font-size="13">semantic grounding</text>
+<line x1="215" y1="114" x2="290" y2="114" stroke="#7c3aed" stroke-width="3" marker-end="url(#arrow3)"/>
+<rect x="290" y="70" width="180" height="88" rx="14" fill="#fff" stroke="#d9e2ef"/>
+<text x="380" y="103" text-anchor="middle" font-size="16" font-weight="700">Reasoning SFT</text>
+<text x="380" y="129" text-anchor="middle" font-size="13">activate CoT</text>
+<line x1="470" y1="114" x2="545" y2="114" stroke="#7c3aed" stroke-width="3" marker-end="url(#arrow3)"/>
+<rect x="545" y="70" width="180" height="88" rx="14" fill="#ecfdf3" stroke="#16a34a"/>
+<text x="635" y="103" text-anchor="middle" font-size="16" font-weight="700">Reasoning Reward</text>
+<text x="635" y="129" text-anchor="middle" font-size="13">preference + validity</text>
+<line x1="725" y1="114" x2="800" y2="114" stroke="#7c3aed" stroke-width="3" marker-end="url(#arrow3)"/>
+<rect x="800" y="70" width="205" height="88" rx="14" fill="#fff7d6" stroke="#d6a800"/>
+<text x="902" y="103" text-anchor="middle" font-size="16" font-weight="700">Reasoning Rec</text>
+<text x="902" y="129" text-anchor="middle" font-size="13">item + rationale</text>
+<text x="520" y="210" text-anchor="middle" font-size="15" fill="#475569">从黑盒生成 item 到显式生成推荐理由与推理过程</text>
+</svg>
+<div class="figcap">图 3：OneRec-Think 的核心直觉。</div>
+</div>
+
+<div class="box warn"><strong>注意：</strong>推理式推荐不是所有场景都需要。短视频 feed 流可能更看重低延迟和反馈优化；金融、教育、医疗、B 端推荐更需要解释、约束和可审计性。</div>
+
+<h2 id="llm-diff">13. 和 LLM 后训练的区别</h2>
+<table>
+<tr><th>维度</th><th>LLM 后训练</th><th>生成式推荐后训练</th></tr>
+<tr><td>输入</td><td>自然语言 prompt</td><td>用户历史、上下文、item tokens、业务约束</td></tr>
+<tr><td>输出</td><td>文本回答</td><td>item 序列、推荐列表、解释文本</td></tr>
+<tr><td>偏好来源</td><td>人类标注、AI feedback、规则</td><td>点击、观看、购买、转化、留存、负反馈、业务规则</td></tr>
+<tr><td>Reward 噪声</td><td>主观偏好噪声</td><td>曝光偏差、位置偏差、选择偏差、延迟反馈</td></tr>
+<tr><td>解码约束</td><td>语法上通常自由生成</td><td>必须生成存在且可展示的 item</td></tr>
+<tr><td>线上风险</td><td>幻觉、不安全回答</td><td>重复推荐、信息茧房、商业目标冲突、合规风险</td></tr>
+</table>
+<div class="box train"><strong>一句话：</strong>LLM 后训练对齐的是“回答偏好”；生成式推荐后训练对齐的是“用户行为反馈 + 列表质量 + 业务约束”。</div>
+
+<h2 id="project">14. 可落地小项目：公开数据上的 GenRec 后训练实验</h2>
+<p>你如果想做一个可以讲的项目，不建议一开始复现 OneRec 工业系统。更合适的是做一个公开数据上的小型生成式推荐后训练实验。</p>
+
+<h3>14.1 项目标题</h3>
+<div class="box deep"><strong>Rec-DPO：面向 Semantic-ID 生成式推荐的偏好对齐后训练方法</strong></div>
+
+<h3>14.2 实验任务</h3>
+<table>
+<tr><th>模块</th><th>做法</th></tr>
+<tr><td>数据集</td><td>Amazon Reviews、MovieLens、Yelp 或公开电商序列数据</td></tr>
+<tr><td>Tokenizer</td><td>先用 item metadata embedding + k-means / RQ 得到简化 SID</td></tr>
+<tr><td>Base model</td><td>小型 Transformer / T5 / decoder-only 模型生成 SID</td></tr>
+<tr><td>SFT</td><td>next-item 或 next-list 生成</td></tr>
+<tr><td>Preference data</td><td>用用户真实后续交互作为 positive，用模型采样未命中 item 作为 negative</td></tr>
+<tr><td>DPO</td><td>让模型提高 positive list 的相对概率</td></tr>
+<tr><td>评价</td><td>Recall@K、NDCG@K、Hit@K、Coverage、Diversity、InvalidRate</td></tr>
+</table>
+
+<h3>14.3 可以写进论文/面试的创新点</h3>
+<ol>
+<li><strong>从 pointwise 到 pairwise：</strong>不是只训练 next-item likelihood，而是构造推荐偏好对。</li>
+<li><strong>从 token-level 到 list-level：</strong>把一个推荐列表作为整体输出，优化列表质量。</li>
+<li><strong>从命中率到多目标：</strong>同时考虑 Hit、NDCG、Diversity、InvalidRate。</li>
+<li><strong>从闭集推荐到生成式解码：</strong>分析 invalid SID 和 constrained decoding 的影响。</li>
+</ol>
+<pre>Baseline:
+  TIGER-style SFT
+
+Method:
+  TIGER-style SFT + Rec-DPO
+
+Ablation:
+  item-level DPO
+  list-level DPO
+  DPO + diversity reward
+  constrained decoding vs unconstrained decoding</pre>
+
+<h2 id="pitfalls">15. 常见坑：后训练不是万能药</h2>
+<table>
+<tr><th>坑</th><th>表现</th><th>解决方向</th></tr>
+<tr><td>Reward hacking</td><td>模型学会刷点击或时长</td><td>加长期指标、多样性、负反馈、人工检查</td></tr>
+<tr><td>Invalid generation</td><td>生成不存在 item 或不可展示 item</td><td>SID Trie、constrained decoding、过滤器</td></tr>
+<tr><td>热门坍塌</td><td>推荐越来越集中在热门 item</td><td>coverage / diversity reward，重采样策略</td></tr>
+<tr><td>冷启动被压制</td><td>新 item 很难被生成</td><td>内容语义 token、探索 reward、冷启动 boost</td></tr>
+<tr><td>通用能力遗忘</td><td>模型只会推荐，不会理解指令</td><td>混合 SFT、on-policy distillation、KL 约束</td></tr>
+<tr><td>离线线上不一致</td><td>离线 Recall 高，线上体验差</td><td>更真实反馈、在线 A/B、counterfactual evaluation</td></tr>
+</table>
+
+<h2 id="read">16. 阅读顺序</h2>
+<ol>
+<li><strong>Direct Preference Optimization</strong>：先理解 DPO 为什么可以不用显式 reward model 做偏好优化。</li>
+<li><strong>OneRec: Unifying Retrieve and Rank with Generative Recommender and Iterative Preference Alignment</strong>：重点看 IPA、DPO 和 session-wise generation。</li>
+<li><strong>OneRec-V2 Technical Report</strong>：重点看真实用户反馈、Duration-Aware Reward Shaping 和 Adaptive Ratio Clipping。</li>
+<li><strong>OpenOneRec Technical Report</strong>：重点看 SFT、on-policy distillation、Rec-RL、RecIF-Bench 和开源 pipeline。</li>
+<li><strong>OneRec-Think</strong>：重点看 itemic alignment、reasoning activation 和 recommendation-specific reward。</li>
+<li><strong>SAGE</strong>：作为进阶，看 list-wise generative recommendation 的 sequence-level RL 优化。</li>
+</ol>
+
+<h2 id="summary">17. 一页总结</h2>
+<table>
+<tr><th>概念</th><th>核心理解</th></tr>
+<tr><td>NTP</td><td>让模型学会生成历史中的下一个 item token，但不等于优化用户体验</td></tr>
+<tr><td>SFT</td><td>把推荐任务包装成 instruction-response，提供稳定后训练起点</td></tr>
+<tr><td>DPO</td><td>用 chosen / rejected 偏好对，让模型提高好结果相对概率</td></tr>
+<tr><td>IPA</td><td>OneRec 的迭代偏好对齐，用 reward model 和采样构造推荐偏好对</td></tr>
+<tr><td>Rec-RL</td><td>用 Hit、NDCG、时长、多样性等 reward 直接优化生成策略</td></tr>
+<tr><td>GRPO</td><td>对同一 prompt 采样多个输出，用组内相对优势更新模型</td></tr>
+<tr><td>Reward Shaping</td><td>把真实反馈改造成更可靠的训练信号，例如时长归一化</td></tr>
+<tr><td>On-policy Distillation</td><td>让模型在自己生成的轨迹上恢复通用能力，防止 item token 污染语言能力</td></tr>
+<tr><td>OneRec-Think</td><td>把 item 生成、文本解释和推理能力结合起来</td></tr>
+<tr><td>核心挑战</td><td>曝光偏差、reward hacking、无效生成、热门坍塌、冷启动、多目标冲突</td></tr>
+</table>
+<div class="box train"><strong>Stage 4 结束标准：</strong>
+<ol>
+<li>能讲清为什么生成式推荐不能只做 NTP / SFT；</li>
+<li>能写出 DPO 在推荐中的 chosen / rejected 形式；</li>
+<li>能解释 OneRec 的 IPA 为什么需要 reward model 和迭代采样；</li>
+<li>能解释 OpenOneRec 为什么要 SFT + on-policy distillation + Rec-RL；</li>
+<li>能设计一个公开数据上的 Rec-DPO 小实验；</li>
+<li>能说明 reward 设计为什么比算法名字更重要。</li>
+</ol>
+</div>
+
+<h2>18. 参考资料</h2>
+<ul>
+<li>Rafailov et al. <em>Direct Preference Optimization: Your Language Model is Secretly a Reward Model</em>. arXiv:2305.18290.</li>
+<li>Deng et al. <em>OneRec: Unifying Retrieve and Rank with Generative Recommender and Iterative Preference Alignment</em>. arXiv:2502.18965.</li>
+<li>Zhou et al. <em>OneRec-V2 Technical Report</em>. arXiv:2508.20900.</li>
+<li>Zhou et al. <em>OpenOneRec Technical Report: An Open Foundation Model and Benchmark to Accelerate Generative Recommendation</em>. arXiv:2512.24762.</li>
+<li>Liu et al. <em>OneRec-Think: In-Text Reasoning for Generative Recommendation</em>. arXiv:2510.11639.</li>
+<li>Xie et al. <em>SAGE: Sequence-level Adaptive Gradient Evolution for Generative Recommendation</em>. arXiv:2601.21452.</li>
+<li>Kuaishou-OneRec / OpenOneRec GitHub: open-source pipeline, RecIF-Bench, tokenizer, pretrain, verl_distillation, verl_rl.</li>
+</ul>
+<p class="small">资料注：本文是学习讲义式整理，公式为教学化简表达。涉及线上指标、工业实现细节和实验数值时，请以原论文和开源仓库为准。</p>
+</body>
+</html>

@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>机器学习 × 推荐算法八股</title>
+<script>
+window.MathJax={tex:{inlineMath:[["\(","\)"],["$","$"]],displayMath:[["\[","\]"]],processEscapes:true},svg:{fontCache:"global"}};
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<style>
+html{scroll-behavior:smooth}
+body{font-family:"Microsoft YaHei",Arial,sans-serif;line-height:1.85;max-width:1120px;margin:40px auto;padding:0 28px 100px;background:#f7f8fb;color:#1f2937;font-size:17px}
+h1{font-size:34px;line-height:1.35;border-bottom:5px solid #2563eb;padding-bottom:14px}
+h2{margin-top:48px;padding:12px 16px;font-size:27px;background:#eef4ff;border-left:7px solid #2563eb}
+h3{margin-top:28px;font-size:21px}
+h2,h3{scroll-margin-top:24px}
+.box{background:#fff;border:1px solid #d9e2ef;border-radius:12px;padding:18px 22px;margin:18px 0}
+.note{background:#fff7d6;border-left:6px solid #d6a800}
+.train{background:#ecfdf3;border-left:6px solid #16a34a}
+.warn{background:#fff1f1;border-left:6px solid #dc2626}
+.formula{background:#fff;border:1px solid #d9e2ef;border-radius:12px;padding:16px 18px;margin:18px 0;overflow-x:auto}
+table{width:100%;border-collapse:collapse;margin:18px 0;background:#fff}
+th,td{border:1px solid #d9e2ef;padding:11px 13px;vertical-align:top}
+th{background:#f1f5f9}
+pre{background:#111827;color:#e5e7eb;padding:18px;border-radius:10px;overflow-x:auto;line-height:1.55}
+code{font-family:Consolas,Monaco,"Courier New",monospace}
+.small{color:#667085;font-size:14px}
+.tag{display:inline-block;background:#dbeafe;color:#1d4ed8;border-radius:999px;padding:2px 10px;font-size:13px;margin-right:6px;margin-bottom:8px}
+.page-toc{position:fixed;top:20px;right:20px;z-index:1000}
+.page-toc-toggle{border:0;border-radius:999px;padding:10px 16px;background:#2563eb;color:#fff;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 10px 24px rgba(37,99,235,.24)}
+.page-toc-toggle:hover{background:#1d4ed8}
+.page-toc-panel{display:none;width:390px;max-height:calc(100vh - 90px);overflow:auto;background:rgba(255,255,255,.96);border:1px solid #d9e2ef;border-radius:14px;padding:16px 18px;margin-top:10px;box-shadow:0 12px 30px rgba(15,23,42,.08);backdrop-filter:blur(8px)}
+.page-toc.is-open .page-toc-panel{display:block}
+.page-toc-title{margin-bottom:12px;font-size:15px;font-weight:700;color:#0f172a}
+.page-toc-list{list-style:none;margin:0;padding:0}
+.page-toc-item+.page-toc-item{margin-top:10px}
+.page-toc-link{display:block;color:#334155;text-decoration:none;font-size:14px;line-height:1.55}
+.page-toc-link:hover{color:#2563eb}
+.qa{background:#fff;border:1px solid #d9e2ef;border-radius:12px;margin:12px 0;overflow:hidden}
+.qa summary{cursor:pointer;padding:14px 18px;font-weight:700;color:#0f172a;background:#ffffff;list-style:none}
+.qa summary::-webkit-details-marker{display:none}
+.qa[open] summary{background:#f1f5f9;border-bottom:1px solid #d9e2ef}
+.answer{padding:16px 20px}
+.answer p{margin-top:0}
+.qno{display:inline-block;background:#2563eb;color:#fff;border-radius:999px;padding:2px 9px;font-size:13px;margin-right:8px}
+.follow{background:#f8fafc;border-left:5px solid #94a3b8;padding:10px 12px;border-radius:8px;color:#334155}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.card{background:#fff;border:1px solid #d9e2ef;border-radius:12px;padding:16px}
+@media(max-width:760px){body{margin:30px auto;padding:0 18px 80px;font-size:16px}h1{font-size:28px}h2{font-size:23px}table{font-size:15px}.page-toc-panel{width:min(390px,calc(100vw - 24px))}.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<nav class="page-toc" aria-label="文章目录">
+<button class="page-toc-toggle" onclick="document.querySelector('.page-toc').classList.toggle('is-open')">☰ 目录</button>
+<div class="page-toc-panel">
+<div class="page-toc-title">目录导航</div>
+<ol class="page-toc-list">
+<li class="page-toc-item"><a class="page-toc-link" href="#sec1">1. 机器学习基础：为什么这些问题和推荐强相关</a></li><li class="page-toc-item"><a class="page-toc-link" href="#sec2">2. LR、LogLoss、AUC 与概率校准</a></li><li class="page-toc-item"><a class="page-toc-link" href="#sec3">3. 数据、样本、负采样与数据泄露</a></li><li class="page-toc-item"><a class="page-toc-link" href="#sec4">4. 特征工程、Embedding 与特征交叉</a></li><li class="page-toc-item"><a class="page-toc-link" href="#sec5">5. 过拟合、正则化、优化器与训练稳定性</a></li><li class="page-toc-item"><a class="page-toc-link" href="#sec6">6. 树模型、GBDT、XGBoost、LightGBM 与推荐</a></li><li class="page-toc-item"><a class="page-toc-link" href="#sec7">7. FM、FFM、DeepFM 与特征交互模型</a></li><li class="page-toc-item"><a class="page-toc-link" href="#sec8">8. 双塔、对比学习、召回与 ANN</a></li><li class="page-toc-item"><a class="page-toc-link" href="#sec9">9. 序列建模：从 Markov 到 Transformer 推荐</a></li><li class="page-toc-item"><a class="page-toc-link" href="#sec10">10. 多任务学习、ESMM、MMoE、PLE 与目标融合</a></li><li class="page-toc-item"><a class="page-toc-link" href="#sec11">11. 评估指标、离线实验与线上 A/B</a></li><li class="page-toc-item"><a class="page-toc-link" href="#sec12">12. 工业部署、模型压缩、监控与故障排查</a></li><li class="page-toc-item"><a class="page-toc-link" href="#sec13">13. 机器学习 × 推荐算法高频综合问答</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#refs">参考资料</a></li>
+</ol>
+</div>
+</nav>
+
+<h1>机器学习 × 推荐算法八股</h1>
+<p><span class="tag">Machine Learning</span><span class="tag">Recommendation</span><span class="tag">CTR/CVR</span><span class="tag">Recall & Ranking</span><span class="tag">面试八股</span></p>
+
+<div class="box train">
+<strong>使用方式：</strong>这份只保留和推荐算法强相关的机器学习问题，不放无关 CV/NLP 泛题。建议先掌握 LR/LogLoss/AUC、样本构造、特征工程、Embedding、GBDT、FM/DeepFM、双塔召回、序列推荐、多任务、评估指标和线上部署。
+</div>
+
+<div class="box note">
+<strong>总量：</strong>共 137 个问题。每题包含标准回答和面试追问，适合用来准备推荐算法、广告算法、搜索推荐、CTR/CVR 排序岗位。
+</div>
+
+<div class="grid">
+<div class="card"><strong>第一层：</strong>机器学习基础如何映射到推荐问题，例如分类、排序、回归、概率校准、过拟合。</div>
+<div class="card"><strong>第二层：</strong>推荐特有问题，例如曝光偏差、负采样、冷启动、长尾、线上线下不一致。</div>
+<div class="card"><strong>第三层：</strong>模型演进路线，例如 LR → FM → DeepFM → DIN/DIEN → 多任务 → 大模型排序。</div>
+<div class="card"><strong>第四层：</strong>工程落地，例如 A/B、延迟、特征监控、灰度、回滚、蒸馏和量化。</div>
+</div>
+
+<h2 id="sec1">1. 机器学习基础：为什么这些问题和推荐强相关</h2><div class="box note"><strong>本节定位：</strong>这一部分只讲会直接影响推荐召回、CTR/CVR 排序、重排和线上效果的机器学习基础。</div><details class="qa" id="q1">
+<summary><span class="qno">Q001</span> 推荐系统里机器学习到底在学什么？</summary>
+<div class="answer"><p>推荐系统本质是在学习用户、物品、上下文之间的匹配函数。召回阶段更关注从海量物品中快速找候选，排序阶段更关注精确估计点击、转化、时长、收益等目标，重排阶段还要考虑多样性、去重、业务规则和体验约束。机器学习在这里不是单纯分类，而是把用户行为日志转成可优化的预测问题。</p><div class="follow"><strong>常见追问：</strong>追问：召回学的是相似度还是概率？排序学的是概率还是效用？</div></div>
+</details><details class="qa" id="q2">
+<summary><span class="qno">Q002</span> CTR 预估为什么通常被建模成二分类？</summary>
+<div class="answer"><p>CTR 预估的标签通常是点击或未点击，所以最直接是二分类问题。模型输出 \(\hat{p}=P(y=1\mid x)\)，代表样本在给定用户、物品、上下文下被点击的概率。线上排序时，CTR 往往只是综合打分的一部分，还可能和 CVR、出价、时长、满意度等组合。</p><div class="follow"><strong>常见追问：</strong>追问：CTR 预估输出分数一定是概率吗？为什么需要校准？</div></div>
+</details><details class="qa" id="q3">
+<summary><span class="qno">Q003</span> CVR 预估和 CTR 预估有什么区别？</summary>
+<div class="answer"><p>CTR 的正样本是曝光后点击，CVR 的正样本通常是点击后转化或曝光后转化。CVR 更稀疏、反馈链路更长、延迟更明显，而且有样本选择偏差：只在点击样本上训练 CVR，会导致模型只学习到点击人群分布，不能代表全部曝光空间。</p><div class="follow"><strong>常见追问：</strong>追问：为什么 ESMM 能缓解 CVR 的样本选择偏差？</div></div>
+</details><details class="qa" id="q4">
+<summary><span class="qno">Q004</span> 为什么推荐算法不能只看机器学习离线指标？</summary>
+<div class="answer"><p>推荐是强线上系统。离线 AUC、LogLoss、NDCG 提升不一定带来线上 CTR、GMV、留存提升，因为离线数据来自旧策略，存在曝光偏差、位置偏差、样本选择偏差和反馈延迟。上线还受延迟、QPS、缓存、探索、用户疲劳、业务规则影响。</p><div class="follow"><strong>常见追问：</strong>追问：离线 AUC 提升但线上 CTR 下降，可能是什么原因？</div></div>
+</details><details class="qa" id="q5">
+<summary><span class="qno">Q005</span> 推荐里的训练样本一般怎么构造？</summary>
+<div class="answer"><p>常见样本是一次曝光或一次候选打分记录。特征包括 user 特征、item 特征、context 特征、cross 特征和历史行为特征。标签可以是 click、conversion、watch time、like、collect、purchase 等。关键是严格按时间构造，不能把未来行为泄露到当前样本里。</p><div class="follow"><strong>常见追问：</strong>追问：为什么推荐数据切分通常用时间切分而不是随机切分？</div></div>
+</details><details class="qa" id="q6">
+<summary><span class="qno">Q006</span> 推荐算法里的监督学习、无监督学习、强化学习分别在哪里用？</summary>
+<div class="answer"><p>监督学习主要用于 CTR/CVR/多目标排序；无监督或自监督常用于 item embedding、user embedding、预训练、聚类、召回；强化学习更适合长期收益、序列决策、探索利用和推荐后训练，但工业落地难度高，常需要离线评估和保守策略约束。</p><div class="follow"><strong>常见追问：</strong>追问：为什么排序模型通常不用纯强化学习直接训练？</div></div>
+</details><details class="qa" id="q7">
+<summary><span class="qno">Q007</span> 为什么推荐系统特别依赖特征工程？</summary>
+<div class="answer"><p>推荐数据高度稀疏、异质、动态。user_id、item_id、类目、品牌、城市、时间、设备、历史行为、价格、query 等特征语义差异很大。模型结构再强，也需要正确的特征口径、时间窗口、统计特征和实时特征，否则会出现数据泄露、冷启动失败或线上线下不一致。</p><div class="follow"><strong>常见追问：</strong>追问：统计特征为什么最容易数据泄露？</div></div>
+</details><details class="qa" id="q8">
+<summary><span class="qno">Q008</span> 推荐里的模型复杂度为什么要和 serving 成本一起考虑？</summary>
+<div class="answer"><p>推荐系统通常高 QPS、低延迟，尤其精排要在毫秒级预算内对大量候选打分。模型更大可能提升效果，但也会增加推理延迟、GPU/CPU 成本、缓存压力和稳定性风险。所以推荐模型选择不是只看效果，而是效果、延迟、吞吐、成本、可维护性的折中。</p><div class="follow"><strong>常见追问：</strong>追问：为什么大模型在推荐里不一定能直接替代小 ranker？</div></div>
+</details><h2 id="sec2">2. LR、LogLoss、AUC 与概率校准</h2><div class="box note"><strong>本节定位：</strong>LR 是推荐 CTR 预估最经典的起点，很多深度模型的最后一层和训练目标仍然继承了它的思想。</div><details class="qa" id="q9">
+<summary><span class="qno">Q009</span> 逻辑回归 LR 在推荐排序中为什么经典？</summary>
+<div class="answer"><p>LR 简单、可解释、训练快、在线推理稳定，适合大规模稀疏 one-hot 特征。CTR 预估中，LR 用线性函数 \(z=\mathbf{w}^{\top}\mathbf{x}+b\)，再通过 sigmoid 得到点击概率 \(\hat{p}=\sigma(z)\)。它的缺点是表达能力有限，需要大量人工交叉特征。</p><div class="follow"><strong>常见追问：</strong>追问：为什么早期广告 CTR 系统常用 LR + 人工交叉特征？</div></div>
+</details><details class="qa" id="q10">
+<summary><span class="qno">Q010</span> sigmoid 函数为什么适合二分类 CTR？</summary>
+<div class="answer"><p>sigmoid 将任意实数映射到 \((0,1)\)，可以解释为正类概率：\(\sigma(z)=1/(1+\exp(-z))\)。CTR 标签是点击/未点击，因此用 sigmoid 输出点击概率，再用交叉熵优化。</p><div class="follow"><strong>常见追问：</strong>追问：sigmoid 饱和会带来什么训练问题？</div></div>
+</details><details class="qa" id="q11">
+<summary><span class="qno">Q011</span> CTR 预估为什么常用 Binary Cross Entropy？</summary>
+<div class="answer"><p>BCE 对应伯努利分布的负对数似然。对单样本，\(\mathcal{L}=-y\log \hat{p}-(1-y)\log(1-\hat{p})\)。它不仅关心排序，也关心概率估计是否准确，所以适合 CTR/CVR 这类概率预估任务。</p><div class="follow"><strong>常见追问：</strong>追问：AUC 提升但 LogLoss 变差说明什么？</div></div>
+</details><details class="qa" id="q12">
+<summary><span class="qno">Q012</span> LogLoss 和 AUC 的区别是什么？</summary>
+<div class="answer"><p>LogLoss 关注概率值准不准，预测 0.9 但实际未点击会被严重惩罚；AUC 关注正样本排在负样本前面的概率，更关注排序相对顺序。推荐排序中，两者都重要：AUC 反映排序区分能力，LogLoss 反映概率质量和校准程度。</p><div class="follow"><strong>常见追问：</strong>追问：为什么广告系统特别关心概率校准？</div></div>
+</details><details class="qa" id="q13">
+<summary><span class="qno">Q013</span> AUC 的直观含义是什么？</summary>
+<div class="answer"><p>AUC 可以理解为随机抽取一个正样本和一个负样本，模型给正样本打分高于负样本的概率。若 AUC=0.8，说明约 80% 的正负样本对被正确排序。</p><div class="follow"><strong>常见追问：</strong>追问：AUC 对类别不平衡为什么相对不敏感？</div></div>
+</details><details class="qa" id="q14">
+<summary><span class="qno">Q014</span> 为什么推荐里常看 GAUC 而不是只看全局 AUC？</summary>
+<div class="answer"><p>全局 AUC 会把不同用户之间的样本混在一起，但推荐排序通常是在同一用户候选集内部排序。GAUC 先计算每个用户或请求内的 AUC，再按曝光量或样本量加权平均，更符合推荐排序场景。</p><div class="follow"><strong>常见追问：</strong>追问：什么样的用户不能参与 GAUC 计算？</div></div>
+</details><details class="qa" id="q15">
+<summary><span class="qno">Q015</span> 什么是概率校准？</summary>
+<div class="answer"><p>概率校准指模型输出的预测概率和真实发生频率一致。例如模型预测 CTR 为 0.1 的样本集合，真实点击率也应接近 10%。在广告、推荐收益预估里，校准很重要，因为分数常会参与出价、流量分配和多目标融合。</p><div class="follow"><strong>常见追问：</strong>追问：常见校准方法有哪些？</div></div>
+</details><details class="qa" id="q16">
+<summary><span class="qno">Q016</span> Platt Scaling 和 Isotonic Regression 有什么区别？</summary>
+<div class="answer"><p>Platt Scaling 用一个 sigmoid 函数对原始分数做参数化校准，简单稳定但表达能力有限；Isotonic Regression 学习单调非参数映射，更灵活但更容易过拟合。推荐场景要按业务分桶、场景、流量分布定期校准。</p><div class="follow"><strong>常见追问：</strong>追问：为什么校准集必须和线上分布接近？</div></div>
+</details><details class="qa" id="q17">
+<summary><span class="qno">Q017</span> 为什么模型分数可以排序好但概率不准？</summary>
+<div class="answer"><p>排序只要求相对大小正确，而概率要求绝对数值准确。比如所有正样本分数都高于负样本，但整体预测 CTR 偏高两倍，AUC 可能很好，LogLoss 和校准会差。</p><div class="follow"><strong>常见追问：</strong>追问：这种情况下线上多目标融合会有什么风险？</div></div>
+</details><details class="qa" id="q18">
+<summary><span class="qno">Q018</span> CTR 样本极度不平衡时 LR 会有什么问题？</summary>
+<div class="answer"><p>点击通常远少于未点击，模型容易偏向预测负类。虽然 BCE 可以处理不平衡，但训练中负样本过多会造成梯度被负样本主导。常见处理包括负采样、样本加权、分层采样、难负样本挖掘和后验校正。</p><div class="follow"><strong>常见追问：</strong>追问：负采样后为什么预测概率需要校正？</div></div>
+</details><h2 id="sec3">3. 数据、样本、负采样与数据泄露</h2><div class="box note"><strong>本节定位：</strong>推荐模型的很多问题不是模型结构导致的，而是样本构造、标签定义和时间口径导致的。</div><details class="qa" id="q19">
+<summary><span class="qno">Q019</span> 推荐系统里的正负样本怎么定义？</summary>
+<div class="answer"><p>正样本通常是点击、购买、观看完成、收藏等目标行为；负样本通常是曝光未点击、点击未转化、未完成观看等。但负样本定义必须依赖任务：CTR 的负样本是曝光未点击，CVR 的负样本可能是点击未转化，召回训练的负样本可能是用户未交互 item。</p><div class="follow"><strong>常见追问：</strong>追问：未曝光 item 能不能当负样本？</div></div>
+</details><details class="qa" id="q20">
+<summary><span class="qno">Q020</span> 为什么未曝光 item 不能简单当负样本？</summary>
+<div class="answer"><p>用户没点击某 item 可能只是因为系统没展示，不代表不喜欢。如果把全部未交互 item 当负样本，会引入曝光偏差，使模型学习旧系统策略，而不是用户真实偏好。召回任务中可以采样未交互 item 作为近似负样本，但需要控制采样策略和评估方式。</p><div class="follow"><strong>常见追问：</strong>追问：负采样分布会如何影响召回模型？</div></div>
+</details><details class="qa" id="q21">
+<summary><span class="qno">Q021</span> 负采样有哪些常见方式？</summary>
+<div class="answer"><p>常见方式包括随机负采样、热门负采样、同类目负采样、曝光未点击负采样、in-batch negative、hard negative。随机负样本容易太简单；热门负样本更接近线上竞争；同类目负样本能提高细粒度区分；hard negative 效果好但可能引入噪声。</p><div class="follow"><strong>常见追问：</strong>追问：双塔召回为什么常用 in-batch negative？</div></div>
+</details><details class="qa" id="q22">
+<summary><span class="qno">Q022</span> 负采样后为什么概率会偏？</summary>
+<div class="answer"><p>训练时改变了正负样本比例，模型看到的先验分布不再等于线上真实曝光分布。模型可能学到正确的排序，但概率绝对值会偏。若要用作真实 CTR，需要通过采样率校正、校准或在真实分布验证集上后处理。</p><div class="follow"><strong>常见追问：</strong>追问：排序任务和概率预估任务对负采样敏感性一样吗？</div></div>
+</details><details class="qa" id="q23">
+<summary><span class="qno">Q023</span> 什么是数据泄露？推荐里常见在哪里？</summary>
+<div class="answer"><p>数据泄露是训练特征包含了预测时不可获得的信息。推荐常见泄露包括：用未来点击统计作为当前特征；按全量数据计算用户/物品历史 CTR；随机切分导致同一用户未来行为进入训练；特征更新时间晚于样本曝光时间。</p><div class="follow"><strong>常见追问：</strong>追问：如何检查统计特征是否泄露？</div></div>
+</details><details class="qa" id="q24">
+<summary><span class="qno">Q024</span> 为什么推荐数据常用时间切分？</summary>
+<div class="answer"><p>推荐任务本质是用过去预测未来。随机切分会让未来行为进入训练，造成离线指标虚高。时间切分更接近线上部署：训练集在过去，验证/测试集在未来，可以检验模型面对新用户、新物品、新趋势时的泛化能力。</p><div class="follow"><strong>常见追问：</strong>追问：时间切分会带来什么评估困难？</div></div>
+</details><details class="qa" id="q25">
+<summary><span class="qno">Q025</span> 什么是 delayed feedback？</summary>
+<div class="answer"><p>delayed feedback 是转化、购买、留存等标签不是立即发生，而是在曝光或点击后过一段时间才出现。如果过早收集标签，很多未来会转化的样本会被误标为负样本。CVR、付费、留存预测中特别常见。</p><div class="follow"><strong>常见追问：</strong>追问：延迟反馈怎么处理？</div></div>
+</details><details class="qa" id="q26">
+<summary><span class="qno">Q026</span> 延迟反馈怎么处理？</summary>
+<div class="answer"><p>可以设置观察窗口，例如曝光后 24 小时或 7 天内转化算正样本；可以建模转化延迟分布；可以对未成熟样本降权；也可以采用 delayed feedback correction。关键是训练、验证、线上监控的标签窗口必须一致。</p><div class="follow"><strong>常见追问：</strong>追问：窗口太短和太长分别有什么问题？</div></div>
+</details><details class="qa" id="q27">
+<summary><span class="qno">Q027</span> 什么是样本选择偏差？</summary>
+<div class="answer"><p>样本选择偏差是训练样本只来自被系统选择曝光或点击的一部分，而不是全量用户-物品空间。例如 CVR 只在点击样本上训练，会遗漏未点击样本中的潜在转化概率。模型最终可能无法泛化到完整曝光空间。</p><div class="follow"><strong>常见追问：</strong>追问：ESMM 如何处理 CVR 样本选择偏差？</div></div>
+</details><details class="qa" id="q28">
+<summary><span class="qno">Q028</span> 什么是位置偏差？</summary>
+<div class="answer"><p>位置偏差是用户更容易点击排在前面的 item，不一定因为它更相关。训练数据中的点击同时反映相关性和展示位置。如果不处理，模型会强化旧排序策略，认为高位置 item 更好。</p><div class="follow"><strong>常见追问：</strong>追问：IPS 如何缓解位置偏差？</div></div>
+</details><details class="qa" id="q29">
+<summary><span class="qno">Q029</span> 什么是 IPS？</summary>
+<div class="answer"><p>IPS 是 Inverse Propensity Scoring，用点击样本除以该位置被观察或被点击的倾向概率，降低位置或曝光策略造成的偏差。形式上可以写成加权损失：\(\mathcal{L}=\sum_i \frac{1}{p_i}\ell_i\)，其中 \(p_i\) 是样本被观察的倾向概率。</p><div class="follow"><strong>常见追问：</strong>追问：IPS 为什么会导致方差变大？</div></div>
+</details><details class="qa" id="q30">
+<summary><span class="qno">Q030</span> 推荐训练中如何做样本加权？</summary>
+<div class="answer"><p>样本加权可以用于处理类别不平衡、业务价值差异、时间衰减、场景权重和偏差校正。例如购买样本权重大于点击样本，新样本权重大于旧样本，高价值转化权重大于低价值转化。但权重过大可能导致训练不稳定。</p><div class="follow"><strong>常见追问：</strong>追问：样本权重会影响概率校准吗？</div></div>
+</details><h2 id="sec4">4. 特征工程、Embedding 与特征交叉</h2><div class="box note"><strong>本节定位：</strong>推荐中的机器学习基础必须落到稀疏特征、连续特征、统计特征、Embedding 和交叉特征。</div><details class="qa" id="q31">
+<summary><span class="qno">Q031</span> 推荐特征一般分为哪几类？</summary>
+<div class="answer"><p>常见分为用户特征、物品特征、上下文特征、交互特征和历史行为特征。用户特征包括年龄、城市、会员等级；物品特征包括类目、品牌、价格；上下文包括时间、设备、入口；交互特征包括用户对类目的历史 CTR；历史行为是点击、购买、观看序列。</p><div class="follow"><strong>常见追问：</strong>追问：为什么 user_id 和 item_id 是强特征但也危险？</div></div>
+</details><details class="qa" id="q32">
+<summary><span class="qno">Q032</span> 稀疏特征为什么常用 Embedding？</summary>
+<div class="answer"><p>one-hot 特征维度巨大且稀疏，直接输入模型效率低。Embedding 将离散 ID 映射到低维稠密向量，使模型能学习相似用户、相似物品和相似特征值之间的关系。</p><div class="follow"><strong>常见追问：</strong>追问：Embedding 维度怎么选？</div></div>
+</details><details class="qa" id="q33">
+<summary><span class="qno">Q033</span> Embedding 维度怎么选？</summary>
+<div class="answer"><p>维度太小表达能力不足，太大容易过拟合并增加存储和推理成本。工业中常按特征基数、频次、重要性和线上成本设置不同维度，例如 item_id 比 device_type 需要更高维。也可用自适应维度或哈希压缩。</p><div class="follow"><strong>常见追问：</strong>追问：低频 ID 用大维度有什么问题？</div></div>
+</details><details class="qa" id="q34">
+<summary><span class="qno">Q034</span> 低频特征的 Embedding 为什么难学？</summary>
+<div class="answer"><p>低频 ID 出现次数少，梯度更新不足，Embedding 容易噪声大、不稳定。常见处理包括频次截断、UNK 桶、特征平滑、共享父类目 embedding、内容特征补充、预训练 embedding。</p><div class="follow"><strong>常见追问：</strong>追问：冷启动 item 如何生成 embedding？</div></div>
+</details><details class="qa" id="q35">
+<summary><span class="qno">Q035</span> 连续特征在推荐中怎么处理？</summary>
+<div class="answer"><p>连续特征可以直接归一化输入，也可以分桶离散化后 embedding。归一化保留数值大小，分桶能捕捉非线性区间效应。价格、年龄、历史次数、CTR 统计等特征常需要 log transform、截断、标准化或分桶。</p><div class="follow"><strong>常见追问：</strong>追问：为什么长尾计数特征常做 log 变换？</div></div>
+</details><details class="qa" id="q36">
+<summary><span class="qno">Q036</span> 统计特征为什么强？</summary>
+<div class="answer"><p>历史 CTR、用户近 7 天点击次数、item 近 1 小时曝光量、类目转化率等统计特征直接反映行为规律，通常对推荐效果很强。但它们最容易泄露未来信息，也容易造成训练和线上口径不一致。</p><div class="follow"><strong>常见追问：</strong>追问：统计特征如何避免泄露？</div></div>
+</details><details class="qa" id="q37">
+<summary><span class="qno">Q037</span> 什么是特征穿越/交叉？</summary>
+<div class="answer"><p>特征交叉是建模两个或多个特征之间的组合效应。例如用户城市 × 商品类目、性别 × 品牌、用户兴趣 × item 类目。LR 只能学习线性权重，需要人工交叉；FM、DeepFM、DCN 等模型自动学习特征交互。</p><div class="follow"><strong>常见追问：</strong>追问：FM 和 DCN 的交叉有什么不同？</div></div>
+</details><details class="qa" id="q38">
+<summary><span class="qno">Q038</span> 为什么推荐模型需要特征交叉？</summary>
+<div class="answer"><p>用户是否点击不是单个特征决定，而是组合决定。一个用户喜欢数码产品，但在晚上、低价、特定品牌、特定入口下点击概率不同。特征交叉能表达这种条件依赖。</p><div class="follow"><strong>常见追问：</strong>追问：深度 MLP 是否一定能学好所有交叉？</div></div>
+</details><details class="qa" id="q39">
+<summary><span class="qno">Q039</span> 哈希技巧有什么作用？</summary>
+<div class="answer"><p>哈希技巧将大量离散特征映射到固定大小空间，降低字典维护和内存成本。缺点是哈希冲突，不同特征可能映射到同一桶。推荐中常用于超大规模 ID 或组合特征。</p><div class="follow"><strong>常见追问：</strong>追问：哈希冲突一定是坏事吗？</div></div>
+</details><details class="qa" id="q40">
+<summary><span class="qno">Q040</span> 特征归一化为什么重要？</summary>
+<div class="answer"><p>不同连续特征量纲差异大，会影响梯度下降和模型收敛。尤其 LR、DNN 对尺度敏感，树模型相对不敏感。推荐中计数、价格、时间间隔等特征常需要归一化或变换。</p><div class="follow"><strong>常见追问：</strong>追问：Embedding 特征需要归一化吗？</div></div>
+</details><details class="qa" id="q41">
+<summary><span class="qno">Q041</span> 线上线下特征一致性为什么重要？</summary>
+<div class="answer"><p>训练时使用的特征口径必须和线上推理时一致。如果训练用离线全量统计，线上用实时统计，分布差异会导致模型效果下降。推荐系统常用 Feature Store 管理特征定义、回填和在线读取。</p><div class="follow"><strong>常见追问：</strong>追问：如何排查线上效果差是不是特征不一致？</div></div>
+</details><details class="qa" id="q42">
+<summary><span class="qno">Q042</span> 为什么推荐里会有实时特征和离线特征？</summary>
+<div class="answer"><p>离线特征适合长期稳定信息，如用户画像、item 类目、长期统计；实时特征反映用户刚刚发生的行为，如最近点击、当前 session 兴趣、实时热度。两者结合才能兼顾长期兴趣和短期意图。</p><div class="follow"><strong>常见追问：</strong>追问：实时特征延迟会造成什么问题？</div></div>
+</details><h2 id="sec5">5. 过拟合、正则化、优化器与训练稳定性</h2><div class="box note"><strong>本节定位：</strong>这些机器学习基础在推荐中经常以高维稀疏、长尾、分布漂移的形式出现。</div><details class="qa" id="q43">
+<summary><span class="qno">Q043</span> 推荐模型为什么容易过拟合？</summary>
+<div class="answer"><p>推荐数据有大量高维 ID 特征、长尾 item、稀疏用户行为和强时间变化。模型可能记住热门 item、老用户历史或训练时期的短期热点，而不是泛化规律。深度排序模型和大 embedding 表尤其容易过拟合低频 ID。</p><div class="follow"><strong>常见追问：</strong>追问：如何判断是过拟合还是数据分布漂移？</div></div>
+</details><details class="qa" id="q44">
+<summary><span class="qno">Q044</span> 推荐中常见正则化方法有哪些？</summary>
+<div class="answer"><p>常见包括 L1/L2 正则、dropout、early stopping、embedding norm 约束、特征频次截断、label smoothing、样本增强、参数共享和多任务学习。对 ID embedding，L2、频次过滤和共享上级类目特征很常用。</p><div class="follow"><strong>常见追问：</strong>追问：L1 和 L2 的区别是什么？</div></div>
+</details><details class="qa" id="q45">
+<summary><span class="qno">Q045</span> L1 和 L2 正则有什么区别？</summary>
+<div class="answer"><p>L1 倾向产生稀疏权重，适合特征选择；L2 倾向让权重变小但不完全为零，适合防止权重过大。LR + 稀疏特征时代常用 L1 做特征选择，深度推荐里更常用 L2 和 dropout。</p><div class="follow"><strong>常见追问：</strong>追问：Embedding 表上用 L2 会有什么效果？</div></div>
+</details><details class="qa" id="q46">
+<summary><span class="qno">Q046</span> Dropout 在推荐模型里有什么作用？</summary>
+<div class="answer"><p>Dropout 随机屏蔽部分神经元，减少模型对某些特征组合的依赖，提高泛化能力。但在推荐中对 embedding 或行为序列随意 dropout 可能破坏关键信息，需要根据模块谨慎使用。</p><div class="follow"><strong>常见追问：</strong>追问：为什么 DIN 这类兴趣模型不能乱丢历史行为？</div></div>
+</details><details class="qa" id="q47">
+<summary><span class="qno">Q047</span> BatchNorm 和 LayerNorm 在推荐中怎么理解？</summary>
+<div class="answer"><p>BatchNorm 依赖 batch 统计，适合连续稠密层，但推荐样本分布变化大、稀疏 ID 多时可能不稳定；LayerNorm 对单样本特征维度归一化，在 Transformer/序列推荐中更常见。</p><div class="follow"><strong>常见追问：</strong>追问：为什么 Transformer 通常用 LayerNorm？</div></div>
+</details><details class="qa" id="q48">
+<summary><span class="qno">Q048</span> Early Stopping 为什么有效？</summary>
+<div class="answer"><p>训练后期模型可能继续降低训练损失，但验证集效果下降。Early Stopping 监控验证指标，在泛化效果最佳时停止，防止过拟合。推荐中常监控 AUC、LogLoss、NDCG 或线上模拟指标。</p><div class="follow"><strong>常见追问：</strong>追问：验证集如果时间太近会有什么问题？</div></div>
+</details><details class="qa" id="q49">
+<summary><span class="qno">Q049</span> 推荐模型常用哪些优化器？</summary>
+<div class="answer"><p>LR/FM 时代常用 SGD、FTRL、Adagrad；深度模型常用 Adam、AdamW、Adagrad。稀疏特征中 Adagrad 对低频特征更友好，因为它能按参数自适应学习率。工业线上增量学习中 FTRL 也很经典。</p><div class="follow"><strong>常见追问：</strong>追问：FTRL 为什么适合广告 CTR？</div></div>
+</details><details class="qa" id="q50">
+<summary><span class="qno">Q050</span> FTRL 的特点是什么？</summary>
+<div class="answer"><p>FTRL-Proximal 适合高维稀疏在线学习，能结合 L1 产生稀疏解，并支持流式更新。早期广告 CTR 系统常用它处理大规模稀疏特征和实时反馈。</p><div class="follow"><strong>常见追问：</strong>追问：FTRL 和普通 SGD 的区别是什么？</div></div>
+</details><details class="qa" id="q51">
+<summary><span class="qno">Q051</span> 学习率过大会怎样？过小会怎样？</summary>
+<div class="answer"><p>学习率过大可能震荡、发散，AUC/LogLoss 不稳定；过小收敛慢，容易停在次优。推荐大规模训练中常用 warmup、学习率衰减、梯度裁剪和分层学习率。</p><div class="follow"><strong>常见追问：</strong>追问：Embedding 层和 DNN 层是否应该用同一个学习率？</div></div>
+</details><details class="qa" id="q52">
+<summary><span class="qno">Q052</span> 梯度消失和梯度爆炸在推荐中常见吗？</summary>
+<div class="answer"><p>在深层 MLP、RNN 序列推荐和长行为序列建模中会出现。解决方法包括残差连接、归一化、合理初始化、梯度裁剪、Transformer 替代 RNN、限制序列长度。</p><div class="follow"><strong>常见追问：</strong>追问：为什么残差连接能缓解深层网络训练困难？</div></div>
+</details><details class="qa" id="q53">
+<summary><span class="qno">Q053</span> 推荐模型如何处理分布漂移？</summary>
+<div class="answer"><p>用户兴趣、热点、商品池和运营策略都会变化。处理方式包括时间衰减样本、增量训练、实时特征、周期性重训、漂移监控、分场景模型和校准。</p><div class="follow"><strong>常见追问：</strong>追问：如何监控模型是否发生分布漂移？</div></div>
+</details><h2 id="sec6">6. 树模型、GBDT、XGBoost、LightGBM 与推荐</h2><div class="box note"><strong>本节定位：</strong>树模型虽然不是现在最潮的深度推荐，但在特征处理、粗排、融合、强 baseline 中依然常见。</div><details class="qa" id="q54">
+<summary><span class="qno">Q054</span> 决策树为什么能处理非线性特征？</summary>
+<div class="answer"><p>决策树通过特征分裂把空间划分成多个区域，每个叶子对应一个预测值。它天然能表达非线性和特征交互，例如价格大于某阈值且用户等级为高时点击率不同。</p><div class="follow"><strong>常见追问：</strong>追问：决策树为什么容易过拟合？</div></div>
+</details><details class="qa" id="q55">
+<summary><span class="qno">Q055</span> GBDT 的核心思想是什么？</summary>
+<div class="answer"><p>GBDT 是梯度提升决策树，通过逐轮训练新树去拟合前一轮模型的负梯度或残差。最终模型是多棵弱树的加法组合：\(F_M(x)=\sum_{m=1}^{M}\eta f_m(x)\)。</p><div class="follow"><strong>常见追问：</strong>追问：GBDT 和随机森林有什么区别？</div></div>
+</details><details class="qa" id="q56">
+<summary><span class="qno">Q056</span> GBDT 和随机森林的区别？</summary>
+<div class="answer"><p>随机森林是 bagging 思想，多棵树并行训练，主要降低方差；GBDT 是 boosting 思想，多棵树串行训练，后一棵树修正前一轮错误，主要降低偏差。GBDT 通常精度高但更容易过拟合，对参数更敏感。</p><div class="follow"><strong>常见追问：</strong>追问：为什么 GBDT 不容易并行训练？</div></div>
+</details><details class="qa" id="q57">
+<summary><span class="qno">Q057</span> XGBoost 相比传统 GBDT 有什么改进？</summary>
+<div class="answer"><p>XGBoost 在目标函数中加入一阶和二阶梯度、显式正则项、列采样、稀疏感知分裂、近似分裂算法和系统级优化，因此在大规模稀疏数据上效率和效果都强。</p><div class="follow"><strong>常见追问：</strong>追问：XGBoost 的二阶泰勒展开有什么作用？</div></div>
+</details><details class="qa" id="q58">
+<summary><span class="qno">Q058</span> XGBoost 的目标函数怎么写？</summary>
+<div class="answer"><p>常见形式是 \(\mathcal{L}^{(t)}=\sum_i \ell(y_i,\hat{y}_i^{(t-1)}+f_t(x_i))+\Omega(f_t)\)，其中 \(\Omega(f)=\gamma T + \frac{1}{2}\lambda \sum_j w_j^2\)，用正则控制树复杂度。</p><div class="follow"><strong>常见追问：</strong>追问：\(\gamma\) 和 \(\lambda\) 分别控制什么？</div></div>
+</details><details class="qa" id="q59">
+<summary><span class="qno">Q059</span> LightGBM 为什么快？</summary>
+<div class="answer"><p>LightGBM 使用 histogram 算法、leaf-wise 生长、GOSS 和 EFB 等优化。它对大规模特征和数据效率高，但 leaf-wise 更容易过拟合，需要控制 max_depth、num_leaves 和 min_data_in_leaf。</p><div class="follow"><strong>常见追问：</strong>追问：leaf-wise 和 level-wise 的区别是什么？</div></div>
+</details><details class="qa" id="q60">
+<summary><span class="qno">Q060</span> GBDT+LR 为什么曾经很流行？</summary>
+<div class="answer"><p>GBDT 自动学习非线性特征组合，每个样本落到每棵树的叶子节点，把叶子编号 one-hot 后输入 LR。这样 LR 不再只依赖人工交叉特征，能利用 GBDT 产生的高阶组合特征。</p><div class="follow"><strong>常见追问：</strong>追问：GBDT+LR 和 DeepFM 的交叉思想有什么不同？</div></div>
+</details><details class="qa" id="q61">
+<summary><span class="qno">Q061</span> 树模型适合处理推荐里的 ID 特征吗？</summary>
+<div class="answer"><p>树模型不适合直接处理超高基数 ID one-hot，因为维度巨大、稀疏且泛化差。它更适合连续统计特征、类别分桶特征、画像特征和聚合特征。深度推荐则更适合用 embedding 处理 user_id/item_id。</p><div class="follow"><strong>常见追问：</strong>追问：为什么 GBDT 常用于粗排或特征生成，而不是全量精排主模型？</div></div>
+</details><details class="qa" id="q62">
+<summary><span class="qno">Q062</span> 树模型的特征重要性可靠吗？</summary>
+<div class="answer"><p>树模型特征重要性有参考价值，但会偏向取值多、分裂机会多的特征，也会受相关特征影响。推荐中最好结合 permutation importance、SHAP、消融实验和业务理解。</p><div class="follow"><strong>常见追问：</strong>追问：为什么高重要性不等于因果有效？</div></div>
+</details><details class="qa" id="q63">
+<summary><span class="qno">Q063</span> 树模型和深度模型如何融合？</summary>
+<div class="answer"><p>可以用 GBDT 叶子作为 LR/DNN 输入；可以把树模型分数作为排序模型特征；可以用树模型做粗排或蒸馏；也可以做 stacking。融合时要防止训练集预测泄露，通常用 out-of-fold 方式生成模型分数特征。</p><div class="follow"><strong>常见追问：</strong>追问：模型分数作为特征为什么可能泄露？</div></div>
+</details><h2 id="sec7">7. FM、FFM、DeepFM 与特征交互模型</h2><div class="box note"><strong>本节定位：</strong>这些模型是机器学习基础和推荐排序模型之间的桥。</div><details class="qa" id="q64">
+<summary><span class="qno">Q064</span> FM 解决了什么问题？</summary>
+<div class="answer"><p>FM 解决高维稀疏特征下二阶交叉难以学习的问题。它用隐向量表示每个特征，使二阶交叉权重由向量内积给出：\(\hat{y}=w_0+\sum_i w_i x_i + \sum_{i=1}^{n}\sum_{j=i+1}^{n}\langle \mathbf{v}_i,\mathbf{v}_j
+angle x_i x_j\)。</p><div class="follow"><strong>常见追问：</strong>追问：FM 为什么比直接学习交叉权重更能泛化？</div></div>
+</details><details class="qa" id="q65">
+<summary><span class="qno">Q065</span> FM 为什么适合推荐？</summary>
+<div class="answer"><p>推荐特征高度稀疏，很多特征组合在训练集中很少出现。FM 通过共享特征隐向量，让没有直接出现过的组合也能通过各自 embedding 的内积获得合理估计。</p><div class="follow"><strong>常见追问：</strong>追问：FM 的二阶交叉复杂度如何优化？</div></div>
+</details><details class="qa" id="q66">
+<summary><span class="qno">Q066</span> FM 的二阶项如何从 \(O(n^2k)\) 优化？</summary>
+<div class="answer"><p>利用代数变换：\(\sum_{i}\sum_{j\gt i}\langle v_i,v_j
+angle x_i x_j = \frac{1}{2}\sum_f [ (\sum_i v_{i,f}x_i)^2 - \sum_i v_{i,f}^2 x_i^2 ]\)，可以把复杂度降到 \(O(nk)\)。</p><div class="follow"><strong>常见追问：</strong>追问：这个优化为什么对稀疏特征特别重要？</div></div>
+</details><details class="qa" id="q67">
+<summary><span class="qno">Q067</span> FFM 和 FM 有什么区别？</summary>
+<div class="answer"><p>FFM 为每个特征在不同 field 下学习不同隐向量。比如 user_id 与 item_id 交叉时用 user 面向 item field 的向量，与 city 交叉时用面向 city field 的向量。表达能力更强，但参数量更大。</p><div class="follow"><strong>常见追问：</strong>追问：FFM 为什么在广告点击率预估中曾经很强？</div></div>
+</details><details class="qa" id="q68">
+<summary><span class="qno">Q068</span> Wide &amp; Deep 的思想是什么？</summary>
+<div class="answer"><p>Wide 部分记忆人工交叉和规则，Deep 部分学习泛化表示。Wide 擅长 memorization，Deep 擅长 generalization，两者联合训练适合推荐。</p><div class="follow"><strong>常见追问：</strong>追问：Wide &amp; Deep 为什么需要人工交叉特征？</div></div>
+</details><details class="qa" id="q69">
+<summary><span class="qno">Q069</span> DeepFM 相比 Wide &amp; Deep 改进在哪里？</summary>
+<div class="answer"><p>DeepFM 用 FM 部分替代人工 wide 交叉，自动学习低阶特征交互，同时 DNN 学高阶交互，且 FM 和 Deep 共享同一套 embedding 输入，减少人工特征工程。</p><div class="follow"><strong>常见追问：</strong>追问：DeepFM 的 FM 部分和 DNN 部分是否共享 embedding？</div></div>
+</details><details class="qa" id="q70">
+<summary><span class="qno">Q070</span> xDeepFM 的 CIN 是什么？</summary>
+<div class="answer"><p>xDeepFM 引入 Compressed Interaction Network 显式建模 vector-wise 高阶特征交互，同时保留 DNN 的隐式高阶交互。它强调既能显式交叉，又能深层泛化。</p><div class="follow"><strong>常见追问：</strong>追问：显式交叉和隐式交叉有什么区别？</div></div>
+</details><details class="qa" id="q71">
+<summary><span class="qno">Q071</span> DCN 的 Cross Network 在做什么？</summary>
+<div class="answer"><p>DCN 通过逐层交叉公式显式构造有界阶数的特征交互。典型形式可写为 \(x_{l+1}=x_0 x_l^{\top}w_l + b_l + x_l\)。它比全连接 DNN 更直接地学习 cross features。</p><div class="follow"><strong>常见追问：</strong>追问：DCN 和 FM 的交叉阶数有什么区别？</div></div>
+</details><details class="qa" id="q72">
+<summary><span class="qno">Q072</span> AutoInt 为什么引入 attention？</summary>
+<div class="answer"><p>AutoInt 把不同 field 的 embedding 看成 token，用 multi-head self-attention 自动学习不同特征域之间的交互权重。它比固定形式交叉更灵活，但计算和线上成本更高。</p><div class="follow"><strong>常见追问：</strong>追问：AutoInt 和 Transformer 的关系是什么？</div></div>
+</details><details class="qa" id="q73">
+<summary><span class="qno">Q073</span> 为什么不是所有推荐模型都越深越好？</summary>
+<div class="answer"><p>推荐样本稀疏、特征噪声大、线上延迟严格。模型太深可能过拟合、训练不稳定、推理成本高，而且对高维 ID 特征未必带来稳定收益。工业中常需要在效果和成本之间折中。</p><div class="follow"><strong>常见追问：</strong>追问：什么情况下浅模型反而更合适？</div></div>
+</details><h2 id="sec8">8. 双塔、对比学习、召回与 ANN</h2><div class="box note"><strong>本节定位：</strong>召回阶段的机器学习问题和排序不同，核心是表示学习、负采样和高效检索。</div><details class="qa" id="q74">
+<summary><span class="qno">Q074</span> 双塔模型的核心思想是什么？</summary>
+<div class="answer"><p>双塔分别把用户和物品编码成向量，使用点积或余弦相似度表示匹配分数：\(s(u,i)=\mathbf{e}_u^{\top}\mathbf{e}_i\)。物品向量可离线建索引，线上只需计算用户向量并 ANN 检索，适合大规模召回。</p><div class="follow"><strong>常见追问：</strong>追问：双塔为什么适合召回但不适合精排？</div></div>
+</details><details class="qa" id="q75">
+<summary><span class="qno">Q075</span> 双塔模型的优点和缺点？</summary>
+<div class="answer"><p>优点是高效、可离线建库、能从百万/亿级物品中召回。缺点是用户和物品早期分离，缺少细粒度交叉，表达能力弱于排序模型。它更适合粗粒度匹配，不适合复杂上下文下的精确打分。</p><div class="follow"><strong>常见追问：</strong>追问：如何增强双塔交互能力？</div></div>
+</details><details class="qa" id="q76">
+<summary><span class="qno">Q076</span> 双塔召回为什么常用 sampled softmax？</summary>
+<div class="answer"><p>全量 softmax 要对所有 item 归一化，物品池巨大时成本太高。sampled softmax 只采样一部分负 item 近似训练，降低计算量。</p><div class="follow"><strong>常见追问：</strong>追问：sampled softmax 和 BPR loss 区别是什么？</div></div>
+</details><details class="qa" id="q77">
+<summary><span class="qno">Q077</span> BPR Loss 的思想是什么？</summary>
+<div class="answer"><p>BPR 是 pairwise 排序损失，鼓励用户交互过的正 item 分数高于未交互负 item：\(\mathcal{L}=-\sum \log \sigma(s(u,i^+)-s(u,i^-))\)。它直接优化正负样本相对顺序，适合隐式反馈推荐。</p><div class="follow"><strong>常见追问：</strong>追问：BPR 对负采样敏感吗？</div></div>
+</details><details class="qa" id="q78">
+<summary><span class="qno">Q078</span> InfoNCE 在召回中怎么理解？</summary>
+<div class="answer"><p>InfoNCE 是对比学习损失，把真实交互 item 当正样本，batch 内其他 item 当负样本，提升正样本相似度、降低负样本相似度。形式上类似 softmax 分类：\(\mathcal{L}=-\log \frac{\exp(s(u,i^+)/\tau)}{\exp(s(u,i^+)/\tau)+\sum_j \exp(s(u,i_j^-)/\tau)}\)。</p><div class="follow"><strong>常见追问：</strong>追问：温度系数 \(\tau\) 有什么作用？</div></div>
+</details><details class="qa" id="q79">
+<summary><span class="qno">Q079</span> in-batch negative 有什么优缺点？</summary>
+<div class="answer"><p>优点是无需额外采样，batch 内其他样本天然作为负样本，计算效率高。缺点是可能出现 false negative：同 batch 中某个负 item 其实也是用户喜欢的 item。</p><div class="follow"><strong>常见追问：</strong>追问：如何缓解 false negative？</div></div>
+</details><details class="qa" id="q80">
+<summary><span class="qno">Q080</span> ANN 检索是什么？</summary>
+<div class="answer"><p>ANN 是 Approximate Nearest Neighbor，用近似最近邻算法快速在大规模向量库中找相似 item。常见索引包括 HNSW、IVF、PQ 等。它牺牲少量召回精度换取巨大检索速度提升。</p><div class="follow"><strong>常见追问：</strong>追问：ANN 的 recall 和 latency 如何权衡？</div></div>
+</details><details class="qa" id="q81">
+<summary><span class="qno">Q081</span> 为什么召回要多路召回？</summary>
+<div class="answer"><p>单一路召回容易偏向某类兴趣或某种模型偏差。多路召回结合协同过滤、向量召回、热门召回、内容召回、地理召回、实时兴趣召回，可以提升覆盖率和鲁棒性。</p><div class="follow"><strong>常见追问：</strong>追问：多路召回结果如何融合？</div></div>
+</details><details class="qa" id="q82">
+<summary><span class="qno">Q082</span> 召回模型的评估指标有哪些？</summary>
+<div class="answer"><p>常见指标包括 Recall@K、HitRate@K、Coverage、去重后有效候选数、长尾覆盖、召回贡献率和后链路转化。召回的核心不是最终排序，而是在有限候选数内尽可能覆盖潜在好 item。</p><div class="follow"><strong>常见追问：</strong>追问：召回 Recall@K 高但线上没提升可能为什么？</div></div>
+</details><details class="qa" id="q83">
+<summary><span class="qno">Q083</span> 召回和排序训练目标为什么不同？</summary>
+<div class="answer"><p>召回关注从全库快速找候选，通常优化 embedding 相似度和 Top-K 覆盖；排序关注候选集内精确顺序，通常优化 CTR/CVR/多目标概率。召回可以粗一些但要快，排序更精细但候选规模小。</p><div class="follow"><strong>常见追问：</strong>追问：能不能用同一个模型做召回和排序？</div></div>
+</details><h2 id="sec9">9. 序列建模：从 Markov 到 Transformer 推荐</h2><div class="box note"><strong>本节定位：</strong>序列推荐是推荐面试中最容易和机器学习基础结合的部分。</div><details class="qa" id="q84">
+<summary><span class="qno">Q084</span> 为什么推荐要建模用户行为序列？</summary>
+<div class="answer"><p>用户兴趣不是静态的，最近行为往往反映当前意图。序列建模能捕捉行为顺序、短期兴趣、兴趣迁移和 session 意图。例如用户刚看了多款相机，当前推荐相机配件可能更合适。</p><div class="follow"><strong>常见追问：</strong>追问：长期兴趣和短期兴趣怎么融合？</div></div>
+</details><details class="qa" id="q85">
+<summary><span class="qno">Q085</span> Markov Chain 推荐思想是什么？</summary>
+<div class="answer"><p>马尔可夫方法假设下一个行为主要依赖最近一个或几个行为。它简单高效，能捕捉短期转移，但难以建模长期兴趣和复杂上下文。</p><div class="follow"><strong>常见追问：</strong>追问：一阶 Markov 和高阶 Markov 区别？</div></div>
+</details><details class="qa" id="q86">
+<summary><span class="qno">Q086</span> GRU4Rec 解决了什么？</summary>
+<div class="answer"><p>GRU4Rec 用 RNN/GRU 建模 session 内行为序列，适合匿名会话推荐。它能从点击序列中学习短期兴趣演化，比只看最近 item 的 Markov 方法表达能力更强。</p><div class="follow"><strong>常见追问：</strong>追问：RNN 在长序列推荐中有什么问题？</div></div>
+</details><details class="qa" id="q87">
+<summary><span class="qno">Q087</span> SASRec 的核心思想是什么？</summary>
+<div class="answer"><p>SASRec 用 self-attention 建模用户历史序列，对不同历史 item 分配不同注意力权重，适合捕捉长短期依赖。训练目标通常是 next-item prediction。</p><div class="follow"><strong>常见追问：</strong>追问：SASRec 和 BERT4Rec 的训练方式有什么区别？</div></div>
+</details><details class="qa" id="q88">
+<summary><span class="qno">Q088</span> BERT4Rec 的核心思想是什么？</summary>
+<div class="answer"><p>BERT4Rec 借鉴 BERT 的 masked item prediction，随机 mask 序列中的 item，让模型利用双向上下文预测被 mask 的 item。它比单向 next-item 能利用更多上下文，但推理任务仍要适配下一物品推荐。</p><div class="follow"><strong>常见追问：</strong>追问：为什么 BERT4Rec 不是严格自回归模型？</div></div>
+</details><details class="qa" id="q89">
+<summary><span class="qno">Q089</span> 序列推荐中位置编码有什么作用？</summary>
+<div class="answer"><p>Transformer 本身不感知顺序，位置编码告诉模型每个行为在序列中的位置。推荐序列中位置不仅代表顺序，也可能代表时间间隔和新近程度。</p><div class="follow"><strong>常见追问：</strong>追问：时间间隔信息如何加入序列推荐？</div></div>
+</details><details class="qa" id="q90">
+<summary><span class="qno">Q090</span> 行为序列太长怎么办？</summary>
+<div class="answer"><p>可以截断最近 N 个行为、按行为类型采样、分层建模、聚合长期兴趣、使用兴趣胶囊、使用 memory network 或缓存用户历史表示。线上还要考虑序列读取和模型推理成本。</p><div class="follow"><strong>常见追问：</strong>追问：只取最近行为会损失什么？</div></div>
+</details><details class="qa" id="q91">
+<summary><span class="qno">Q091</span> 多行为序列怎么建模？</summary>
+<div class="answer"><p>用户有点击、购买、收藏、搜索、加购等多种行为。可以把行为类型作为额外 embedding，加权不同目标行为，或分通道编码后融合。购买通常比点击信号更强，但更稀疏。</p><div class="follow"><strong>常见追问：</strong>追问：点击和购买行为冲突时怎么处理？</div></div>
+</details><details class="qa" id="q92">
+<summary><span class="qno">Q092</span> DIN 的 attention 在推荐里解决什么？</summary>
+<div class="answer"><p>DIN 针对候选 item 对用户历史行为做 target attention，动态选择与当前候选相关的历史兴趣。它不是生成一个固定用户向量，而是对不同候选 item 产生不同用户兴趣表示。</p><div class="follow"><strong>常见追问：</strong>追问：DIN 为什么比固定 user embedding 更适合精排？</div></div>
+</details><details class="qa" id="q93">
+<summary><span class="qno">Q093</span> DIEN 相比 DIN 改进在哪里？</summary>
+<div class="answer"><p>DIEN 用兴趣抽取层和兴趣演化层建模用户兴趣随时间变化，不只是对历史行为做注意力汇总。它强调兴趣演化过程，对有明显行为迁移的场景更合适。</p><div class="follow"><strong>常见追问：</strong>追问：兴趣演化为什么重要？</div></div>
+</details><h2 id="sec10">10. 多任务学习、ESMM、MMoE、PLE 与目标融合</h2><div class="box note"><strong>本节定位：</strong>推荐不是单目标问题，多目标学习是推荐算法面试高频点。</div><details class="qa" id="q94">
+<summary><span class="qno">Q094</span> 推荐为什么需要多任务学习？</summary>
+<div class="answer"><p>推荐系统通常同时关心点击、转化、停留时长、收藏、复购、满意度和收益。单独训练多个模型会造成特征和表示割裂，多任务学习可以共享底层表示，同时为不同目标学习专门任务头。</p><div class="follow"><strong>常见追问：</strong>追问：多任务一定比单任务好吗？</div></div>
+</details><details class="qa" id="q95">
+<summary><span class="qno">Q095</span> 多任务学习的 hard sharing 是什么？</summary>
+<div class="answer"><p>hard sharing 指多个任务共享底层网络，只在最后使用不同 tower 输出。优点是简单、参数少、能缓解过拟合；缺点是不同任务冲突时，共享层可能学不到适合所有任务的表示。</p><div class="follow"><strong>常见追问：</strong>追问：什么是 negative transfer？</div></div>
+</details><details class="qa" id="q96">
+<summary><span class="qno">Q096</span> 什么是 negative transfer？</summary>
+<div class="answer"><p>负迁移是一个任务的学习损害另一个任务。例如点击偏好和购买偏好不完全一致，过度共享可能让模型偏向点击而损害转化。MMoE、PLE 等结构就是为缓解任务冲突设计的。</p><div class="follow"><strong>常见追问：</strong>追问：如何判断多任务发生负迁移？</div></div>
+</details><details class="qa" id="q97">
+<summary><span class="qno">Q097</span> ESMM 解决了什么问题？</summary>
+<div class="answer"><p>ESMM 主要解决 CVR 预估中的样本选择偏差和数据稀疏。它建模 \(pCTCVR=pCTR \times pCVR\)，在全量曝光样本上学习 CTR 和 CTCVR，从而间接学习 CVR，避免只在点击样本上训练 CVR。</p><div class="follow"><strong>常见追问：</strong>追问：ESMM 的核心公式是什么？</div></div>
+</details><details class="qa" id="q98">
+<summary><span class="qno">Q098</span> ESMM 的核心公式是什么？</summary>
+<div class="answer"><p>核心是 \(P(conversion,click\mid x)=P(click\mid x)P(conversion\mid click,x)\)，即 \(pCTCVR=pCTR \cdot pCVR\)。训练时 CTR 标签来自点击，CTCVR 标签来自点击后转化。</p><div class="follow"><strong>常见追问：</strong>追问：为什么不能直接在曝光样本上训练 CVR？</div></div>
+</details><details class="qa" id="q99">
+<summary><span class="qno">Q099</span> MMoE 的思想是什么？</summary>
+<div class="answer"><p>MMoE 使用多个专家网络和每个任务自己的 gate。不同任务通过 gate 对专家加权组合，既共享专家能力，又允许任务选择不同专家，缓解任务冲突。</p><div class="follow"><strong>常见追问：</strong>追问：MMoE 相比 shared-bottom 好在哪里？</div></div>
+</details><details class="qa" id="q100">
+<summary><span class="qno">Q100</span> PLE 的思想是什么？</summary>
+<div class="answer"><p>PLE 把专家分为共享专家和任务专属专家，并通过分层结构逐步提取共享与任务特有信息。它比 MMoE 更明确地区分共性和差异，进一步缓解负迁移。</p><div class="follow"><strong>常见追问：</strong>追问：PLE 为什么要有 task-specific expert？</div></div>
+</details><details class="qa" id="q101">
+<summary><span class="qno">Q101</span> 多目标排序分数怎么融合？</summary>
+<div class="answer"><p>常见方式是加权和、乘法、约束优化或业务公式。例如 \(score=w_1CTR+w_2CVR+w_3WatchTime\)，也可以用 \(CTR \times CVR \times value\) 估计期望收益。权重通常通过离线实验、线上 A/B 和业务策略调节。</p><div class="follow"><strong>常见追问：</strong>追问：为什么目标融合不能只靠模型自动学？</div></div>
+</details><details class="qa" id="q102">
+<summary><span class="qno">Q102</span> 点击率和转化率冲突怎么办？</summary>
+<div class="answer"><p>点击高的 item 不一定转化高，转化高的 item 也可能点击低。可以用多任务模型分别预估，再通过业务目标融合；也可以设置约束，如保证 GMV 的同时控制用户体验。线上需要 A/B 验证目标权重。</p><div class="follow"><strong>常见追问：</strong>追问：短期点击和长期留存冲突怎么办？</div></div>
+</details><details class="qa" id="q103">
+<summary><span class="qno">Q103</span> 多任务模型如何处理标签缺失？</summary>
+<div class="answer"><p>不同任务标签可用性不同，例如购买标签比点击稀疏。可以对缺失任务 mask loss，只对有标签样本计算对应任务损失；也可以通过 ESMM 等结构利用任务关系间接学习。</p><div class="follow"><strong>常见追问：</strong>追问：loss 权重怎么调？</div></div>
+</details><h2 id="sec11">11. 评估指标、离线实验与线上 A/B</h2><div class="box note"><strong>本节定位：</strong>机器学习八股如果不能解释指标，就很难通过推荐面试。</div><details class="qa" id="q104">
+<summary><span class="qno">Q104</span> Recall@K 是什么？</summary>
+<div class="answer"><p>Recall@K 衡量真实相关 item 中有多少出现在推荐 Top-K 里：\(Recall@K=\frac{|R_K\cap G|}{|G|}\)。召回和序列推荐常用它评估覆盖真实目标 item 的能力。</p><div class="follow"><strong>常见追问：</strong>追问：Recall@K 高是否代表排序好？</div></div>
+</details><details class="qa" id="q105">
+<summary><span class="qno">Q105</span> Precision@K 是什么？</summary>
+<div class="answer"><p>Precision@K 衡量 Top-K 推荐中有多少是真实相关：\(Precision@K=\frac{|R_K\cap G|}{K}\)。它关注推荐列表的准确性，但在每个用户只有一个测试 item 的 next-item 设置中解释要谨慎。</p><div class="follow"><strong>常见追问：</strong>追问：为什么 next-item 任务里 Precision@K 不一定常用？</div></div>
+</details><details class="qa" id="q106">
+<summary><span class="qno">Q106</span> NDCG@K 为什么考虑位置？</summary>
+<div class="answer"><p>NDCG 对排在前面的命中给更高权重，位置越靠后折扣越大。推荐列表中第 1 位命中比第 10 位命中价值更高，因此 NDCG 比 Recall 更能反映排序质量。</p><div class="follow"><strong>常见追问：</strong>追问：NDCG 和 MRR 的区别？</div></div>
+</details><details class="qa" id="q107">
+<summary><span class="qno">Q107</span> MRR 是什么？</summary>
+<div class="answer"><p>MRR 是 Mean Reciprocal Rank，关注第一个正确结果的位置。若真实 item 排第 \(r\) 位，则贡献 \(1/r\)。它适合只有一个或少量强相关目标的检索/推荐任务。</p><div class="follow"><strong>常见追问：</strong>追问：MRR 对第一个命中特别敏感吗？</div></div>
+</details><details class="qa" id="q108">
+<summary><span class="qno">Q108</span> HitRate@K 是什么？</summary>
+<div class="answer"><p>HitRate@K 判断 Top-K 中是否至少命中一个真实相关 item。每个用户只有一个测试目标时，HitRate@K 和 Recall@K 常常等价。</p><div class="follow"><strong>常见追问：</strong>追问：多真实 item 场景下 HitRate 和 Recall 有什么区别？</div></div>
+</details><details class="qa" id="q109">
+<summary><span class="qno">Q109</span> AUC 和 NDCG 分别适合什么场景？</summary>
+<div class="answer"><p>AUC 适合 CTR/CVR 二分类排序，衡量正负样本区分能力；NDCG 适合 Top-K 推荐列表评估，考虑位置折扣。精排 CTR 常看 AUC/LogLoss，召回和序列推荐常看 Recall/NDCG/MRR。</p><div class="follow"><strong>常见追问：</strong>追问：为什么离线 AUC 高不一定 Top-K 好？</div></div>
+</details><details class="qa" id="q110">
+<summary><span class="qno">Q110</span> 为什么要做线上 A/B 测试？</summary>
+<div class="answer"><p>离线评估基于历史日志，存在偏差且无法完全模拟用户反馈。A/B 测试把用户随机分流到新旧策略，直接观察 CTR、CVR、GMV、时长、留存、投诉等线上指标，是验证推荐策略真实价值的关键。</p><div class="follow"><strong>常见追问：</strong>追问：A/B 实验需要注意什么？</div></div>
+</details><details class="qa" id="q111">
+<summary><span class="qno">Q111</span> A/B 实验需要注意什么？</summary>
+<div class="answer"><p>需要随机分流、样本量充足、实验周期覆盖周期性、指标口径一致、防止互相污染，并关注护栏指标如延迟、投诉、负反馈、生态多样性。不能只看单一主指标。</p><div class="follow"><strong>常见追问：</strong>追问：为什么实验刚上线前几小时数据不一定可靠？</div></div>
+</details><details class="qa" id="q112">
+<summary><span class="qno">Q112</span> 离线指标提升线上不提升有哪些原因？</summary>
+<div class="answer"><p>可能是数据泄露、训练测试分布不一致、离线负采样不符合线上候选分布、模型延迟导致候选减少、校准变差、多目标融合冲突、探索流量不足、用户疲劳或业务规则覆盖。</p><div class="follow"><strong>常见追问：</strong>追问：你会如何排查？</div></div>
+</details><details class="qa" id="q113">
+<summary><span class="qno">Q113</span> 推荐系统为什么要看覆盖率和多样性？</summary>
+<div class="answer"><p>只优化点击可能让系统集中推荐热门和相似 item，造成信息茧房和用户疲劳。覆盖率衡量推荐涉及多少物品，多样性衡量列表内部差异，它们是用户体验和生态健康的重要补充指标。</p><div class="follow"><strong>常见追问：</strong>追问：覆盖率提升会不会损害 CTR？</div></div>
+</details><details class="qa" id="q114">
+<summary><span class="qno">Q114</span> 什么是新颖性和惊喜度？</summary>
+<div class="answer"><p>新颖性关注推荐用户不太熟悉或不太热门的 item，惊喜度关注用户没预期但喜欢的 item。它们可以缓解热门偏置，但过度追求可能损害短期点击。</p><div class="follow"><strong>常见追问：</strong>追问：如何在线评估惊喜度？</div></div>
+</details><details class="qa" id="q115">
+<summary><span class="qno">Q115</span> 推荐中的指标为什么要分场景看？</summary>
+<div class="answer"><p>首页、搜索、详情页、广告、直播、短视频、银行 App 入口等场景用户意图不同，指标口径和目标不同。全局平均可能掩盖某些场景恶化，所以要分入口、用户群、item 类目和新老用户分析。</p><div class="follow"><strong>常见追问：</strong>追问：新用户和老用户应该看同一个指标吗？</div></div>
+</details><h2 id="sec12">12. 工业部署、模型压缩、监控与故障排查</h2><div class="box note"><strong>本节定位：</strong>这部分是机器学习在真实推荐系统中最容易被追问的落地点。</div><details class="qa" id="q116">
+<summary><span class="qno">Q116</span> 推荐模型上线前要检查什么？</summary>
+<div class="answer"><p>要检查离线指标、线上延迟、QPS、特征一致性、模型大小、回滚方案、灰度策略、监控面板、校准、分场景效果和业务护栏指标。模型好不好不是只看 AUC。</p><div class="follow"><strong>常见追问：</strong>追问：为什么需要灰度上线？</div></div>
+</details><details class="qa" id="q117">
+<summary><span class="qno">Q117</span> 训练 serving skew 是什么？</summary>
+<div class="answer"><p>训练 serving skew 指训练时使用的特征、样本分布或预处理逻辑和线上 serving 不一致，导致离线好线上差。例如训练归一化参数来自全量数据，线上使用实时分布；离线特征有延迟，线上取不到。</p><div class="follow"><strong>常见追问：</strong>追问：如何减少 training-serving skew？</div></div>
+</details><details class="qa" id="q118">
+<summary><span class="qno">Q118</span> 模型延迟过高怎么办？</summary>
+<div class="answer"><p>可以减少候选数、蒸馏小模型、量化、剪枝、缓存 user/item 表示、双塔预计算、特征裁剪、模型分层、GPU batch 推理或异步计算。推荐里常以多阶段架构平衡效果和延迟。</p><div class="follow"><strong>常见追问：</strong>追问：为什么精排不直接打全库？</div></div>
+</details><details class="qa" id="q119">
+<summary><span class="qno">Q119</span> 知识蒸馏在推荐中怎么用？</summary>
+<div class="answer"><p>用大模型或复杂模型作为 teacher，训练轻量 student 近似 teacher 的分数或排序。可用于粗排、精排加速、生成式推荐小模型部署。蒸馏目标可以是 soft label、pairwise order 或中间表示。</p><div class="follow"><strong>常见追问：</strong>追问：蒸馏会损失什么？</div></div>
+</details><details class="qa" id="q120">
+<summary><span class="qno">Q120</span> 模型量化在推荐里有什么作用？</summary>
+<div class="answer"><p>量化把 FP32 参数转为 FP16、INT8 甚至更低精度，减少内存和推理成本。Embedding 表和 DNN 层都可能量化，但要关注 AUC、校准和长尾 item 表示是否受损。</p><div class="follow"><strong>常见追问：</strong>追问：为什么量化后概率校准可能变差？</div></div>
+</details><details class="qa" id="q121">
+<summary><span class="qno">Q121</span> 推荐系统如何监控模型效果？</summary>
+<div class="answer"><p>线上监控包括 CTR/CVR/GMV/时长、曝光分布、特征缺失率、分数分布、校准曲线、延迟、错误率、召回数量、重复率、覆盖率、负反馈。还要按场景和用户群分层监控。</p><div class="follow"><strong>常见追问：</strong>追问：分数分布突然漂移说明什么？</div></div>
+</details><details class="qa" id="q122">
+<summary><span class="qno">Q122</span> 特征缺失率上升会怎样？</summary>
+<div class="answer"><p>关键特征缺失会使模型输入退化，导致分数分布变化和线上效果下降。比如实时行为序列缺失，模型无法捕捉短期兴趣；item 类目缺失会影响交叉特征。</p><div class="follow"><strong>常见追问：</strong>追问：如何设计缺失值兜底？</div></div>
+</details><details class="qa" id="q123">
+<summary><span class="qno">Q123</span> 推荐模型如何做增量训练？</summary>
+<div class="answer"><p>增量训练用新日志继续更新模型，适应热点和用户兴趣变化。需要控制灾难性遗忘、样本偏差和线上稳定性。常见做法是 warm start、滑动窗口训练、混合部分历史样本、定期全量重训。</p><div class="follow"><strong>常见追问：</strong>追问：增量训练为什么可能越训越偏？</div></div>
+</details><details class="qa" id="q124">
+<summary><span class="qno">Q124</span> 什么是模型回滚？</summary>
+<div class="answer"><p>模型上线后如果关键指标恶化或系统异常，需要快速切回上一稳定版本。推荐系统影响面大，必须有灰度、监控、自动报警和回滚机制。</p><div class="follow"><strong>常见追问：</strong>追问：什么指标触发回滚？</div></div>
+</details><details class="qa" id="q125">
+<summary><span class="qno">Q125</span> 如何排查线上 CTR 下降？</summary>
+<div class="answer"><p>先看是否全局下降还是分场景下降；查流量分桶、模型版本、特征缺失、候选量、延迟、分数分布、校准、召回来源、业务规则、实验污染；再对比离线回放和线上日志。</p><div class="follow"><strong>常见追问：</strong>追问：如果只有新用户下降，优先查什么？</div></div>
+</details><h2 id="sec13">13. 机器学习 × 推荐算法高频综合问答</h2><div class="box note"><strong>本节定位：</strong>这一部分适合最后冲刺，把基础概念直接转成面试回答。</div><details class="qa" id="q126">
+<summary><span class="qno">Q126</span> 为什么推荐模型里准确率 accuracy 不常用？</summary>
+<div class="answer"><p>点击/转化样本极度不平衡，模型全预测未点击也可能 accuracy 很高，但没有排序价值。推荐更关心正样本是否排在前面、概率是否校准、Top-K 是否命中，所以常用 AUC、LogLoss、GAUC、NDCG、Recall 等。</p><div class="follow"><strong>常见追问：</strong>追问：类别不平衡下应该看哪些指标？</div></div>
+</details><details class="qa" id="q127">
+<summary><span class="qno">Q127</span> 分类、排序、回归在推荐中分别对应什么？</summary>
+<div class="answer"><p>CTR/CVR 是分类或概率预估；Top-K 推荐和召回是排序；观看时长、消费金额、停留时间可以是回归或分布建模。实际系统常把多个任务组合成综合排序分数。</p><div class="follow"><strong>常见追问：</strong>追问：时长为什么不能简单用 MSE？</div></div>
+</details><details class="qa" id="q128">
+<summary><span class="qno">Q128</span> 为什么推荐里的标签有噪声？</summary>
+<div class="answer"><p>用户不点击不一定不喜欢，点击也不一定满意；曝光位置、标题党、误触、网络环境、价格变化、库存都会影响行为。推荐标签是隐式反馈，噪声比显式评分更大。</p><div class="follow"><strong>常见追问：</strong>追问：如何降低噪声影响？</div></div>
+</details><details class="qa" id="q129">
+<summary><span class="qno">Q129</span> 隐式反馈和显式反馈有什么区别？</summary>
+<div class="answer"><p>显式反馈是评分、点赞、问卷等直接偏好表达；隐式反馈是点击、浏览、停留、购买等行为。隐式反馈规模大但噪声高，显式反馈更准但稀疏且有选择偏差。</p><div class="follow"><strong>常见追问：</strong>追问：为什么推荐系统多数使用隐式反馈？</div></div>
+</details><details class="qa" id="q130">
+<summary><span class="qno">Q130</span> 为什么推荐里要做去重？</summary>
+<div class="answer"><p>多路召回和相似推荐容易产生重复或高度相似 item，影响用户体验。重排阶段常做 item 去重、作者去重、类目打散、同质内容限制。</p><div class="follow"><strong>常见追问：</strong>追问：去重会影响短期 CTR 吗？</div></div>
+</details><details class="qa" id="q131">
+<summary><span class="qno">Q131</span> 什么是冷启动？</summary>
+<div class="answer"><p>冷启动包括新用户、新物品和新场景缺少历史行为。解决方式包括内容特征、热门兜底、规则策略、探索流量、相似人群迁移、预训练 embedding 和多模态信息。</p><div class="follow"><strong>常见追问：</strong>追问：新 item 冷启动怎么做？</div></div>
+</details><details class="qa" id="q132">
+<summary><span class="qno">Q132</span> 推荐系统为什么有热门偏置？</summary>
+<div class="answer"><p>热门 item 曝光多、交互多，模型更容易学到它们，也更倾向继续推荐它们，形成马太效应。负采样、曝光偏差、反馈闭环都会加重热门偏置。</p><div class="follow"><strong>常见追问：</strong>追问：如何缓解热门偏置？</div></div>
+</details><details class="qa" id="q133">
+<summary><span class="qno">Q133</span> 为什么推荐系统要探索？</summary>
+<div class="answer"><p>如果只利用当前模型认为最好的 item，系统会缺少新 item 和用户潜在兴趣的数据，长期陷入反馈闭环。探索能收集新信息，改善冷启动和长期收益。</p><div class="follow"><strong>常见追问：</strong>追问：探索和用户体验如何平衡？</div></div>
+</details><details class="qa" id="q134">
+<summary><span class="qno">Q134</span> Bandit 在推荐里解决什么？</summary>
+<div class="answer"><p>Bandit 处理探索-利用权衡，例如给新 item 少量曝光，观察反馈后更新策略。常见方法包括 epsilon-greedy、UCB、Thompson Sampling。</p><div class="follow"><strong>常见追问：</strong>追问：Bandit 和监督学习排序有什么区别？</div></div>
+</details><details class="qa" id="q135">
+<summary><span class="qno">Q135</span> 为什么推荐面试喜欢问 LR 到 DeepFM 的演进？</summary>
+<div class="answer"><p>因为这条线体现了推荐排序模型从线性模型、人工交叉，到自动二阶交叉，再到深度高阶交叉的发展逻辑。能讲清这条线，说明理解推荐特征稀疏性和交互建模。</p><div class="follow"><strong>常见追问：</strong>追问：这条线之后为什么又出现 DIN/DIEN？</div></div>
+</details><details class="qa" id="q136">
+<summary><span class="qno">Q136</span> 如何回答‘你理解的推荐算法是什么’？</summary>
+<div class="answer"><p>可以回答：推荐算法是在约束下学习用户和物品匹配关系的系统工程。它不只是模型，还包括样本、特征、召回、排序、重排、指标、实验和线上反馈闭环。模型目标是把合适的内容在合适的场景推荐给合适的用户。</p><div class="follow"><strong>常见追问：</strong>追问：推荐和搜索有什么区别？</div></div>
+</details><details class="qa" id="q137">
+<summary><span class="qno">Q137</span> 如何把机器学习基础讲得像推荐算法经验？</summary>
+<div class="answer"><p>不要只背定义，要落到推荐场景。例如讲过拟合时说高维 ID 和长尾 item；讲 AUC 时说 CTR 排序；讲负采样时说召回和曝光未点击；讲校准时说广告出价和多目标融合；讲正则时说 embedding 表。</p><div class="follow"><strong>常见追问：</strong>追问：给一个你最熟悉的 ML 概念，并说明它在推荐中的作用。</div></div>
+</details>
+
+<h2 id="refs">参考资料</h2>
+<div class="box small">
+<p>1. Wide & Deep Learning for Recommender Systems, Google, 2016.</p>
+<p>2. DeepFM: A Factorization-Machine based Neural Network for CTR Prediction, IJCAI 2017.</p>
+<p>3. XGBoost: A Scalable Tree Boosting System, KDD 2016.</p>
+<p>4. DIN / DIEN / SASRec / BERT4Rec / ESMM / MMoE / PLE 等推荐经典论文。</p>
+<p>5. RecBole 官方文档中的评价指标说明，包括 AUC、LogLoss、Recall、NDCG、MRR 等。</p>
+<p>注：本文是面试复习讲义，不替代原论文和真实工业系统文档。涉及具体线上指标时，以实际业务口径为准。</p>
+</div>
+</body>
+</html>

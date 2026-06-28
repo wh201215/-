@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>推荐广告大模型新范式 Stage 6：生成式推荐论文谱系与最新趋势</title>
+<script>
+window.MathJax={tex:{inlineMath:[['\\(','\\)'],['$','$']],displayMath:[['\\[','\\]']],processEscapes:true},svg:{fontCache:'global'}};
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<style>
+html{scroll-behavior:smooth}
+body{font-family:"Microsoft YaHei",Arial,sans-serif;line-height:1.85;max-width:1120px;margin:40px auto;padding:0 28px 100px;background:#f7f8fb;color:#1f2937;font-size:17px}
+h1{font-size:34px;line-height:1.35;border-bottom:5px solid #2563eb;padding-bottom:14px}
+h2{margin-top:48px;padding:12px 16px;font-size:27px;background:#eef4ff;border-left:7px solid #2563eb}
+h3{margin-top:28px;font-size:21px}
+h2,h3{scroll-margin-top:24px}.box{background:#fff;border:1px solid #d9e2ef;border-radius:12px;padding:18px 22px;margin:18px 0}.note{background:#fff7d6;border-left:6px solid #d6a800}.train{background:#ecfdf3;border-left:6px solid #16a34a}.warn{background:#fff1f1;border-left:6px solid #dc2626}.blue{background:#eff6ff;border-left:6px solid #2563eb}.purple{background:#f5f3ff;border-left:6px solid #7c3aed}.formula{background:#fff;border:1px solid #d9e2ef;border-radius:12px;padding:16px 18px;margin:18px 0;overflow-x:auto}table{width:100%;border-collapse:collapse;margin:18px 0;background:#fff}th,td{border:1px solid #d9e2ef;padding:11px 13px;vertical-align:top}th{background:#f1f5f9}pre{background:#111827;color:#e5e7eb;padding:18px;border-radius:10px;overflow-x:auto;line-height:1.55}code{font-family:Consolas,Monaco,"Courier New",monospace}.small{color:#667085;font-size:14px}.tag{display:inline-block;background:#dbeafe;color:#1d4ed8;border-radius:999px;padding:2px 10px;font-size:13px;margin-right:6px;margin-bottom:6px}.paper{display:inline-block;background:#eef2ff;color:#3730a3;border-radius:999px;padding:2px 10px;font-size:13px;margin-right:6px}.ref{font-size:14px;color:#475569}.ref a{color:#2563eb;text-decoration:none}.ref a:hover{text-decoration:underline}.svgbox{background:#fff;border:1px solid #d9e2ef;border-radius:14px;padding:14px;margin:18px 0;overflow-x:auto}.caption{font-size:14px;color:#667085;text-align:center;margin-top:6px}.page-toc{position:fixed;top:20px;right:20px;z-index:1000}.page-toc-toggle{border:0;border-radius:999px;padding:10px 16px;background:#2563eb;color:#fff;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 10px 24px rgba(37,99,235,.24)}.page-toc-toggle:hover{background:#1d4ed8}.page-toc-panel{display:none;width:390px;max-height:calc(100vh - 90px);overflow:auto;background:rgba(255,255,255,.96);border:1px solid #d9e2ef;border-radius:14px;padding:16px 18px;margin-top:10px;box-shadow:0 12px 30px rgba(15,23,42,.08);backdrop-filter:blur(8px)}.page-toc.is-open .page-toc-panel{display:block}.page-toc-title{margin-bottom:12px;font-size:15px;font-weight:700;color:#0f172a}.page-toc-list{list-style:none;margin:0;padding:0}.page-toc-item+.page-toc-item{margin-top:10px}.page-toc-link{display:block;color:#334155;text-decoration:none;font-size:14px;line-height:1.55}.page-toc-link:hover{color:#2563eb}.timeline{position:relative;margin:24px 0;padding-left:24px}.timeline:before{content:"";position:absolute;left:7px;top:0;bottom:0;width:3px;background:#cbd5e1}.timeitem{position:relative;background:#fff;border:1px solid #d9e2ef;border-radius:12px;padding:14px 18px;margin:14px 0}.timeitem:before{content:"";position:absolute;left:-23px;top:19px;width:13px;height:13px;border-radius:50%;background:#2563eb;border:3px solid #fff;box-shadow:0 0 0 1px #2563eb}.kbd{display:inline-block;border:1px solid #cbd5e1;background:#f8fafc;border-radius:6px;padding:0 6px;font-size:14px}@media(max-width:760px){body{margin:30px auto;padding:0 18px 80px;font-size:16px}h1{font-size:28px}h2{font-size:23px}table{font-size:15px}.page-toc-panel{width:min(390px,calc(100vw - 24px))}}
+</style>
+</head>
+<body>
+<nav class="page-toc" aria-label="文章目录">
+<button class="page-toc-toggle" onclick="document.querySelector('.page-toc').classList.toggle('is-open')">☰ 目录</button>
+<div class="page-toc-panel">
+<div class="page-toc-title">目录导航</div>
+<ol class="page-toc-list">
+<li class="page-toc-item"><a class="page-toc-link" href="#intro">0. Stage 6 学什么</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#map">1. 一张图看论文谱系</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#timeline">2. 时间线</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#taxonomy">3. 四条主线分类</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#tiger">4. TIGER 线</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#sid">5. Semantic ID 构造线</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#grid">6. GRID 与 Benchmark 线</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#onerec">7. OneRec 工业系统线</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#openone">8. OpenOneRec / MiniOneRec 开源线</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#reasoning">9. Reasoning Recommendation 线</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#searchrec">10. Search + Rec 统一线</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#scaling">11. Scaling 争议</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#math">12. 统一数学框架</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#read">13. 论文阅读顺序</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#project">14. 后续项目切入点</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#summary">15. 一页总结</a></li>
+<li class="page-toc-item"><a class="page-toc-link" href="#refs">16. 参考资料</a></li>
+</ol>
+</div>
+</nav>
+<h1>推荐广告大模型新范式 Stage 6：生成式推荐论文谱系与最新趋势</h1>
+<p><span class="tag">Generative Recommendation</span><span class="tag">Semantic ID</span><span class="tag">OneRec</span><span class="tag">GRID</span><span class="tag">OpenOneRec</span><span class="tag">Reasoning Recommendation</span></p>
+<p class="small">更新时间：2026-06-28。本文是 Stage 2–5 之后的论文地图，用来把“生成式推荐”从单篇论文理解，推进到研究谱系理解。</p>
+
+<div class="box note" id="intro">
+<p><strong>Stage 6 的定位：</strong>前面几篇已经讲了 TIGER、OneRec、后训练和可复现实验。现在要补的是：这条线到底有哪些论文分支？每个分支在解决什么问题？如果你要做项目或面试，应该怎样把这些论文串成一个故事。</p>
+<p>这一阶段的核心问题是：</p>
+<div class="formula">\[
+\text{Generative Recommendation 的研究主线是什么？哪些问题已经解决，哪些问题还没解决？}
+\]</div>
+</div>
+
+<h2 id="map">1. 一张图看生成式推荐论文谱系</h2>
+<p>生成式推荐不是一条单线，而是由几条线汇合而成。最核心的主干是 <strong>Semantic ID + Autoregressive Generation</strong>，旁边再长出工业系统、开源框架、推理推荐、搜索推荐统一等方向。</p>
+<div class="svgbox">
+<svg width="1040" height="520" viewBox="0 0 1040 520" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#2563eb"/></marker>
+<style>.t{font:15px Microsoft YaHei,Arial;fill:#0f172a}.s{font:13px Microsoft YaHei,Arial;fill:#475569}.box{fill:#ffffff;stroke:#cbd5e1;stroke-width:1.5}.blue{fill:#eff6ff;stroke:#2563eb}.green{fill:#ecfdf3;stroke:#16a34a}.yellow{fill:#fff7d6;stroke:#d6a800}.purple{fill:#f5f3ff;stroke:#7c3aed}.red{fill:#fff1f1;stroke:#dc2626}</style>
+</defs>
+<rect x="30" y="40" width="190" height="70" rx="14" class="box blue"/><text x="55" y="70" class="t">传统推荐</text><text x="55" y="94" class="s">Recall + Rank + Re-rank</text>
+<rect x="285" y="40" width="190" height="70" rx="14" class="box green"/><text x="310" y="70" class="t">TIGER</text><text x="310" y="94" class="s">Semantic ID 生成式召回</text>
+<rect x="540" y="40" width="190" height="70" rx="14" class="box yellow"/><text x="565" y="70" class="t">OneRec</text><text x="565" y="94" class="s">统一 Retrieve + Rank</text>
+<rect x="795" y="40" width="190" height="70" rx="14" class="box purple"/><text x="820" y="70" class="t">OpenOneRec</text><text x="820" y="94" class="s">开源 Foundation Rec</text>
+<line x1="220" y1="75" x2="280" y2="75" stroke="#2563eb" stroke-width="2.5" marker-end="url(#arrow)"/><line x1="475" y1="75" x2="535" y2="75" stroke="#2563eb" stroke-width="2.5" marker-end="url(#arrow)"/><line x1="730" y1="75" x2="790" y2="75" stroke="#2563eb" stroke-width="2.5" marker-end="url(#arrow)"/>
+<rect x="90" y="185" width="220" height="84" rx="14" class="box"/><text x="115" y="215" class="t">Semantic ID 构造</text><text x="115" y="240" class="s">RQ-VAE / LETTER / ETEGRec</text><text x="115" y="260" class="s">ID 质量决定生成上限</text>
+<rect x="410" y="185" width="220" height="84" rx="14" class="box"/><text x="435" y="215" class="t">Benchmark / Framework</text><text x="435" y="240" class="s">GRID / RecIF-Bench</text><text x="435" y="260" class="s">统一比较、模块替换</text>
+<rect x="730" y="185" width="220" height="84" rx="14" class="box"/><text x="755" y="215" class="t">Reasoning Rec</text><text x="755" y="240" class="s">OneRec-Think / OneReason</text><text x="755" y="260" class="s">从隐式预测到显式推理</text>
+<line x1="380" y1="110" x2="210" y2="180" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/><line x1="635" y1="110" x2="520" y2="180" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/><line x1="890" y1="110" x2="840" y2="180" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="90" y="340" width="220" height="90" rx="14" class="box red"/><text x="115" y="370" class="t">核心开放问题 A</text><text x="115" y="395" class="s">SID 是否可扩展？</text><text x="115" y="417" class="s">语义压缩是否限制 scaling？</text>
+<rect x="410" y="340" width="220" height="90" rx="14" class="box red"/><text x="435" y="370" class="t">核心开放问题 B</text><text x="435" y="395" class="s">如何对齐真实用户反馈？</text><text x="435" y="417" class="s">点击、时长、满意度如何融合？</text>
+<rect x="730" y="340" width="220" height="90" rx="14" class="box red"/><text x="755" y="370" class="t">核心开放问题 C</text><text x="755" y="395" class="s">推荐是否需要 think？</text><text x="755" y="417" class="s">推理成本和收益如何平衡？</text>
+</svg>
+<div class="caption">图 1：Stage 6 的论文地图。自绘示意图，不复制论文原图。</div>
+</div>
+<div class="box train"><strong>一句话主线：</strong>TIGER 把推荐变成生成 Semantic ID；OneRec 把生成式推荐推进工业统一架构；GRID / OpenOneRec 让它可比较、可复现；OneRec-Think / OneReason 开始讨论推荐是否需要显式推理。</div>
+
+<h2 id="timeline">2. 关键论文时间线</h2>
+<div class="timeline">
+<div class="timeitem"><strong>2023：TIGER / Recommender Systems with Generative Retrieval</strong><br>核心贡献：给 item 分配 Semantic ID，让模型自回归生成目标 item 的标识符，推荐从“向量召回”变成“序列生成”。</div>
+<div class="timeitem"><strong>2024：LLM for Generative Recommendation Survey / LETTER / ETEGRec</strong><br>核心贡献：综述层面定义生成式推荐；方法层面开始认真处理 item tokenizer 的质量、协同信号和端到端对齐。</div>
+<div class="timeitem"><strong>2025：OneRec / GRID / OneRec-V2 / Search+Rec Semantic IDs</strong><br>核心贡献：OneRec 推进工业级统一 retrieve + rank；GRID 解决实验不可比；OneRec-V2 解决架构效率和真实反馈对齐；Spotify 等工作探索搜索和推荐共用 Semantic ID。</div>
+<div class="timeitem"><strong>2025–2026：OpenOneRec / OneRec-Think / OneReason / Item ID Survey</strong><br>核心贡献：从封闭工业系统转向开源 foundation recommender、综合 benchmark、显式推理推荐，以及 item identifier 生命周期综述。</div>
+</div>
+
+<h2 id="taxonomy">3. 四条主线分类：你要先分清楚大家在解决什么</h2>
+<p>读生成式推荐论文时，不能只问“用了什么模型”，要先问它解决的是哪一层问题。</p>
+<table>
+<tr><th>主线</th><th>核心问题</th><th>代表工作</th><th>你应该抓什么</th></tr>
+<tr><td>范式线</td><td>推荐能不能从打分排序变成生成 item？</td><td>TIGER、LLM-based Generative Recommendation Survey</td><td>推荐任务形式从 \(s(u,i)\) 到 \(p(i\mid H_u)\)</td></tr>
+<tr><td>Item ID / Tokenizer 线</td><td>item 应该如何离散化成生成目标？</td><td>RQ-VAE SID、LETTER、ETEGRec、UniSID、Item ID Survey</td><td>唯一性、语义性、协同性、可生成性、可扩展性</td></tr>
+<tr><td>工业系统线</td><td>生成式推荐能不能替代多阶段级联系统？</td><td>OneRec、OneRec Technical Report、OneRec-V2</td><td>端到端、session-wise generation、MoE、DPO / RL、线上指标</td></tr>
+<tr><td>开放与推理线</td><td>能不能开源复现？能不能具备世界知识和推理？</td><td>GRID、OpenOneRec、MiniOneRec、OneRec-Think、OneReason</td><td>benchmark、foundation rec、reasoning、instruction following、推荐解释</td></tr>
+</table>
+<div class="box warn"><strong>常见误区：</strong>不要把所有“LLM + Recommendation”都叫生成式推荐。真正的 Semantic-ID GenRec 关注的是 item token generation；而 LLM 写推荐理由、对话推荐、用户模拟，属于更宽泛的 LLM4Rec 范畴。</div>
+
+<h2 id="tiger">4. TIGER 线：生成式推荐的起点</h2>
+<p>TIGER 的关键不是“用了 Transformer”，而是它把推荐检索写成了一个自回归生成问题。传统大规模检索通常是把用户和 item 放进同一个向量空间，再做 ANN 搜索；TIGER 则让模型直接生成目标 item 的 Semantic ID。</p>
+<div class="formula">\[
+\operatorname{Rec}(u)=\operatorname{Decode}_{\theta}\big(H_u\big)
+\]</div>
+<p>如果 item \(i\) 的 Semantic ID 是：</p>
+<div class="formula">\[
+\operatorname{SID}(i)=\left(c_{i,1},c_{i,2},\ldots,c_{i,L}\right)
+\]</div>
+<p>那么 next-item recommendation 可以写成：</p>
+<div class="formula">\[
+P_{\theta}\left(\operatorname{SID}(i_{n+1})\mid \operatorname{SID}(i_1),\ldots,\operatorname{SID}(i_n)\right)
+=\prod_{t=1}^{L}P_{\theta}\left(c_{n+1,t}\mid c_{n+1,\lt t},H_u\right)
+\]</div>
+<div class="box note"><strong>TIGER 的真正创新：</strong>它不是让模型从百万 item 里分类，而是把 item 表示成短 token 序列；模型每一步只在 codebook token 上预测，从而把 item 空间转换成 token 组合空间。</div>
+<h3>4.1 TIGER 之后留下的问题</h3>
+<table>
+<tr><th>问题</th><th>为什么重要</th><th>后续论文如何接</th></tr>
+<tr><td>Semantic ID 是否足够好？</td><td>SID 是生成目标，目标本身差会限制模型上限</td><td>LETTER、ETEGRec、UniSID、Differentiable SID</td></tr>
+<tr><td>两阶段训练是否错位？</td><td>先训练 tokenizer，再训练 recommender，目标不一定一致</td><td>ETEGRec、end-to-end SID generation</td></tr>
+<tr><td>生成结果是否合法？</td><td>模型可能生成不存在的 SID</td><td>Trie constrained decoding、valid SID masking</td></tr>
+<tr><td>能否工业上线？</td><td>TIGER 更像生成式召回，未完整替代 ranker</td><td>OneRec、OneRec-V2</td></tr>
+</table>
+
+<h2 id="sid">5. Semantic ID 构造线：这是当前最核心的研究点</h2>
+<p>Semantic ID 是生成式推荐的“词表设计”。如果 ID 只是随机编号，生成模型很难泛化；如果 ID 有语义结构，相似 item 可以共享前缀或局部 code，模型就可能通过 token 组合泛化到长尾和冷启动 item。</p>
+<div class="svgbox">
+<svg width="1040" height="360" viewBox="0 0 1040 360" xmlns="http://www.w3.org/2000/svg">
+<defs><marker id="arrow2" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#2563eb"/></marker><style>.t{font:15px Microsoft YaHei,Arial;fill:#0f172a}.s{font:13px Microsoft YaHei,Arial;fill:#475569}.b{fill:#fff;stroke:#cbd5e1;stroke-width:1.5}.g{fill:#ecfdf3;stroke:#16a34a}.y{fill:#fff7d6;stroke:#d6a800}.p{fill:#f5f3ff;stroke:#7c3aed}</style></defs>
+<rect x="40" y="70" width="190" height="80" rx="14" class="b"/><text x="65" y="103" class="t">Item 原始信息</text><text x="65" y="130" class="s">文本 / 图像 / 类目 / 行为</text>
+<rect x="285" y="70" width="190" height="80" rx="14" class="g"/><text x="310" y="103" class="t">Representation</text><text x="310" y="130" class="s">LLM / VLM / CF Encoder</text>
+<rect x="530" y="70" width="190" height="80" rx="14" class="y"/><text x="555" y="103" class="t">Tokenizer</text><text x="555" y="130" class="s">RQ-VAE / Learnable SID</text>
+<rect x="775" y="70" width="190" height="80" rx="14" class="p"/><text x="800" y="103" class="t">Semantic ID</text><text x="800" y="130" class="s">(18, 7, 93, 42)</text>
+<line x1="230" y1="110" x2="280" y2="110" stroke="#2563eb" stroke-width="2.5" marker-end="url(#arrow2)"/><line x1="475" y1="110" x2="525" y2="110" stroke="#2563eb" stroke-width="2.5" marker-end="url(#arrow2)"/><line x1="720" y1="110" x2="770" y2="110" stroke="#2563eb" stroke-width="2.5" marker-end="url(#arrow2)"/>
+<rect x="95" y="230" width="850" height="60" rx="14" fill="#eff6ff" stroke="#2563eb"/><text x="125" y="258" class="t">好的 Semantic ID 要同时满足：唯一性、语义性、协同性、短序列、低冲突、易生成、可扩展</text><text x="125" y="282" class="s">这就是为什么后续论文都在改 tokenizer，而不是只换 Transformer backbone。</text>
+</svg>
+<div class="caption">图 2：Semantic ID 构造流程。自绘示意图。</div>
+</div>
+<h3>5.1 RQ-VAE Semantic ID</h3>
+<p>Stage 2 已经讲过，RQ-VAE 的直觉是多层残差量化：</p>
+<div class="formula">\[
+\mathbf{r}^{(0)}=\mathbf{z},\quad c_l=\arg\min_{k}\left\|\mathbf{r}^{(l-1)}-\mathbf{e}^{(l)}_k\right\|_2^2,\quad
+\mathbf{r}^{(l)}=\mathbf{r}^{(l-1)}-\mathbf{e}^{(l)}_{c_l}
+\]</div>
+<p>最终：</p>
+<div class="formula">\[
+\operatorname{SID}(i)=\left(c_1,c_2,\ldots,c_L\right)
+\]</div>
+<h3>5.2 LETTER：让 tokenizer 吃到协同信号</h3>
+<p>LETTER 的动机是：仅靠文本或内容语义生成 ID 不够，因为推荐不是纯语义匹配，还需要 collaborative filtering 信号。它将层级语义、协同信号和 code assignment diversity 结合起来，试图让 item token 既有内容语义，又能反映用户行为共现关系。</p>
+<pre>普通 SID：
+item content embedding → RQ-VAE → SID
+
+LETTER：
+item semantics + collaborative signal + diversity regularization → learnable tokenizer → better SID</pre>
+<h3>5.3 ETEGRec：把 tokenizer 和 recommender 端到端耦合</h3>
+<p>ETEGRec 的问题意识更明确：很多方法先单独训练 item tokenizer，再训练生成式 recommender，这会造成目标错位。ETEGRec 使用 item tokenizer + generative recommender 的双 encoder-decoder 架构，并通过 sequence-item alignment 和 preference-semantic alignment 让两者互相增强。</p>
+<div class="box train"><strong>ETEGRec 的论文价值：</strong>它把“SID 是预处理产物”推进到“SID 是推荐目标的一部分，可以和 recommender 联合优化”。</div>
+<h3>5.4 UniSID / Differentiable SID：继续解决两阶段压缩问题</h3>
+<p>2026 年后，SID 方向继续往端到端、可微、广告场景细粒度语义走。核心批评是：RQ-VAE 两阶段压缩可能带来 objective misalignment、semantic degradation 和 error accumulation。因此新的 SID 论文倾向于直接把推荐目标、广告语义、重构目标、对比学习目标一起放进 SID 学习里。</p>
+<table>
+<tr><th>SID 方法</th><th>核心思路</th><th>适合回答的问题</th></tr>
+<tr><td>Random ID</td><td>随机给 item 编号</td><td>生成模型是否只靠行为记忆？</td></tr>
+<tr><td>Content SID</td><td>用文本/图像 embedding 量化</td><td>语义信息是否提升冷启动？</td></tr>
+<tr><td>Behavior SID</td><td>用协同过滤 embedding 量化</td><td>行为相似性是否更重要？</td></tr>
+<tr><td>Hybrid SID</td><td>融合内容和行为</td><td>内容语义和协同信号如何平衡？</td></tr>
+<tr><td>Learnable SID</td><td>tokenizer 与推荐任务对齐</td><td>SID 是否可以端到端优化？</td></tr>
+<tr><td>Purely Semantic Indexing</td><td>避免冲突时追加随机非语义 token</td><td>如何保持唯一性又不破坏语义？</td></tr>
+</table>
+
+<h2 id="grid">6. GRID 与 Benchmark 线：为什么需要统一框架</h2>
+<p>生成式推荐论文越来越多后，一个新问题出现了：大家的数据处理、SID 长度、codebook size、Transformer 配置、beam search、负采样、过滤逻辑都不一样，导致论文之间很难公平比较。GRID 的价值就是把 Semantic-ID GenRec 做成一个模块化框架，让 SID 构造、生成模型、训练和推理都可以替换。</p>
+<pre>GRID-style pipeline:
+Dataset
+  ↓
+Representation Layer
+  ↓
+SID Tokenizer
+  ↓
+Generative Backbone
+  ↓
+Training Objective
+  ↓
+Constrained Decoding
+  ↓
+Evaluation</pre>
+<div class="box note"><strong>GRID 的意义：</strong>它不是单纯提出一个更强模型，而是把这个方向变成可以系统 ablation 的实验平台。对你做项目很重要，因为你需要一个“可比较”的实验框架，而不是只跑一个 Toy TIGER。</div>
+<h3>6.1 GRID 之后应该怎么做实验</h3>
+<table>
+<tr><th>模块</th><th>可替换选项</th><th>实验问题</th></tr>
+<tr><td>Representation</td><td>Text encoder、Image encoder、CF encoder、Hybrid encoder</td><td>哪种 embedding 更适合 SID？</td></tr>
+<tr><td>Tokenizer</td><td>KMeans、RQ-VAE、Learnable Tokenizer、Pure Semantic Indexing</td><td>SID 质量如何影响 Recall / NDCG？</td></tr>
+<tr><td>Backbone</td><td>T5、Decoder-only LLM、Small Transformer</td><td>生成模型 scaling 是否有效？</td></tr>
+<tr><td>Training</td><td>NTP、SFT、DPO、RL</td><td>后训练是否提升排序和多样性？</td></tr>
+<tr><td>Inference</td><td>Greedy、Beam Search、Trie Constraint</td><td>解码策略如何影响 invalid SID 和延迟？</td></tr>
+</table>
+
+<h2 id="onerec">7. OneRec 工业系统线：从生成式召回到统一 Retrieve + Rank</h2>
+<p>TIGER 更像是证明“生成式召回可行”。OneRec 的野心更大：不只是生成候选，而是用端到端生成式模型重塑传统多阶段推荐系统。</p>
+<pre>传统系统：
+Recall → Pre-rank → Rank → Re-rank
+
+OneRec 思路：
+User History → Generative Model → Session-wise Recommended Items
+</pre>
+<h3>7.1 OneRec-V1：encoder-decoder + session-wise generation</h3>
+<p>OneRec-V1 的核心组件可以概括为：</p>
+<table>
+<tr><th>组件</th><th>作用</th></tr>
+<tr><td>Encoder</td><td>编码用户历史行为序列</td></tr>
+<tr><td>Decoder</td><td>逐步生成用户可能感兴趣的视频/item</td></tr>
+<tr><td>Sparse-MoE</td><td>扩大模型容量，但控制每次推理激活计算量</td></tr>
+<tr><td>Session-wise Generation</td><td>不只预测一个 item，而是直接生成一组 session 推荐</td></tr>
+<tr><td>Iterative Preference Alignment</td><td>用线上反馈迭代对齐用户偏好</td></tr>
+</table>
+<div class="formula">\[
+P_{\theta}(Y\mid H_u)=\prod_{j=1}^{M}P_{\theta}(y_j\mid y_{\lt j},H_u)
+\]</div>
+<p>这里 \(Y=(y_1,y_2,\ldots,y_M)\) 是一个推荐 session，而不是单个 next item。</p>
+<h3>7.2 OneRec-V2：为什么要 Lazy Decoder-Only</h3>
+<p>OneRec-V2 的问题意识是：encoder-decoder 结构在大规模工业场景下会有 encoder bottleneck 和 cross-attention 复杂度。V2 改成 Lazy Decoder-Only Architecture，目标是减少计算、简化结构，并让模型可以扩到更大参数规模。</p>
+<div class="box blue"><strong>OneRec-V2 的关键词：</strong>Lazy Decoder-Only、real-world user interaction feedback、Duration-Aware Reward Shaping、Adaptive Ratio Clipping、8B scaling。</div>
+<h3>7.3 工业系统线真正要学什么</h3>
+<p>读 OneRec 不要只看模型结构，还要看三个工程问题：</p>
+<ol>
+<li><strong>候选生成是否合法：</strong>是否需要 Trie、mask、业务过滤。</li>
+<li><strong>线上指标如何定义：</strong>watch time、app stay time、互动率、负反馈、商业目标。</li>
+<li><strong>反馈如何进入后训练：</strong>DPO、RL、reward shaping、ratio clipping。</li>
+</ol>
+
+<h2 id="openone">8. OpenOneRec / MiniOneRec 开源线：从封闭工业系统到可复现 Foundation Rec</h2>
+<p>OneRec 很强，但如果没有开源框架，学术界和个人项目很难复现。OpenOneRec / MiniOneRec 这条线的意义是：把生成式推荐从“工业黑盒系统”变成公开模型、公开数据、公开 benchmark、公开后训练流程。</p>
+<h3>8.1 OpenOneRec：桥接推荐系统和 LLM</h3>
+<p>OpenOneRec 的核心问题是：传统推荐系统往往缺少世界知识、推理能力和 instruction following；而通用 LLM 又缺少 itemic token、协同过滤和大规模推荐行为建模。因此它试图做一个更像 foundation model 的推荐框架。</p>
+<table>
+<tr><th>能力</th><th>传统推荐</th><th>OpenOneRec 想补什么</th></tr>
+<tr><td>Item 行为建模</td><td>强</td><td>保留 itemic token 和行为序列</td></tr>
+<tr><td>世界知识</td><td>弱</td><td>接入 LLM backbone</td></tr>
+<tr><td>推理解释</td><td>弱</td><td>支持 instruction / reasoning / explanation</td></tr>
+<tr><td>公开复现</td><td>不足</td><td>公开模型、数据和 benchmark</td></tr>
+</table>
+<h3>8.2 MiniOneRec：验证公开 benchmark 上的 scaling 和后训练</h3>
+<p>MiniOneRec 更适合作为你后面项目的参考，因为它强调端到端开源流程：SID construction、SFT、recommendation-oriented RL，并在公开 Amazon Review 数据上验证模型规模扩大和后训练的效果。</p>
+<div class="box train"><strong>对你项目最有用的点：</strong>MiniOneRec 把“生成式推荐项目”拆成了 SID 构造、SFT、RL、评估四步，非常适合改造成公开数据实验。</div>
+
+<h2 id="reasoning">9. Reasoning Recommendation 线：推荐到底需不需要 think？</h2>
+<p>OneRec-Think 的出发点是：OneRec 这类生成式推荐模型虽然可以直接生成 item，但仍然像黑盒隐式预测器，缺少 LLM 的显式、可控推理能力。因此它提出把 dialogue、reasoning 和 personalized recommendation 结合起来。</p>
+<pre>Implicit GenRec:
+User history → item tokens
+
+Reasoning GenRec:
+User history + instruction
+  ↓
+reasoning trace / preference analysis
+  ↓
+item tokens / recommendation answer</pre>
+<div class="formula">\[
+P_{\theta}(r,y\mid H_u,q)=P_{\theta}(r\mid H_u,q)\cdot P_{\theta}(y\mid r,H_u,q)
+\]</div>
+<p>其中 \(r\) 表示推理过程或偏好分析，\(y\) 表示推荐结果。</p>
+<h3>9.1 但 OneReason 提出了一个反直觉现象</h3>
+<p>OneReason 的技术报告里提到一个值得注意的现象：在生成式推荐中，thinking mode 不一定优于 non-thinking mode。这说明推荐推理不同于数学推理或代码推理；推荐偏好可能更依赖历史行为压缩、itemic token 语义、候选约束和在线反馈，而不是越长的 chain-of-thought 越好。</p>
+<div class="box warn"><strong>重要判断：</strong>推荐场景的 reasoning 不是简单让模型“多想几步”。它需要回答：推理过程是否真的提升点击、时长、满意度、覆盖率和可控性？如果只增加推理文本但不提升推荐行为指标，就可能只是增加成本。</div>
+<h3>9.2 Reasoning Rec 的三类价值</h3>
+<table>
+<tr><th>价值</th><th>说明</th><th>适合场景</th></tr>
+<tr><td>可解释性</td><td>告诉用户为什么推荐</td><td>内容推荐、知识推荐、理财知识文章</td></tr>
+<tr><td>可控性</td><td>根据用户指令调整偏好</td><td>“不要太贵”“更适合新手”“偏保守”</td></tr>
+<tr><td>多约束决策</td><td>同时考虑兴趣、时间、预算、风险偏好</td><td>旅游、课程、内容包、权益推荐</td></tr>
+</table>
+
+<h2 id="searchrec">10. Search + Recommendation 统一线</h2>
+<p>另一个重要趋势是：Semantic ID 不只用于推荐，也用于搜索和 generative retrieval。搜索和推荐本质上都是 matching，只是搜索有显式 query，推荐主要来自隐式用户历史。</p>
+<table>
+<tr><th>任务</th><th>输入</th><th>输出</th><th>SID 难点</th></tr>
+<tr><td>Recommendation</td><td>用户历史 \(H_u\)</td><td>用户可能喜欢的 item</td><td>SID 要捕捉协同过滤和偏好迁移</td></tr>
+<tr><td>Search</td><td>query \(q\)</td><td>相关 item / document</td><td>SID 要捕捉语义相关性和意图匹配</td></tr>
+<tr><td>Joint Search + Rec</td><td>query + history</td><td>个性化搜索结果</td><td>搜索最优 SID 和推荐最优 SID 可能冲突</td></tr>
+</table>
+<p>Spotify 的相关研究指出，面向搜索调优的 Semantic ID 会提升搜索检索效果，但可能损害推荐表现；推荐调优的 ID 也可能反过来影响搜索效果。这说明统一 search + rec 不是简单共用一个 tokenizer，而是要设计 task-aware 或 multi-objective Semantic ID。</p>
+<div class="formula">\[
+\mathcal{L}_{\operatorname{joint}}=\lambda_{\operatorname{rec}}\mathcal{L}_{\operatorname{rec}}+\lambda_{\operatorname{search}}\mathcal{L}_{\operatorname{search}}+\lambda_{\operatorname{align}}\mathcal{L}_{\operatorname{align}}
+\]</div>
+
+<h2 id="scaling">11. Scaling 争议：SID-based GenRec 是否真的能像 LLM 一样 scaling？</h2>
+<p>前面几篇我们一直在说生成式推荐像 LLM 一样生成 token，但这不代表它一定具有 LLM 那样平滑的 scaling law。2025 年的一些研究开始质疑 SID-based GenRec 的 scaling 上限：当模型、tokenizer、modality encoder 都变大时，性能可能快速饱和，瓶颈可能出现在 SID 对 item 语义和协同信息的压缩能力上。</p>
+<div class="box purple"><strong>关键争议：</strong>如果 Semantic ID 本身只能表达有限信息，那么继续把 Transformer 做大，未必能持续提升推荐效果。这和 Stage 1 的 Ranking Model Scaling 是一个很好的对照：推荐大模型化不只是 backbone scaling，还包括 item representation scaling。</div>
+<h3>11.1 两种可能路线</h3>
+<table>
+<tr><th>路线</th><th>代表</th><th>基本假设</th><th>风险</th></tr>
+<tr><td>SID-based GR</td><td>TIGER、GRID、OneRec</td><td>把 item 离散成短 token 序列，生成效率高，可统一检索排序</td><td>SID 信息瓶颈、冲突、语义压缩损失</td></tr>
+<tr><td>LLM-as-RS</td><td>OpenOneRec、OneRec-Think、Reasoning Rec</td><td>直接利用 LLM 的世界知识、语义理解和指令能力</td><td>成本高、行为建模弱、item grounding 难</td></tr>
+</table>
+<p>实际未来可能不是二选一，而是混合路线：</p>
+<pre>LLM backbone + Itemic Tokens + Semantic IDs + Recommendation RL + Constrained Decoding</pre>
+
+<h2 id="math">12. 统一数学框架：把这些论文放到一个公式里</h2>
+<p>为了避免论文越读越散，可以用下面这个统一框架理解。</p>
+<h3>12.1 Item 表示层</h3>
+<div class="formula">\[
+\mathbf{z}_i=f_{\phi}(x_i,b_i)
+\]</div>
+<p>其中 \(x_i\) 是 item 内容信息，\(b_i\) 是行为协同信息。</p>
+<h3>12.2 Tokenizer 层</h3>
+<div class="formula">\[
+\operatorname{SID}(i)=Q_{\psi}(\mathbf{z}_i)=\left(c_{i,1},c_{i,2},\ldots,c_{i,L}\right)
+\]</div>
+<h3>12.3 生成模型层</h3>
+<div class="formula">\[
+P_{\theta}\left(\operatorname{SID}(i_{n+1})\mid H_u\right)=\prod_{t=1}^{L}P_{\theta}\left(c_{n+1,t}\mid c_{n+1,\lt t},H_u\right)
+\]</div>
+<h3>12.4 约束解码层</h3>
+<div class="formula">\[
+\hat{i}=\operatorname{Lookup}\left(\operatorname{Decode}_{\operatorname{Trie}}\left(P_{\theta}(\cdot\mid H_u)\right)\right)
+\]</div>
+<h3>12.5 偏好对齐层</h3>
+<div class="formula">\[
+\max_{\theta}\;\mathbb{E}_{(H_u,y^+,y^-)}\left[\log\sigma\left(\beta\left(\log\frac{P_{\theta}(y^+\mid H_u)}{P_{\operatorname{ref}}(y^+\mid H_u)}-\log\frac{P_{\theta}(y^-\mid H_u)}{P_{\operatorname{ref}}(y^-\mid H_u)}\right)\right)\right]
+\]</div>
+<div class="box train"><strong>你讲论文时可以这样总结：</strong>不同论文其实是在改 \(f_{\phi}\)、\(Q_{\psi}\)、\(P_{\theta}\)、\(\operatorname{Decode}\) 或偏好对齐目标。这样就不会被论文名绕晕。</div>
+
+<h2 id="read">13. 推荐阅读顺序：从能看懂到能做项目</h2>
+<table>
+<tr><th>阶段</th><th>读什么</th><th>读完要能回答什么</th></tr>
+<tr><td>入门</td><td>TIGER、LLM-based Generative Recommendation Survey</td><td>推荐为什么能变成生成？Semantic ID 是什么？</td></tr>
+<tr><td>Tokenizer</td><td>LETTER、ETEGRec、Item ID Survey</td><td>什么是好 item ID？为什么 tokenizer 要和推荐目标对齐？</td></tr>
+<tr><td>工业</td><td>OneRec、OneRec Technical Report、OneRec-V2</td><td>生成式推荐如何替代多阶段系统？如何处理线上反馈？</td></tr>
+<tr><td>复现</td><td>GRID、OpenOneRec、MiniOneRec</td><td>公开数据上怎么跑？怎么做 ablation？怎么写项目？</td></tr>
+<tr><td>前沿</td><td>OneRec-Think、OneReason、Search+Rec Semantic IDs、Scaling View</td><td>推荐是否需要推理？SID-based GenRec 是否有 scaling 上限？</td></tr>
+</table>
+
+<h2 id="project">14. 后续项目切入点：哪些方向最适合你做</h2>
+<p>如果你要把这条线变成一个项目，我建议不要直接复现 OneRec，因为工程量太大。更好的切入点是围绕 Semantic ID 和公开数据做可解释、可消融的实验。</p>
+<h3>14.1 方向 A：Semantic ID 质量评估</h3>
+<div class="box note"><strong>项目题目：</strong>Semantic ID Quality Matters: A Comparative Study of Item Tokenization for Generative Recommendation</div>
+<pre>核心实验：
+Random ID vs Category ID vs Content SID vs Behavior SID vs Hybrid SID
+
+观察指标：
+Recall@K / NDCG@K / Coverage@K / TailRatio@K / Cold-start Recall / Invalid SID Rate</pre>
+<h3>14.2 方向 B：长尾发现与冷启动</h3>
+<div class="box note"><strong>项目题目：</strong>Generative Recommendation for Long-tail and Cold-start Item Discovery</div>
+<p>核心问题：Semantic ID 是否真的能让模型泛化到低频 item？如果 item 的文本和图像语义足够强，生成式推荐是否比 SASRec / BERT4Rec 更容易推荐长尾 item？</p>
+<h3>14.3 方向 C：推荐后训练小项目</h3>
+<div class="box note"><strong>项目题目：</strong>Preference-Aligned Generative Recommendation with Constrained Decoding</div>
+<p>做法：先训练一个小型 Semantic-ID GenRec，再构造 chosen / rejected pair，用 DPO 或轻量 RL 做偏好对齐。重点不是追求工业指标，而是展示后训练如何改变推荐多样性、长尾比例和热门偏置。</p>
+<h3>14.4 方向 D：银行内容推荐迁移</h3>
+<p>不碰风控、不碰授信，可以做：</p>
+<pre>用户历史浏览文章 / 活动 / 功能入口
+        ↓
+生成式推荐模型
+        ↓
+推荐下一篇金融知识文章、权益活动、App 功能入口</pre>
+<p>这个方向适合面试讲，因为场景明确、风险较低、公开数据可替代、方法和业务能结合。</p>
+
+<h2 id="summary">15. 一页总结</h2>
+<table>
+<tr><th>问题</th><th>结论</th></tr>
+<tr><td>生成式推荐主线是什么？</td><td>从 item scoring 变成 item token generation，核心是 Semantic ID 和自回归生成。</td></tr>
+<tr><td>TIGER 的意义是什么？</td><td>证明 Semantic ID + generative retrieval 可以作为推荐新范式。</td></tr>
+<tr><td>后续为什么都在改 SID？</td><td>因为 SID 是生成目标，ID 质量直接决定泛化、冷启动、长尾和 scaling 上限。</td></tr>
+<tr><td>OneRec 解决什么？</td><td>把生成式推荐推进工业级统一 retrieve + rank，并引入 MoE、session-wise generation、偏好对齐。</td></tr>
+<tr><td>GRID / OpenOneRec 解决什么？</td><td>让生成式推荐从封闭系统走向可比较、可复现、可开源。</td></tr>
+<tr><td>Reasoning Rec 的问题是什么？</td><td>推荐是否需要显式推理还没有完全定论，关键看推理是否真实提升行为指标和可控性。</td></tr>
+<tr><td>现在最适合做什么项目？</td><td>做 Semantic ID 质量比较、长尾发现、轻量偏好对齐，最容易用公开数据落地。</td></tr>
+</table>
+<div class="box train">
+<strong>Stage 6 结束标准：</strong>
+<ol>
+<li>能把 TIGER、LETTER、ETEGRec、GRID、OneRec、OpenOneRec、OneRec-Think 放进一张谱系图；</li>
+<li>能解释为什么 Semantic ID 是生成式推荐的核心瓶颈；</li>
+<li>能区分 SID-based GenRec、LLM-as-RS、Reasoning Rec、Search+Rec 统一；</li>
+<li>能讲清楚当前前沿争议：SID scaling 是否受限、推荐是否需要显式 thinking；</li>
+<li>能基于公开数据提出一个可做项目。</li>
+</ol>
+</div>
+
+<h2 id="refs">16. 参考资料</h2>
+<p class="ref">[1] Rajput et al. <em>Recommender Systems with Generative Retrieval</em>, NeurIPS 2023. <a href="https://arxiv.org/abs/2305.05065" target="_blank">arXiv</a> / <a href="https://proceedings.neurips.cc/paper_files/paper/2023/file/20dcab0f14046a5c6b02b61da9f13229-Paper-Conference.pdf" target="_blank">NeurIPS PDF</a></p>
+<p class="ref">[2] Li et al. <em>Large Language Models for Generative Recommendation</em>, LREC-COLING 2024. <a href="https://aclanthology.org/2024.lrec-main.886/" target="_blank">ACL Anthology</a></p>
+<p class="ref">[3] Wang et al. <em>Learnable Item Tokenization for Generative Recommendation</em> / LETTER, 2024. <a href="https://arxiv.org/abs/2405.07314" target="_blank">arXiv</a></p>
+<p class="ref">[4] Liu et al. <em>End-to-End Learnable Item Tokenization for Generative Recommendation</em> / ETEGRec, 2024/2025. <a href="https://arxiv.org/abs/2409.05546" target="_blank">arXiv</a></p>
+<p class="ref">[5] Deng et al. <em>OneRec: Unifying Retrieve and Rank with Generative Recommender</em>, 2025. <a href="https://arxiv.org/abs/2502.18965" target="_blank">arXiv</a></p>
+<p class="ref">[6] Zhou et al. <em>OneRec Technical Report</em>, 2025. <a href="https://arxiv.org/abs/2506.13695" target="_blank">arXiv</a></p>
+<p class="ref">[7] Ju et al. <em>Generative Recommendation with Semantic IDs: A Practitioner's Handbook</em> / GRID, 2025. <a href="https://arxiv.org/abs/2507.22224" target="_blank">arXiv</a> / <a href="https://github.com/snap-research/GRID" target="_blank">GitHub</a></p>
+<p class="ref">[8] Zhou et al. <em>OneRec-V2 Technical Report</em>, 2025. <a href="https://arxiv.org/abs/2508.20900" target="_blank">arXiv</a></p>
+<p class="ref">[9] Spotify Research. <em>Semantic IDs for Generative Search and Recommendation</em>, 2025. <a href="https://research.atspotify.com/2025/9/semantic-ids-for-generative-search-and-recommendation" target="_blank">Blog</a> / <a href="https://arxiv.org/html/2508.10478v1" target="_blank">arXiv HTML</a></p>
+<p class="ref">[10] Liu et al. <em>Understanding Generative Recommendation with Semantic IDs from a Model-scaling View</em>, 2025. <a href="https://arxiv.org/abs/2509.25522" target="_blank">arXiv</a></p>
+<p class="ref">[11] Zhou et al. <em>OpenOneRec Technical Report</em>, 2025. <a href="https://arxiv.org/abs/2512.24762" target="_blank">arXiv</a> / <a href="https://github.com/Kuaishou-OneRec/OpenOneRec" target="_blank">GitHub</a> / <a href="https://huggingface.co/OpenOneRec" target="_blank">HuggingFace</a></p>
+<p class="ref">[12] Kong et al. <em>MiniOneRec: An Open-Source Framework for Scaling Generative Recommendation</em>, 2025. <a href="https://arxiv.org/abs/2510.24431" target="_blank">arXiv</a></p>
+<p class="ref">[13] Liu et al. <em>OneRec-Think: In-Text Reasoning for Generative Recommendation</em>, 2025. <a href="https://arxiv.org/abs/2510.11639" target="_blank">arXiv</a></p>
+<p class="ref">[14] OR Team. <em>OneReason Technical Report</em>, 2026. <a href="https://arxiv.org/abs/2606.06260" target="_blank">arXiv</a></p>
+<p class="ref">[15] Zhang et al. <em>A Survey of Item Identifiers in Generative Recommendation: Construction, Alignment, and Generation</em>, 2026. <a href="https://www.techrxiv.org/doi/10.36227/techrxiv.176945895.52184668" target="_blank">TechRxiv</a></p>
+<p class="ref">[16] Li et al. <em>A Survey of Generative Search and Recommendation in the Era of Large Language Models</em>, 2024. <a href="https://arxiv.org/abs/2404.16924" target="_blank">arXiv</a></p>
+<p class="small">说明：本文是学习讲义式整理，不替代原论文。涉及具体线上指标、实验设置和实现细节时，请以原论文和官方代码为准。</p>
+</body>
+</html>
