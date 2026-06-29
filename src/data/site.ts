@@ -33,8 +33,8 @@ export const directions = [
     slug: "recommendation",
     href: "/notes/recommendation",
     eyebrow: "Direction 03",
-    summary: "A reserved track for recall, ranking, multi-objective optimization, and system engineering.",
-    count: "Reserved",
+    summary: "Reading notes, interview review, and practice material for recommendation systems.",
+    count: "10 resources",
     tags: ["Recall", "Ranking", "Multi-task"]
   }
 ];
@@ -159,5 +159,21 @@ export const resources = [
     href: "/archive/markdown/new-chat.md",
     summary: "A quick draft for next-step study directions.",
     updated: "2026-06-07"
+  },
+  {
+    title: "CodeTop顺序",
+    type: "Markdown",
+    direction: "Recommendation Systems",
+    href: "/archive/markdown/CodeTop顺序.md",
+    summary: "A structured CodeTop practice order for recommendation interview prep.",
+    updated: "2026-06-29"
+  },
+  {
+    title: "刷题",
+    type: "Markdown",
+    direction: "Recommendation Systems",
+    href: "/archive/markdown/刷题.md",
+    summary: "Expanded recommendation practice notes and problem-solving drills.",
+    updated: "2026-06-29"
   }
 ];
